@@ -1,0 +1,3 @@
+# Debugging options for the ZipEditor plugin
+
+ZipEditor/debug = true

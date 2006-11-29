@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.2"?>
+<plugin>
+   <extension
+         point="org.eclipse.core.contenttype.contentTypes">
+      <content-type
+            file-extensions="jar, zip"
+            id="zipfile"
+            name="Zip archive"
+            priority="normal"/>
+      <content-type
+            file-extensions="gz, tgz"
+            id="gzipfile"
+            name="GZip archive"
+            priority="normal"/>
+      <file-association
+            content-type="ZipEditor.zipfile"
+            file-extensions="jar"/>
+   </extension>
+   <extension
+         point="org.eclipse.ui.editors">
+      <editor
+            class="zipeditor.ZipEditor"
+            default="true"
+            extensions="jar, zip"
+            icon="icons/zipicon.gif"
+            id="zipeditor.ZipEditor"
+            name="ZipEditor">
+         <contentTypeBinding contentTypeId="ZipEditor.zipfile"/>
+      </editor>
+   </extension>
+   <extension
+         point="org.eclipse.core.runtime.preferences">
+      <initializer class="zipeditor.PreferenceInitializer"/>
+   </extension>
+   <extension
+         point="org.eclipse.ui.navigator.navigatorContent">
+      <navigatorContent
+            activeByDefault="true"
+            contentProvider="zipeditor.ZipContentProvider"
+            icon="icons/zipicon.gif"
+            id="zipeditor.navigatorContent"
+            labelProvider="zipeditor.ZipLabelProvider"
+            name="Zip Archives">
+         <triggerPoints>
+            <or>
+               <instanceof value="org.eclipse.core.resources.IFile"/>
+               <instanceof value="zipeditor.model.ZipNode"/>
+               <instanceof value="org.eclipse.core.resources.IWorkspaceRoot"/>
+               <instanceof value="org.eclipse.core.resources.IFolder"/>
+               <instanceof value="org.eclipse.core.resources.IProject"/>
+            </or>
+         </triggerPoints>
+         <possibleChildren>
+            <or>
+               <instanceof value="zipeditor.model.ZipNode"/>
+               <instanceof value="org.eclipse.core.resources.IWorkspaceRoot"/>
+               <instanceof value="org.eclipse.core.resources.IFile"/>
+               <instanceof value="org.eclipse.core.resources.IFolder"/>
+               <instanceof value="org.eclipse.core.resources.IProject"/>
+            </or>
+         </possibleChildren>
+         <commonSorter
+               class="zipeditor.ZipSorter"
+               id="zipeditor.ZipSorter"/>
+         <actionProvider
+               class="zipeditor.actions.ZipActionProvider"
+               overrides="org.eclipse.ui.navigator.resources.OpenActions">
+            <enablement>
+               <or>
+                  <instanceof value="zipeditor.model.ZipNode"/>
+                  <instanceof value="org.eclipse.core.resources.IFile"/>
+               </or>
+            </enablement>
+         </actionProvider>
+      </navigatorContent>
+   </extension>
+   <extension
+         point="org.eclipse.ui.navigator.viewer">
+      <viewerContentBinding viewerId="org.eclipse.ui.navigator.ProjectExplorer">
+         <includes>
+            <contentExtension pattern="zipeditor.navigatorContent"/>
+         </includes>
+      </viewerContentBinding>
+   </extension>
+   <extension
+         point="org.eclipse.ui.propertyPages">
+      <page
+            class="zipeditor.ZipNodePropertyPage"
+            id="zipeditor.ZipNodePropertyPage"
+            name="Archive element"
+            objectClass="zipeditor.model.ZipNode"/>
+   </extension>
+
+</plugin>
