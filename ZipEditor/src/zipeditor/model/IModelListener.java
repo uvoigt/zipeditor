@@ -7,6 +7,18 @@ package zipeditor.model;
 import java.util.EventListener;
 
 public interface IModelListener extends EventListener {
+	public class ModelChangeEvent {
+		private ZipModel fModel;
+		
+		public ModelChangeEvent(ZipModel model) {
+			super();
+			fModel = model;
+		}
 
-	public void modelChanged();
+		public ZipModel getModel() {
+			return fModel;
+		}
+	};
+
+	public void modelChanged(ModelChangeEvent event);
 }
