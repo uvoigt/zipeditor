@@ -5,20 +5,12 @@
 package zipeditor.model;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.eclipse.core.runtime.IProgressMonitor;
-
-import zipeditor.ZipEditorPlugin;
-
-public class ZipNode {
+public class ZipNode extends Node {
 	private class EntryStream extends InputStream {
 		private InputStream in;
 		private ZipFile zipFile;
@@ -35,125 +27,21 @@ public class ZipNode {
 		}
 	};
 
-	private ZipNode parent;
-	private List children;
-	private boolean isFolder;
-	private String name;
-	private long time;
-	private long size;
 	private String comment;
-	private ZipEntry entry;
-	private File file;
-	private ZipModel model;
-	
+	private ZipEntry zipEntry;
+
 	public ZipNode(ZipModel model, ZipEntry entry, String name, boolean isFolder) {
-		if (model == null)
-			throw new NullPointerException();
-		if (name == null)
-			throw new NullPointerException();
-		this.model = model;
-		this.entry = entry;
-		this.name = name;
-		this.isFolder = isFolder;
+		this(model, name, isFolder);
+		zipEntry = entry;
 		if (entry != null) {
-			this.time = entry.getTime();
-			this.size = entry.getSize();
-			this.comment = entry.getComment();
-		} else {
-			this.time = System.currentTimeMillis();			
+			time = entry.getTime();
+			size = entry.getSize();
+			comment = entry.getComment();
 		}
 	}
 	
-	public void add(ZipNode node) throws IllegalArgumentException {
-		node.parent = this;
-		if (children == null)
-			children = new ArrayList();
-		children.add(node);
-		model.notifyListeners();
-	}
-	
-	public void add(File file, IProgressMonitor monitor) throws IllegalArgumentException {
-		ZipNode node = new ZipNode(model, null, file.getName(), file.isDirectory());
-		add(node);
-		if (node.isFolder) {
-			File[] files = file.listFiles();
-			if (files != null) {
-				for (int i = 0; i < files.length; i++) {
-					if (monitor.isCanceled())
-						break;
-					monitor.subTask(files[i].getName());
-					node.add(files[i], monitor);
-				}
-			}
-		} else {
-			node.updateContent(file);
-			monitor.worked(1);
-		}
-	}
-	
-	public void updateContent(File file) {
-		try {
-			//content = readFile(file);
-			this.file = file;
-			entry = null;
-			time = System.currentTimeMillis();
-			size = file.length();
-		} catch (Exception e) {
-			ZipEditorPlugin.log(e);
-		}
-	}
-
-	public void remove(ZipNode node) {
-		if (children == null)
-			return;
-		for (Iterator it = children.iterator(); it.hasNext(); ) {
-			if (it.next().equals(node))
-				it.remove();
-		}
-	}
-
-	public ZipNode getParent() {
-		return parent;
-	}
-	
-	public ZipModel getModel() {
-		return model;
-	}
-
-	public String getName() {
-		return name;
-	}
-	
-	public void setName(String name) {
-		this.name = name;
-		model.notifyListeners();
-	}
-	
-	public String getType() {
-		int index = name.lastIndexOf('.');
-		return index != -1 ? name.substring(index + 1) : ""; //$NON-NLS-1$
-	}
-
-	public String getPath() {
-		if (parent == null)
-			return ""; //$NON-NLS-1$
-		StringBuffer sb = new StringBuffer(parent.getPath());
-		if (children != null)
-			sb.append(name);
-		if (isFolder)
-			sb.append('/');
-		return sb.toString();
-	}
-	
-	public String getFullPath() {
-		StringBuffer sb = new StringBuffer(getPath());
-		if (!isFolder)
-			sb.append(name);
-		return sb.toString();
-	}
-
-	protected ZipEntry getEntry() {
-		return entry;
+	public ZipNode(ZipModel model, String name, boolean isFolder) {
+		super(model, name, isFolder);
 	}
 	
 	public String getComment() {
@@ -162,82 +50,42 @@ public class ZipNode {
 	
 	public void setComment(String comment) {
 		this.comment = comment;
+		model.setDirty(true);
 		model.notifyListeners();
 	}
 	
-	public boolean isFolder() {
-		return isFolder;
-	}
-	
-	public long getTime() {
-		return time;
-	}
-	
 	public byte[] getExtra() {
-		return entry != null && entry.getExtra() != null ? entry.getExtra() : new byte[0];
+		return zipEntry != null && zipEntry.getExtra() != null ? zipEntry.getExtra() : new byte[0];
 	}
 	
 	public long getCrc() {
-		return entry != null ? entry.getCrc() : 0;
+		return zipEntry != null ? zipEntry.getCrc() : 0;
 	}
 	
 	public long getCompressedSize() {
-		return entry != null ? entry.getCompressedSize() : 0;
-	}
-	
-	public long getSize() {
-		return size;
-	}
-	
-	void setSize(long size) {
-		this.size = size;
+		return zipEntry != null ? zipEntry.getCompressedSize() : 0;
 	}
 	
 	public double getRatio() {
-		return entry != null ? (entry.getSize() - entry.getCompressedSize()) / (double) entry.getSize() * 100 : 0;
+		return zipEntry != null ? (zipEntry.getSize() - zipEntry.getCompressedSize()) / (double) zipEntry.getSize() * 100 : 0;
 	}
-	
-	public ZipNode[] getChildren() {
-		return children != null ? (ZipNode[]) children.toArray(new ZipNode[children.size()]) : new ZipNode[0];
-	}
-	
-	public ZipNode getChildByName(String name, boolean deep) {
-		if (children == null)
-			return null;
-		for (int i = 0, n = children.size(); i < n; i++) {
-			ZipNode child = (ZipNode) children.get(i);
-			if (child.name.equals(name))
-				return child;
-		}
-		if (!deep)
-			return null;
-		for (int i = 0, n = children.size(); i < n; i++) {
-			ZipNode child = (ZipNode) children.get(i);
-			ZipNode result = child.getChildByName(name, deep);
-			if (result != null)
-				return result;
-		}
+
+	protected InputStream doGetContent() throws IOException {
+		InputStream in = super.doGetContent();
+		if (in != null)
+			return in;
+		if (zipEntry != null)
+			return new EntryStream(zipEntry, model.getZipFile());
 		return null;
 	}
 	
-	public InputStream getContent() {
-		try {
-			if (file != null)
-				return new FileInputStream(file);
-			return internalGetContent();
-		} catch (Exception e) {
-			ZipEditorPlugin.log(e);
-			return null;
-		}
+	public Node create(ZipModel model, String name, boolean isFolder) {
+		return new ZipNode(model, name, isFolder);
 	}
 	
-	private InputStream internalGetContent() throws IOException {
-		if (entry == null)
-			return null;
-		return new EntryStream(entry, model.getZipFile());
+	public void updateContent(File file) {
+		super.updateContent(file);
+		zipEntry = null;
 	}
 
-	public String toString() {
-		return getFullPath();
-	}
 }

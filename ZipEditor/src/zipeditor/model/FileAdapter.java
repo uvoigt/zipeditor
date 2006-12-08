@@ -10,10 +10,10 @@ import zipeditor.Utils;
 import zipeditor.operations.ExtractOperation;
 
 public class FileAdapter implements IAdaptable {
-	private ZipNode fNode;
+	private Node fNode;
 	private IFileStore fFileStore;
 	
-	public FileAdapter(ZipNode node) {
+	public FileAdapter(Node node) {
 		if (node == null)
 			throw new NullPointerException();
 		fNode = node;
@@ -26,6 +26,18 @@ public class FileAdapter implements IAdaptable {
 			return fFileStore; 
 		}
 		return null;
+	}
+	
+	public boolean isAdapted() {
+		return fFileStore != null;
+	}
+	
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!(obj instanceof FileAdapter))
+			return false;
+		return fNode.equals(((FileAdapter) obj).fNode);
 	}
 
 	private IFileStore extractNode() {
