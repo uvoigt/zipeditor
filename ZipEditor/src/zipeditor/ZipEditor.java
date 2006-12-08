@@ -5,7 +5,6 @@
 package zipeditor;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,8 +12,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.filesystem.IFileStore;
@@ -28,17 +25,22 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
+import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.action.ToolBarManager;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.jface.util.IPropertyChangeListener;
+import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.ColumnPixelData;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
@@ -58,6 +60,8 @@ import org.eclipse.swt.dnd.FileTransfer;
 import org.eclipse.swt.dnd.Transfer;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.events.FocusAdapter;
+import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
@@ -69,48 +73,80 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
+import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorSite;
 import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.IPathEditorInput;
 import org.eclipse.ui.IStorageEditorInput;
+import org.eclipse.ui.IViewSite;
+import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.actions.ActionContext;
 import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.dialogs.SaveAsDialog;
 import org.eclipse.ui.part.EditorPart;
 import org.eclipse.ui.part.FileEditorInput;
+import org.eclipse.ui.progress.UIJob;
+import org.eclipse.ui.views.contentoutline.IContentOutlinePage;
 
 import zipeditor.actions.CollapseAllAction;
+import zipeditor.actions.NewFolderAction;
 import zipeditor.actions.OpenActionGroup;
 import zipeditor.actions.SelectAllAction;
+import zipeditor.actions.SortAction;
 import zipeditor.actions.ToggleViewModeAction;
 import zipeditor.actions.ZipActionGroup;
 import zipeditor.model.IModelListener;
+import zipeditor.model.Node;
+import zipeditor.model.NodeProperty;
 import zipeditor.model.ZipModel;
-import zipeditor.model.ZipNode;
 import zipeditor.model.ZipNodeProperty;
 
-public class ZipEditor extends EditorPart {
-	private class ModelListener implements IModelListener, Runnable {
-		private boolean fWaiting;
+public class ZipEditor extends EditorPart implements IPropertyChangeListener {
+	private class ModelListener extends UIJob implements IModelListener {
+		public ModelListener() {
+			super(Messages.getString("ZipEditor.11")); //$NON-NLS-1$
+		}
 
-		public void modelChanged() {
+		private boolean fWaiting;
+		private String fOriginalPartName;
+
+		public void modelChanged(ModelChangeEvent event) {
 			if (fWaiting)
 				return;
 			fWaiting = true;
-			getSite().getShell().getDisplay().syncExec(new Runnable() {
-				public void run() {
-					getSite().getShell().getDisplay().timerExec(2000, ModelListener.this);
-				}
-			});
+			long scheduleTime = !event.getModel().isInitStarted() && !event.getModel()
+					.isInitFinished() && event.getModel().isInitializing() ? 2000 : 0;
+			schedule(scheduleTime);
 		}
 		
-		public void run() {
-			if (!fZipViewer.getControl().isDisposed())
+		public IStatus runInUIThread(IProgressMonitor monitor) {
+			if (!fZipViewer.getControl().isDisposed()) {
+				fZipViewer.getControl().setRedraw(false);
 				fZipViewer.refresh();
-			setDirty(true);
+				fZipViewer.getControl().setRedraw(true);
+			}
+			if (fOutlinePage != null) {
+				if (fOutlinePage.getInput() == null)
+					fOutlinePage.setInput(fModel.getRoot());
+				else
+					fOutlinePage.refresh();
+			}
+			doFirePropertyChange(PROP_DIRTY);
+			if (fModel.isInitializing()) {
+				String suffix = Messages.getString("ZipEditor.10"); //$NON-NLS-1$
+				if (!getPartName().endsWith(suffix)) {
+					fOriginalPartName = getPartName();
+					setPartName(fOriginalPartName + suffix);
+				}							
+			} else if (fOriginalPartName != null) {
+				setPartName(fOriginalPartName);
+				fOriginalPartName = null;
+			}
+
 			fWaiting = false;
+			return Status.OK_STATUS;
 		}
 	};
 
@@ -141,13 +177,15 @@ public class ZipEditor extends EditorPart {
 	};
 
 	private StructuredViewer fZipViewer;
+	private IToolBarManager fToolBar;
 	private ZipActionGroup fZipActionGroup;
 	private OpenActionGroup fOpenActionGroup;
-	private boolean fDirty;
 	private Map fActions = new HashMap();
 	private IResourceChangeListener fInputFileListener;
 	private ZipModel fModel;
 	private Map fFileToNode = new HashMap();
+	private ZipOutlinePage fOutlinePage;
+	private ISelectionChangedListener fOutlineSelectionChangedListener;
 	private DisposeListener fTableDisposeListener = new DisposeListener() {
 		public void widgetDisposed(DisposeEvent e) {
 			storeTableColumnPreferences();
@@ -157,6 +195,7 @@ public class ZipEditor extends EditorPart {
 	public final static String ACTION_TOGGLE_MODE = "ToggleViewMode"; //$NON-NLS-1$
 	public final static String ACTION_COLLAPSE_ALL = "CollapseAll"; //$NON-NLS-1$
 	public final static String ACTION_SELECT_ALL = "SelectAll"; //$NON-NLS-1$
+	public final static String ACTION_NEW_FOLDER = "NewFolder"; //$NON-NLS-1$
 	
 	public void doSave(IProgressMonitor monitor) {
 		IEditorInput input = getEditorInput();
@@ -168,42 +207,47 @@ public class ZipEditor extends EditorPart {
 			ZipEditorPlugin.log("The input " + input + " cannot be saved"); //$NON-NLS-1$ //$NON-NLS-2$
 	}
 	
-	private void internalSave(IPath path, IProgressMonitor monitor) {
-		ZipNode root = getRootNode();
+	private void internalSave(IPath locationPath, IProgressMonitor monitor) {
+		Node root = getRootNode();
 		monitor.beginTask(Messages.getString("ZipEditor.3"), 100); //$NON-NLS-1$
 		monitor.worked(1);
 		int totalWork = Utils.computeTotalNumber(root.getChildren(), monitor);
 		SubProgressMonitor subMonitor = new SubProgressMonitor(monitor, 99);
 		monitor.setTaskName(Messages.getString("ZipEditor.2")); //$NON-NLS-1$
-		monitor.subTask(path.lastSegment());
-		subMonitor.beginTask(Messages.getString("ZipEditor.2") + path, totalWork); //$NON-NLS-1$
+		monitor.subTask(locationPath.lastSegment());
+		subMonitor.beginTask(Messages.getString("ZipEditor.2") + locationPath, totalWork); //$NON-NLS-1$
+		InputStream in = null;
 		try {
-			File tmpFile = new File(root.getModel().getTempDir(), Integer.toString((int) System.currentTimeMillis()));
-			FileOutputStream fileOut = new FileOutputStream(tmpFile); 
-			ZipOutputStream out = new ZipOutputStream(fileOut);
-			try {
-				saveNodes(out, root, subMonitor);
-				out.finish();
-				fileOut.close();
-			} catch (Exception e) {
-				ZipEditorPlugin.log(e);
-			}
-			FileInputStream in = new FileInputStream(tmpFile);
-			IFile file = ResourcesPlugin.getWorkspace().getRoot().getFileForLocation(path);
+			in = root.getModel().save(ZipModel.typeFromName(locationPath.lastSegment()), subMonitor);
+			IFile file = ResourcesPlugin.getWorkspace().getRoot().getFileForLocation(locationPath);
 			IEditorInput newInput = null;
-			if (file != null)
-				newInput = internalSaveWorkspaceFile(file, in, subMonitor);
-			else
-				newInput = internalSaveLocalFile(path.toFile(), in, subMonitor);
-	
-			in.close();
-			setDirty(false);
+			if (file != null) {
+				newInput = internalSaveWorkspaceFile(file, in, monitor);
+			} else {
+				newInput = internalSaveLocalFile(locationPath.toFile(), in);
+			}
+			doFirePropertyChange(PROP_DIRTY);
 			setInput(newInput);
-			setPartName(newInput.getName());
+			if (Utils.isUIThread())
+				setPartName(newInput.getName());
+			else {
+				final String newName = newInput.getName();
+				getSite().getShell().getDisplay().syncExec(new Runnable() {
+					public void run() {
+						setPartName(newName);
+					}
+				});
+			}
 			doRevert();
 		} catch (Exception e) {
 			ZipEditorPlugin.log(e);
 		} finally {
+			if (in != null) {
+				try {
+					in.close();
+				} catch (IOException ignore) {
+				}
+			}
 			subMonitor.done();
 			monitor.done();
 		}
@@ -221,7 +265,7 @@ public class ZipEditor extends EditorPart {
 		return new FileEditorInput(file);
 	}
 
-	private IEditorInput internalSaveLocalFile(File file, InputStream in, IProgressMonitor monitor) {
+	private IEditorInput internalSaveLocalFile(File file, InputStream in) {
 		try {
 			Utils.readAndWrite(in, new FileOutputStream(file), true);
 		} catch (Exception e) {
@@ -248,7 +292,7 @@ public class ZipEditor extends EditorPart {
 
 		IRunnableWithProgress op = new IRunnableWithProgress() {
 			public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
-				internalSave(filePath, monitor);
+				internalSave(ResourcesPlugin.getWorkspace().getRoot().getFile(filePath).getLocation(), monitor);
 			}
 		};
 		try {
@@ -258,47 +302,29 @@ public class ZipEditor extends EditorPart {
 		}
 	}
 
-	private void saveNodes(ZipOutputStream out, ZipNode node, IProgressMonitor monitor) throws IOException {
-		ZipNode[] children = node.getChildren();
-		for (int i = 0; i < children.length; i++) {
-			if (monitor.isCanceled())
-				break;
-			ZipNode child = children[i];
-			if (child.isFolder()) {
-				saveNodes(out, child, monitor);
-				continue;
-			}
-			ZipEntry entry = new ZipEntry(child.getPath() + child.getName());
-			entry.setTime(child.getTime());
-			entry.setComment(child.getComment());
-			
-			out.putNextEntry(entry);
-			Utils.readAndWrite(child.getContent(), out, false);
-			monitor.worked(1);
-		}
-	}
-
 	public void doRevert() {
 		if (fModel != null)
 			fModel.dispose();
 		fModel = null;
-		setDirty(false);
+		doFirePropertyChange(PROP_DIRTY);
 		setViewerInput(fZipViewer);
 	}
 
-	public void init(IEditorSite site, IEditorInput input)
-			throws PartInitException {
+	public void init(IEditorSite site, IEditorInput input) throws PartInitException {
 		setSite(site);
 		setInput(input);
 		setPartName(input.getName());
 		fInputFileListener = new InputFileListener();
 		ResourcesPlugin.getWorkspace().addResourceChangeListener(fInputFileListener);
+		getPreferenceStore().addPropertyChangeListener(this);
 	}
 	
 	protected void setInput(IEditorInput input) {
         if (input != getEditorInput()) {
             super.setInput(input);
             doFirePropertyChange(PROP_INPUT);
+    		if (fOutlinePage != null)
+    			fOutlinePage.setInput(fModel.getRoot());
         }
 	}
 	
@@ -306,7 +332,7 @@ public class ZipEditor extends EditorPart {
         if (Utils.isUIThread()) {
         	firePropertyChange(property);
         } else {
-        	getSite().getShell().getDisplay().asyncExec(new Runnable() {
+        	getSite().getShell().getDisplay().syncExec(new Runnable() {
         		public void run() {
                 	firePropertyChange(property);
         		}
@@ -328,6 +354,11 @@ public class ZipEditor extends EditorPart {
 			ResourcesPlugin.getWorkspace().removeResourceChangeListener(fInputFileListener);
 			fInputFileListener = null;
 		}
+		if (fOutlinePage != null) {
+			fOutlinePage.removeSelectionChangedListener(fOutlineSelectionChangedListener);
+			fOutlinePage.dispose();
+		}
+		getPreferenceStore().removePropertyChangeListener(this);
 		fFileToNode.clear();
 		fFileToNode = null;
 		fActions.clear();
@@ -359,12 +390,7 @@ public class ZipEditor extends EditorPart {
 	}
 	
 	public boolean isDirty() {
-		return fDirty;
-	}
-
-	public void setDirty(boolean dirty) {
-		fDirty = dirty;
-		doFirePropertyChange(PROP_DIRTY);
+		return fModel != null && fModel.isDirty();
 	}
 
 	public boolean isSaveAsAllowed() {
@@ -372,7 +398,6 @@ public class ZipEditor extends EditorPart {
 	}
 
 	public void createPartControl(Composite parent) {
-		createActions();
 		Composite control = new Composite(parent, SWT.NONE);
 		GridLayout layout = new GridLayout();
 		layout.marginWidth = layout.marginHeight = 0;
@@ -382,25 +407,35 @@ public class ZipEditor extends EditorPart {
 	}
 	
 	private void createContent(Composite parent, int mode) {
-		createToolBar(parent, mode);
+		createControls(parent, mode);
+		createActions();
+		fillToolBar(fToolBar, mode);
+	}
+	
+	private void createControls(Composite parent, int mode) {
+		fToolBar = createToolBar(parent);
 		fZipViewer = createZipViewer(parent, mode);
 	}
 	
-	private ToolBarManager createToolBar(Composite parent, int mode) {
+	private ToolBarManager createToolBar(Composite parent) {
 		ToolBarManager bar = new ToolBarManager(SWT.HORIZONTAL | SWT.FLAT);
-		bar.add(getAction(ACTION_TOGGLE_MODE));
-		bar.add(new Separator());
-		fOpenActionGroup.fillToolBarManager(bar);
-		fZipActionGroup.fillToolBarManager(bar, mode);
-		if (mode == ToggleViewModeAction.MODE_TREE) {
-			bar.add(new Separator());
-			bar.add(getAction(ACTION_COLLAPSE_ALL));
-		}
 		Control control = bar.createControl(parent);
 		control.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		return bar;
 	}
 	
+	private void fillToolBar(IToolBarManager bar, int mode) {
+		bar.add(getAction(ACTION_TOGGLE_MODE));
+		bar.add(new Separator());
+		if (mode == PreferenceConstants.VIEW_MODE_TREE) {
+			bar.add(new Separator());
+			bar.add(getAction(ACTION_COLLAPSE_ALL));
+		}
+		fOpenActionGroup.fillToolBarManager(bar);
+		fZipActionGroup.fillToolBarManager(bar, mode);
+		bar.update(false);
+	}
+
 	public void updateView(int mode, boolean savePreferences) {
 		Composite parent = fZipViewer.getControl().getParent();
 		ISelection selection = fZipViewer.getSelection();
@@ -413,6 +448,7 @@ public class ZipEditor extends EditorPart {
 		createContent(parent, mode);
 		parent.layout();
 		fZipViewer.setSelection(selection);
+		fZipViewer.getControl().setFocus();
 	}
 
 	private StructuredViewer createZipViewer(Composite parent, int mode) {
@@ -420,17 +456,17 @@ public class ZipEditor extends EditorPart {
 		switch (mode) {
 		default:
 			return null;
-		case ToggleViewModeAction.MODE_TREE:
+		case PreferenceConstants.VIEW_MODE_TREE:
 			viewer = new TreeViewer(parent);
 			break;
-		case ToggleViewModeAction.MODE_FOLDER:
+		case PreferenceConstants.VIEW_MODE_FOLDER:
 			viewer = createTableViewer(parent);
 			break;
 		}
 		
 		viewer.setContentProvider(new ZipContentProvider(mode));
 		viewer.setLabelProvider(new ZipLabelProvider());
-		viewer.setSorter(new ZipSorter());
+		viewer.setSorter(new ZipSorter(PreferenceConstants.PREFIX_EDITOR));
 		viewer.addDoubleClickListener(new IDoubleClickListener() {
 			public void doubleClick(DoubleClickEvent event) {
 				handleViewerDoubleClick();
@@ -446,6 +482,10 @@ public class ZipEditor extends EditorPart {
 		manager.setRemoveAllWhenShown(true);
 		manager.addMenuListener(new IMenuListener() {
 			public void menuAboutToShow(IMenuManager manager) {
+				if (getMode() == PreferenceConstants.VIEW_MODE_TREE) {
+					manager.add(getAction(ACTION_NEW_FOLDER));
+					manager.add(new Separator());
+				}
 				fOpenActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
 				fOpenActionGroup.fillContextMenu(manager);
 				fZipActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
@@ -454,6 +494,12 @@ public class ZipEditor extends EditorPart {
 		});
 		Menu contextMenu = manager.createContextMenu(viewer.getControl());
 		viewer.getControl().setMenu(contextMenu);
+		
+		viewer.getControl().addFocusListener(new FocusAdapter() {
+			public void focusGained(FocusEvent e) {
+				checkFilesForModification();
+			}
+		});
 
 		setViewerInput(viewer);
 		initDragAndDrop(viewer);
@@ -461,12 +507,42 @@ public class ZipEditor extends EditorPart {
 		return viewer;
 	}
 	
-	private void setViewerInput(StructuredViewer viewer) {
+	private void setViewerInput(final StructuredViewer viewer) {
 		if (fModel == null) {
 			fModel = createModel();
 			fModel.addModelListener(new ModelListener());
 		}
-		viewer.setInput(fModel.getRoot());
+		if (fModel.getRoot() != null) {
+			if (Utils.isUIThread())
+				viewer.setInput(fModel.getRoot());
+			else {
+				viewer.getControl().getDisplay().syncExec(new Runnable() {
+					public void run() {
+						viewer.setInput(fModel.getRoot());
+					}
+				});
+			}
+			if (fOutlinePage != null)
+				fOutlinePage.setInput(fModel.getRoot());
+		} else {
+			if (Utils.isUIThread())
+				setViewerInputAgain(viewer);
+			else {
+				viewer.getControl().getDisplay().syncExec(new Runnable() {
+					public void run() {
+						setViewerInputAgain(viewer);
+					}
+				});
+			}
+		}
+	}
+	
+	private void setViewerInputAgain(final StructuredViewer viewer){
+		viewer.getControl().getDisplay().timerExec(100, new Runnable() {
+			public void run() {
+				setViewerInput(viewer);
+			}
+		});
 	}
 	
 	private void handleViewerSelectionChanged(ISelection selection) {
@@ -479,11 +555,33 @@ public class ZipEditor extends EditorPart {
 		int size = structuredSelection.size();
 		setStatusText(size == 0 ? null : size == 1 ?
 				structuredSelection.getFirstElement() : Messages.getFormattedString("ZipEditor.9", new Integer(size))); //$NON-NLS-1$
+		if (size == 1)
+			synchronizeOutlineSelection(getSelectedNodes()[0]);
+	}
+
+	private void handleOutlineSelectionChanged() {
+		IStructuredSelection selection = (IStructuredSelection) fOutlinePage.getSelection();
+		if (selection.size() != 1)
+			return;
+		fZipViewer.setSelection(selection);
+	}
+
+	private void synchronizeOutlineSelection(Node node) {
+		if (node == null || fOutlinePage == null || !fOutlinePage.isLinkingEnabled())
+			return;
+		fOutlinePage.removeSelectionChangedListener(fOutlineSelectionChangedListener);
+		fOutlinePage.setSelection(new StructuredSelection(node));
+		fOutlinePage.addSelectionChangedListener(fOutlineSelectionChangedListener);
 	}
 
 	private void setStatusText(Object object) {
-		getEditorSite().getActionBars().getStatusLineManager().setMessage(object instanceof ZipNode
-				? ((ZipNode) object).getName() : object != null ? object.toString() : null);
+		IWorkbenchPartSite activeSite = getSite().getPage().getActivePart() != null ?
+				getSite().getPage().getActivePart().getSite() : getEditorSite();
+		IActionBars actionBars = activeSite instanceof IEditorSite ? ((IEditorSite) activeSite).getActionBars()
+				: activeSite instanceof IViewSite ? ((IViewSite) activeSite).getActionBars() : null;
+		if (actionBars != null)
+			actionBars.getStatusLineManager().setMessage(object instanceof Node
+				? ((Node) object).getName() : object != null ? object.toString() : null);
 	}
 
 	private TableViewer createTableViewer(Composite parent) {
@@ -516,7 +614,7 @@ public class ZipEditor extends EditorPart {
 	}
 
 	private TableColumn createTableColumn(Table table, String text, int colType, int sortColumn, int sortDirection) {
-		int style = colType == ZipNodeProperty.PACKED_SIZE || colType == ZipNodeProperty.SIZE ? SWT.RIGHT : SWT.LEFT;
+		int style = colType == ZipNodeProperty.PACKED_SIZE || colType == NodeProperty.SIZE ? SWT.RIGHT : SWT.LEFT;
 		TableColumn column = new TableColumn(table, style);
 		column.setText(text);
 		column.setData(new Integer(colType));
@@ -570,7 +668,7 @@ public class ZipEditor extends EditorPart {
 	}
 
 	private Image getSortImage(int direction) {
-		if (!getPreferenceStore().getBoolean(PreferenceConstants.SORT_ENABLED))
+		if (!getPreferenceStore().getBoolean(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SORT_ENABLED))
 			direction = 0;
 		switch (direction) {
 		default:
@@ -585,9 +683,10 @@ public class ZipEditor extends EditorPart {
 	private void createActions() {
 		fZipActionGroup = new ZipActionGroup(this);
 		fOpenActionGroup = new OpenActionGroup(this);
-		setAction(ACTION_TOGGLE_MODE, new ToggleViewModeAction(this));
-		setAction(ACTION_COLLAPSE_ALL, new CollapseAllAction(this));
-		setAction(ACTION_SELECT_ALL, new SelectAllAction(this));
+		setAction(ACTION_NEW_FOLDER, new NewFolderAction(this));
+		setAction(ACTION_TOGGLE_MODE, new ToggleViewModeAction(this, PreferenceConstants.PREFIX_EDITOR));
+		setAction(ACTION_COLLAPSE_ALL, new CollapseAllAction(getViewer()));
+		setAction(ACTION_SELECT_ALL, new SelectAllAction(getViewer()));
 
 		activateActions();
 	}
@@ -604,16 +703,38 @@ public class ZipEditor extends EditorPart {
 		int ops = DND.DROP_DEFAULT | DND.DROP_COPY;
 		Transfer[] transfers = new Transfer[] { FileTransfer.getInstance() };
 
-        viewer.addDragSupport(ops, transfers, new ZipEditorDragAdapter(this));
-        viewer.addDropSupport(ops | DND.DROP_DEFAULT, transfers, new ZipEditorDropAdapter(this, viewer));
+        viewer.addDragSupport(ops, transfers, new ZipEditorDragAdapter(viewer));
+        viewer.addDropSupport(ops | DND.DROP_DEFAULT, transfers, new ZipEditorDropAdapter(viewer));
 	}
 	
 	public IPreferenceStore getPreferenceStore() {
 		return ZipEditorPlugin.getDefault().getPreferenceStore();
 	}
+	
+	public Object getAdapter(Class adapter) {
+		if (IContentOutlinePage.class.equals(adapter)) {
+			if (fOutlinePage == null) {
+				fOutlinePage = new ZipOutlinePage();
+				if (fOutlineSelectionChangedListener == null)
+					fOutlineSelectionChangedListener = new ISelectionChangedListener() {
+						public void selectionChanged(SelectionChangedEvent event) {
+							handleOutlineSelectionChanged();
+						}
+				};
+				fOutlinePage.addSelectionChangedListener(fOutlineSelectionChangedListener);
+				getEditorSite().getShell().getDisplay().asyncExec(new Runnable() {
+					public void run() {
+						fOutlinePage.setInput(fModel.getRoot());
+					}
+				});
+			}
+			return fOutlinePage;
+		}
+		return super.getAdapter(adapter);
+	}
 
 	private void handleViewerDoubleClick() {
-		ZipNode[] nodes = getSelectedNodes();
+		Node[] nodes = getSelectedNodes();
 		if (nodes == null || nodes.length == 0)
 			return;
 		if (nodes.length == 1 && nodes[0].isFolder() && fZipViewer instanceof TreeViewer) {
@@ -623,27 +744,24 @@ public class ZipEditor extends EditorPart {
 		Utils.openFilesFromNodes(this, nodes);
 	}
 
-	public ZipNode[] getSelectedNodes() {
-		IStructuredSelection selection = (IStructuredSelection) fZipViewer.getSelection();
-		Object[] objects = selection.toArray();
-		ZipNode[] nodes = new ZipNode[objects.length];
-		System.arraycopy(objects, 0, nodes, 0, objects.length);
-		return nodes;
+	public Node[] getSelectedNodes() {
+		return Utils.getSelectedNodes(fZipViewer.getSelection());
 	}
 
 	public void setFocus() {
 		if (fZipViewer != null)
 			fZipViewer.getControl().setFocus();
-		checkFilesForModification();
 		activateActions();
 	}
 
 	private void activateActions() {
 		getEditorSite().getActionBars().setGlobalActionHandler(ActionFactory.SELECT_ALL.getId(), getAction(ACTION_SELECT_ALL));
+		fZipActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
 		fZipActionGroup.fillActionBars(getEditorSite().getActionBars());
+		getEditorSite().getActionBars().updateActionBars();
 	}
 
-	public void addFileMonitor(File file, ZipNode node) {
+	public void addFileMonitor(File file, Node node) {
 		fFileToNode.put(file, new Object[] { node, new Long(System.currentTimeMillis()) });
 	}
 
@@ -653,18 +771,18 @@ public class ZipEditor extends EditorPart {
 			Object[] value = (Object[]) fFileToNode.get(file);
 			long creationTime = ((Long) value[1]).longValue();
 			if (file.lastModified() > creationTime) {
-				indicateModification(file, (ZipNode) value[0]);
 				value[1] = new Long(file.lastModified());
+				indicateModification(file, (Node) value[0]);
 			}
 		}
 	}
 
-	private void indicateModification(File file, ZipNode node) {
+	private void indicateModification(File file, Node node) {
 		if (MessageDialog.openQuestion(getSite().getShell(),
 				Messages.getString("ZipEditor.1"), Messages.getFormattedString("ZipEditor.0", //$NON-NLS-1$ //$NON-NLS-2$
 						new Object[] { file.getName(), node.getModel().getZipPath().getName() }))) {
 			node.updateContent(file);
-			setDirty(true);
+			doFirePropertyChange(PROP_DIRTY);
 			fZipViewer.refresh();
 		}
 	}
@@ -673,12 +791,16 @@ public class ZipEditor extends EditorPart {
 		return fZipViewer;
 	}
 	
-	public ZipNode getRootNode() {
-		return (ZipNode) fZipViewer.getInput();
+	public Node getRootNode() {
+		return (Node) fZipViewer.getInput();
 	}
 
 	public int getMode() {
-		return ((ToggleViewModeAction) getAction(ACTION_TOGGLE_MODE)).getMode();
+		return getPreferenceStore().getInt(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.VIEW_MODE);
 	}
-
+	
+	public void propertyChange(PropertyChangeEvent event) {
+		if ((PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SORT_ENABLED + SortAction.SORTING_CHANGED).equals(event.getProperty()))
+			updateView(getMode(), true);
+	}
 }

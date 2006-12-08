@@ -10,8 +10,7 @@ import java.util.StringTokenizer;
 import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer;
 import org.eclipse.jface.preference.IPreferenceStore;
 
-import zipeditor.actions.ToggleViewModeAction;
-import zipeditor.model.ZipNodeProperty;
+import zipeditor.model.NodeProperty;
 
 public class PreferenceInitializer extends AbstractPreferenceInitializer {
 
@@ -20,14 +19,17 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 
 	public void initializeDefaultPreferences() {
 		IPreferenceStore store = ZipEditorPlugin.getDefault().getPreferenceStore();
-		
-		store.setDefault(PreferenceConstants.VIEW_MODE, ToggleViewModeAction.MODE_TREE);
+
+		store.setDefault(PreferenceConstants.PREFIX_OUTLINE + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_TREE);
+		store.setDefault(PreferenceConstants.PREFIX_OUTLINE + PreferenceConstants.SORT_ENABLED, true);
+		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_FOLDER);
+		store.setDefault(PreferenceConstants.PREFIX_OUTLINE + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_TREE);
 		store.setDefault(PreferenceConstants.VISIBLE_COLUMNS, join(new Object[] {
-				new Integer(ZipNodeProperty.NAME),
-				new Integer(ZipNodeProperty.TYPE),
-				new Integer(ZipNodeProperty.DATE),
-				new Integer(ZipNodeProperty.SIZE),
-				new Integer(ZipNodeProperty.PATH),
+				new Integer(NodeProperty.NAME),
+				new Integer(NodeProperty.TYPE),
+				new Integer(NodeProperty.DATE),
+				new Integer(NodeProperty.SIZE),
+				new Integer(NodeProperty.PATH),
 		}, PreferenceConstants.COLUMNS_SEPARATOR));
 	}
 
@@ -43,13 +45,13 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 		return sb.toString();
 	}
 
-	public final static Object split(String string, String separator, Class type) {
+	public final static Object split(String string, String separator, Class elementType) {
 		StringTokenizer st = new StringTokenizer(string, separator);
 		int size = st.countTokens();
-		Object result = Array.newInstance(type, size);
+		Object result = Array.newInstance(elementType, size);
 		for (int i = 0; i < size; i++) {
 			try {
-				Array.set(result, i, valueFromString(st.nextToken(), type));
+				Array.set(result, i, valueFromString(st.nextToken(), elementType));
 			} catch (Exception e) {
 				ZipEditorPlugin.log(e);
 			}

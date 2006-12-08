@@ -9,7 +9,8 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerSorter;
 import org.eclipse.swt.SWT;
 
-import zipeditor.actions.ToggleViewModeAction;
+import zipeditor.model.Node;
+import zipeditor.model.NodeProperty;
 import zipeditor.model.ZipNode;
 import zipeditor.model.ZipNodeProperty;
 
@@ -18,23 +19,25 @@ public class ZipSorter extends ViewerSorter {
 	private int fSortDirection;
 	private boolean fSortEnabled;
 	private int fMode;
+	private String fPreferencePrefix;
 	
-	public ZipSorter() {
+	public ZipSorter(String preferencePrefix) {
+		fPreferencePrefix = preferencePrefix;
 		update(); 
 	}
 
 	public int compare(Viewer viewer, Object e1, Object e2) {
 		if (!fSortEnabled)
 			return 0;
-		if (e1 instanceof ZipNode && e2 instanceof ZipNode) {
-			return compareNodes(viewer, (ZipNode) e1, (ZipNode) e2);
+		if (e1 instanceof Node && e2 instanceof Node) {
+			return compareNodes((Node) e1, (Node) e2);
 		}
 		return super.compare(viewer, e1, e2);
 	}
 	
-	private int compareNodes(Viewer viewer, ZipNode z1, ZipNode z2) {
+	private int compareNodes(Node z1, Node z2) {
 		boolean ascending = fSortDirection == SWT.UP;
-		if (fMode == ToggleViewModeAction.MODE_TREE) {
+		if (fMode == PreferenceConstants.VIEW_MODE_TREE) {
 			if (z1.isFolder() && !z2.isFolder())
 				return -1;
 			if (z2.isFolder() && !z1.isFolder())
@@ -45,23 +48,23 @@ public class ZipSorter extends ViewerSorter {
 		switch (fSortBy) {
 		default:
 			return 0;
-		case ZipNodeProperty.NAME:
+		case NodeProperty.NAME:
 			return compare(z1.getName(), z2.getName(), ascending);
-		case ZipNodeProperty.TYPE:
+		case NodeProperty.TYPE:
 			return compare(z1.getType(), z2.getType(), ascending);
-		case ZipNodeProperty.DATE:
+		case NodeProperty.DATE:
 			return compare(z1.getTime(), z2.getTime(), ascending);
-		case ZipNodeProperty.SIZE:
+		case NodeProperty.SIZE:
 			return compare(z1.getSize(), z2.getSize(), ascending);
 		case ZipNodeProperty.RATIO:
-			return compare(Math.round(z1.getRatio()), Math.round(z2.getRatio()), ascending);
+			return z1 instanceof ZipNode && z2 instanceof ZipNode ? compare(Math.round(((ZipNode) z1).getRatio()), Math.round(((ZipNode) z2).getRatio()), ascending) : 0;
 		case ZipNodeProperty.PACKED_SIZE:
-			return compare(z1.getCompressedSize(), z2.getCompressedSize(), ascending);
+			return z1 instanceof ZipNode && z2 instanceof ZipNode ? compare(((ZipNode) z1).getCompressedSize(), ((ZipNode) z2).getCompressedSize(), ascending) : 0;
 		case ZipNodeProperty.CRC:
-			return compare(z1.getCrc(), z2.getCrc(), ascending);
+			return z1 instanceof ZipNode && z2 instanceof ZipNode ? compare(((ZipNode) z1).getCrc(), ((ZipNode) z2).getCrc(), ascending) : 0;
 		case ZipNodeProperty.ATTR:
 			return 0;
-		case ZipNodeProperty.PATH:
+		case NodeProperty.PATH:
 			return compare(z1.getPath(), z2.getPath(), ascending);
 		}
 	}
@@ -78,8 +81,8 @@ public class ZipSorter extends ViewerSorter {
 		IPreferenceStore store = ZipEditorPlugin.getDefault().getPreferenceStore();
 		fSortBy = store.getInt(PreferenceConstants.SORT_BY);
 		fSortDirection = store.getInt(PreferenceConstants.SORT_DIRECTION);
-		fSortEnabled = store.getBoolean(PreferenceConstants.SORT_ENABLED);
-		fMode = store.getInt(PreferenceConstants.VIEW_MODE);
+		fSortEnabled = store.getBoolean(fPreferencePrefix + PreferenceConstants.SORT_ENABLED);
+		fMode = store.getInt(fPreferencePrefix + PreferenceConstants.VIEW_MODE);
 	}
 	
 }

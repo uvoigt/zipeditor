@@ -9,6 +9,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
@@ -25,6 +26,8 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 	
 	// The shared instance
 	private static ZipEditorPlugin plugin;
+
+	public final static boolean DEBUG = Boolean.valueOf(Platform.getDebugOption("ZipEditor/debug")).booleanValue(); //$NON-NLS-1$
 
 	private Map images;
 	
@@ -80,15 +83,11 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 			status = createErrorStatus(message != null ? message.toString() : null, null);
 		}
 		plugin.getLog().log(status);
-		debug(debugMessage);
-	}
-	
-	public static void debug(Object message) {
-		if (plugin.isDebugging()) {
-			if (message instanceof Throwable)
-				((Throwable) message).printStackTrace();
+		if (DEBUG) {
+			if (debugMessage instanceof Throwable)
+				((Throwable) debugMessage).printStackTrace();
 			else
-				System.out.println(message);
+				System.out.println(debugMessage);
 		}
 	}
 	

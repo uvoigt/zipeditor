@@ -18,7 +18,17 @@ public class PreferenceConstants {
 
 	public final static String COLUMNS_SEPARATOR = ","; //$NON-NLS-1$
 
-	public final static String SORT_ENABLED = "ENABLED"; //$NON-NLS-1$
+	public final static String SORT_ENABLED = "SORT_ENABLED"; //$NON-NLS-1$
+
+	public final static String EXTERNAL_EDITORS = "EXTERNAL_EDITORS"; //$NON-NLS-1$
+	
+	public final static String PREFIX_EDITOR = "editor"; //$NON-NLS-1$
+
+	public final static String PREFIX_OUTLINE = "outline"; //$NON-NLS-1$
+
+	public final static int VIEW_MODE_FOLDER = 1;
+
+	public final static int VIEW_MODE_TREE = 2;
 
 	private PreferenceConstants() {
 	}

@@ -4,29 +4,74 @@
    <extension
          point="org.eclipse.core.contenttype.contentTypes">
       <content-type
-            file-extensions="jar, zip"
-            id="zipfile"
-            name="Zip archive"
+            id="archive"
+            name="Archive"
             priority="normal"/>
       <content-type
-            file-extensions="gz, tgz"
+            base-type="archive"
+            describer="zipeditor.model.ZipContentDescriber"
+            id="zipfile"
+            name="Zip archive"
+            priority="normal">
+         <property
+               default="ZIP"
+               name="ZipEditor.archiveType"/>
+      </content-type>
+      <content-type
+            base-type="archive"
+            describer="zipeditor.model.ZipContentDescriber"
+            id="targzfile"
+            name="Tar GZ archive"
+            priority="normal">
+         <property
+               default="TGZ"
+               name="ZipEditor.archiveType"/>
+      </content-type>
+      <content-type
+            base-type="archive"
+            describer="zipeditor.model.ZipContentDescriber"
+            id="tarfile"
+            name="Tar archive"
+            priority="normal">
+         <property
+               default="TAR"
+               name="ZipEditor.archiveType"/>
+      </content-type>
+      <content-type
+            base-type="archive"
+            describer="zipeditor.model.ZipContentDescriber"
             id="gzipfile"
             name="GZip archive"
-            priority="normal"/>
+            priority="normal">
+         <property
+               default="GZ"
+               name="ZipEditor.archiveType"/>
+      </content-type>
       <file-association
             content-type="ZipEditor.zipfile"
-            file-extensions="jar"/>
+            file-extensions="jar, zip"/>
+      <file-association
+            content-type="ZipEditor.gzipfile"
+            file-extensions="gz"/>
+      <file-association
+            content-type="ZipEditor.tarfile"
+            file-extensions="tar"/>
+      <file-association
+            content-type="ZipEditor.targzfile"
+            file-extensions="tar.gz, tgz"/>
    </extension>
    <extension
          point="org.eclipse.ui.editors">
       <editor
             class="zipeditor.ZipEditor"
             default="true"
-            extensions="jar, zip"
             icon="icons/zipicon.gif"
             id="zipeditor.ZipEditor"
             name="ZipEditor">
          <contentTypeBinding contentTypeId="ZipEditor.zipfile"/>
+         <contentTypeBinding contentTypeId="ZipEditor.gzipfile"/>
+         <contentTypeBinding contentTypeId="ZipEditor.tarfile"/>
+         <contentTypeBinding contentTypeId="ZipEditor.targzfile"/>
       </editor>
    </extension>
    <extension
@@ -45,7 +90,7 @@
          <triggerPoints>
             <or>
                <instanceof value="org.eclipse.core.resources.IFile"/>
-               <instanceof value="zipeditor.model.ZipNode"/>
+               <instanceof value="zipeditor.model.Node"/>
                <instanceof value="org.eclipse.core.resources.IWorkspaceRoot"/>
                <instanceof value="org.eclipse.core.resources.IFolder"/>
                <instanceof value="org.eclipse.core.resources.IProject"/>
@@ -53,7 +98,7 @@
          </triggerPoints>
          <possibleChildren>
             <or>
-               <instanceof value="zipeditor.model.ZipNode"/>
+               <instanceof value="zipeditor.model.Node"/>
                <instanceof value="org.eclipse.core.resources.IWorkspaceRoot"/>
                <instanceof value="org.eclipse.core.resources.IFile"/>
                <instanceof value="org.eclipse.core.resources.IFolder"/>
@@ -68,7 +113,7 @@
                overrides="org.eclipse.ui.navigator.resources.OpenActions">
             <enablement>
                <or>
-                  <instanceof value="zipeditor.model.ZipNode"/>
+                  <instanceof value="zipeditor.model.Node"/>
                   <instanceof value="org.eclipse.core.resources.IFile"/>
                </or>
             </enablement>
@@ -88,8 +133,13 @@
       <page
             class="zipeditor.ZipNodePropertyPage"
             id="zipeditor.ZipNodePropertyPage"
-            name="Archive element"
+            name="Zip element"
             objectClass="zipeditor.model.ZipNode"/>
+      <page
+            class="zipeditor.TarNodePropertyPage"
+            id="zipeditor.TarNodePropertyPage"
+            name="Tar element"
+            objectClass="zipeditor.model.TarNode"/>
    </extension>
 
 </plugin>

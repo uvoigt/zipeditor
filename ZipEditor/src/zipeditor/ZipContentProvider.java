@@ -16,12 +16,11 @@ import org.eclipse.core.runtime.content.IContentDescription;
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.Viewer;
 
-import zipeditor.actions.ToggleViewModeAction;
+import zipeditor.model.Node;
 import zipeditor.model.ZipModel;
-import zipeditor.model.ZipNode;
 
 public class ZipContentProvider implements ITreeContentProvider {
-	private int fMode = ToggleViewModeAction.MODE_TREE;
+	private int fMode = PreferenceConstants.VIEW_MODE_TREE;
 	private Map fModels = new HashMap();
 
 	public ZipContentProvider() {
@@ -32,16 +31,16 @@ public class ZipContentProvider implements ITreeContentProvider {
 	}
 
 	public Object[] getChildren(Object parentElement) {
-		if (parentElement instanceof ZipNode)
-			return getNodeChildren((ZipNode) parentElement);
+		if (parentElement instanceof Node)
+			return getNodeChildren((Node) parentElement);
 		if (parentElement instanceof IFile)
 			return getFileChildren((IFile) parentElement);
 		return new Object[0];
 	}
 
-	private Object[] getNodeChildren(ZipNode node) {
+	private Object[] getNodeChildren(Node node) {
 		fModels.put(null, node.getModel());
-		if (fMode == ToggleViewModeAction.MODE_TREE)
+		if (fMode == PreferenceConstants.VIEW_MODE_TREE)
 			return node.getChildren();
 		else {
 			List result = new ArrayList();
@@ -50,10 +49,10 @@ public class ZipContentProvider implements ITreeContentProvider {
 		}
 	}
 
-	private void addChildren(List list, ZipNode node) {
-		ZipNode[] children = node.getChildren();
+	private void addChildren(List list, Node node) {
+		Node[] children = node.getChildren();
 		for (int i = 0; i < children.length; i++) {
-			ZipNode child = children[i];
+			Node child = children[i];
 			addChildren(list, child);
 			if (!child.isFolder())
 				list.add(child);
@@ -79,7 +78,7 @@ public class ZipContentProvider implements ITreeContentProvider {
 	}
 
 	public Object getParent(Object element) {
-		return element instanceof ZipNode ? ((ZipNode) element).getParent() : null;
+		return element instanceof Node ? ((Node) element).getParent() : null;
 	}
 
 	public boolean hasChildren(Object element) {
@@ -99,7 +98,6 @@ public class ZipContentProvider implements ITreeContentProvider {
 			}
 			fModels.clear();
 		}
-		fModels = null;
 	}
 
 	public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {

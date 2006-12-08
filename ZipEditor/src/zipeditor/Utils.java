@@ -27,6 +27,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.content.IContentDescription;
 import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.window.Window;
@@ -40,16 +41,16 @@ import org.eclipse.ui.dialogs.ElementListSelectionDialog;
 import org.eclipse.ui.editors.text.EditorsUI;
 import org.eclipse.ui.part.FileEditorInput;
 
-import zipeditor.model.ZipNode;
+import zipeditor.model.Node;
 import zipeditor.operations.ExtractOperation;
 import zipeditor.operations.OpenFileOperation;
 
 public class Utils {
 	private static class ExtractAndOpenJob extends Job {
 		private ZipEditor fEditor;
-		private ZipNode[] fNodes;
+		private Node[] fNodes;
 
-		public ExtractAndOpenJob(ZipEditor editor, ZipNode[] nodes) {
+		public ExtractAndOpenJob(ZipEditor editor, Node[] nodes) {
 			super(Messages.getString("Utils.0")); //$NON-NLS-1$
 			fNodes = nodes;
 			fEditor = editor;
@@ -66,7 +67,7 @@ public class Utils {
 		}
 	};
 
-	public static int computeTotalNumber(ZipNode[] nodes, IProgressMonitor monitor) {
+	public static int computeTotalNumber(Node[] nodes, IProgressMonitor monitor) {
 		int result = 0;
 		for (int i = 0; i < nodes.length; i++) {
 			if (monitor.isCanceled())
@@ -95,7 +96,7 @@ public class Utils {
 	}
 
 	public static boolean isUIThread() {
-		return Thread.currentThread() == Display.getDefault().getSyncThread();
+		return Display.getCurrent() != null;
 	}
 	
 	public static IFileStore getFileStore(File file) {
@@ -103,19 +104,19 @@ public class Utils {
 		return fileStore.getChild(file.getName());
 	}
 	
-	public static void openFilesFromNodes(ZipEditor editor, ZipNode[] nodes) {
+	public static void openFilesFromNodes(ZipEditor editor, Node[] nodes) {
 		if (nodes == null || nodes.length == 0)
 			return;
 		ExtractAndOpenJob job = new ExtractAndOpenJob(editor, nodes);
 		job.schedule();
 	}
 	
-	private static void internalOpenFilesFromNodes(ZipEditor editor, ZipNode[] nodes, IProgressMonitor monitor) {
+	private static void internalOpenFilesFromNodes(ZipEditor editor, Node[] nodes, IProgressMonitor monitor) {
 		File tmpDir = nodes[0].getModel().getTempDir();
 		ExtractOperation extractOperation = new ExtractOperation();
 		OpenFileOperation openFileOperation = new OpenFileOperation();
 		for (int i = 0; i < nodes.length; i++) {
-			ZipNode node = nodes[i];
+			Node node = nodes[i];
 			monitor.subTask(node.getName());
 			File file = extractOperation.extract(node, tmpDir, true, monitor);
 			if (openFileOperation.execute(file) != null)
@@ -246,9 +247,9 @@ public class Utils {
 	public static boolean allNodesAreFileNodes(IStructuredSelection selection) {
 		for (Iterator it = selection.iterator(); it.hasNext();) {
 			Object object = it.next();
-			if (!(object instanceof ZipNode))
+			if (!(object instanceof Node))
 				return false;
-			ZipNode node = (ZipNode) object;
+			Node node = (Node) object;
 			if (node.isFolder())
 				return false;
 		}
@@ -274,6 +275,15 @@ public class Utils {
 			
 		}
 		return true;
+	}
+
+	public static Node[] getSelectedNodes(ISelection selection) {
+		if (!(selection instanceof IStructuredSelection))
+			return new Node[0];
+		Object[] objects = ((IStructuredSelection) selection).toArray();
+		Node[] nodes = new Node[objects.length];
+		System.arraycopy(objects, 0, nodes, 0, objects.length);
+		return nodes;
 	}
 
 	private Utils() {

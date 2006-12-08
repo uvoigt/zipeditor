@@ -11,15 +11,13 @@ import org.eclipse.swt.dnd.FileTransfer;
 import org.eclipse.swt.dnd.TransferData;
 import org.eclipse.ui.part.PluginDropAdapter;
 
-import zipeditor.model.ZipNode;
+import zipeditor.model.Node;
 import zipeditor.operations.AddOperation;
 
 public class ZipEditorDropAdapter extends PluginDropAdapter {
-	private ZipEditor fEditor;
 
-	public ZipEditorDropAdapter(ZipEditor editor, StructuredViewer viewer) {
+	public ZipEditorDropAdapter(StructuredViewer viewer) {
 		super(viewer);
-		fEditor = editor;
 	}
 	
 	public void dragEnter(DropTargetEvent event) {
@@ -39,14 +37,14 @@ public class ZipEditorDropAdapter extends PluginDropAdapter {
 	public boolean performDrop(Object data) {
 		if (!(data instanceof String[]))
 			return false;
-		ZipNode node = (ZipNode) getCurrentTarget();;
-		if (node == null)
-			node = fEditor.getRootNode();
+		Node node = (Node) getCurrentTarget();
+		if (node == null && getViewer().getInput() instanceof Node)
+			node = (Node) getViewer().getInput();
 		if (!node.isFolder())
 			node = node.getParent();
 		String[] names = (String[]) data;
 		AddOperation operation = new AddOperation();
-		operation.execute(names, node, fEditor);
+		operation.execute(names, node, (StructuredViewer) getViewer());
 		return true;
 	}
 

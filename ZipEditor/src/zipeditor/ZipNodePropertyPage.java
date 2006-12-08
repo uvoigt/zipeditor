@@ -1,6 +1,7 @@
 package zipeditor;
 
 import java.text.DateFormat;
+import java.text.NumberFormat;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
@@ -13,6 +14,7 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.IWorkbenchPropertyPage;
 import org.eclipse.ui.dialogs.PropertyPage;
 
+import zipeditor.model.NodeProperty;
 import zipeditor.model.ZipNode;
 import zipeditor.model.ZipNodeProperty;
 
@@ -33,28 +35,28 @@ public class ZipNodePropertyPage extends PropertyPage implements IWorkbenchPrope
 		control.setLayout(new GridLayout(2, false));
 
 		ZipNode node = getZipNode();
-		createLabel(control, ZipNodeProperty.PNAME.toString(), 1);
+		createLabel(control, NodeProperty.PNAME.toString(), 1);
 		fName = createText(control, 30, 1, true);
 		fName.setText(node.getName());
-		createLabel(control, ZipNodeProperty.PPATH.toString(), 1);
+		createLabel(control, NodeProperty.PPATH.toString(), 1);
 		fPath = createText(control, 30, 1, false);
 		fPath.setText(node.getPath());
-		createLabel(control, ZipNodeProperty.PTYPE.toString(), 1);
+		createLabel(control, NodeProperty.PTYPE.toString(), 1);
 		fType = createText(control, 30, 1, false);
 		Program program = Program.findProgram(node.getType());
 		fType.setText(program != null ? program.getName() : Messages.getFormattedString("ZipNodePropertyPage.0", node.getType())); //$NON-NLS-1$
 		createLabel(control, ZipNodeProperty.PATTR.toString(), 1);
 		fAttributes = createText(control, 30, 1, false);
 		fAttributes.setText(new String(node.getExtra()));
-		createLabel(control, ZipNodeProperty.PDATE.toString(), 1);
+		createLabel(control, NodeProperty.PDATE.toString(), 1);
 		fDate = createText(control, 30, 1, false);
 		fDate.setText(formatDate(node.getTime()));
-		createLabel(control, ZipNodeProperty.PSIZE.toString(), 1);
+		createLabel(control, NodeProperty.PSIZE.toString(), 1);
 		fSize = createText(control, 30, 1, false);
-		fSize.setText(Long.toString(node.getSize()));
+		fSize.setText(formatSize(node.getSize()));
 		createLabel(control, ZipNodeProperty.PPACKED_SIZE.toString(), 1);
 		fPackedSize = createText(control, 30, 1, false);
-		fPackedSize.setText(Long.toString(node.getCompressedSize()));
+		fPackedSize.setText(formatSize(node.getCompressedSize()));
 		createLabel(control, ZipNodeProperty.PRATIO.toString(), 1);
 		fRatio = createText(control, 30, 1, false);
 		fRatio.setText(Long.toString(Math.max(Math.round(node.getRatio()), 0)) + "%"); //$NON-NLS-1$
@@ -71,6 +73,10 @@ public class ZipNodePropertyPage extends PropertyPage implements IWorkbenchPrope
 
 	private String formatDate(long time) {
 		return DateFormat.getDateTimeInstance().format(new Long(time));
+	}
+
+	private String formatSize(long size) {
+		return NumberFormat.getNumberInstance().format(size);
 	}
 
 	private Label createLabel(Composite parent, String text, int hspan) {
