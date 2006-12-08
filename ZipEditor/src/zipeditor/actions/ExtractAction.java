@@ -16,10 +16,10 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.viewers.StructuredViewer;
 
-import zipeditor.ZipEditor;
 import zipeditor.ZipEditorPlugin;
-import zipeditor.model.ZipNode;
+import zipeditor.model.Node;
 import zipeditor.operations.ExtractOperation;
 
 public class ExtractAction extends DialogAction {
@@ -36,17 +36,16 @@ public class ExtractAction extends DialogAction {
 	};
 
 	private String fSelectedFolder;
-
-	public ExtractAction(ZipEditor editor) {
-		super(ActionMessages.getString("ExtractAction.0"), editor); //$NON-NLS-1$
+	public ExtractAction(StructuredViewer viewer) {
+		super(ActionMessages.getString("ExtractAction.0"), viewer); //$NON-NLS-1$
 		setToolTipText(ActionMessages.getString("ExtractAction.1")); //$NON-NLS-1$
 		setImageDescriptor(ZipEditorPlugin.getImageDescriptor("icons/extract.gif")); //$NON-NLS-1$
 	}
 
 	public void run() {
-		ZipNode[] nodes = getSelectedNodes();
-		if (nodes.length == 0 && fEditor != null)
-			nodes = new ZipNode[] { fEditor.getRootNode() };
+		Node[] nodes = getSelectedNodes();
+		if (nodes.length == 0)
+			nodes = new Node[] { getViewerInputAsNode() };
 		String[] folder = openDialog(ActionMessages.getString("ExtractAction.2"), fSelectedFolder, false, false); //$NON-NLS-1$
 		if (folder != null && folder.length > 0) {
 			ExtractOperation operation = new ExtractOperation();
@@ -67,4 +66,5 @@ public class ExtractAction extends DialogAction {
 			ZipEditorPlugin.log(e);
 		}
 	}
+
 }

@@ -14,6 +14,7 @@ import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.actions.ActionGroup;
 import org.eclipse.ui.dialogs.PropertyDialogAction;
 
+import zipeditor.PreferenceConstants;
 import zipeditor.Utils;
 import zipeditor.ZipEditor;
 
@@ -29,10 +30,6 @@ public class ZipActionGroup extends ActionGroup {
 	private ZipEditor fEditor;
 	
 	public ZipActionGroup(ZipEditor editor) {
-		fAddAction = new AddAction(editor);
-		fDeleteAction = new DeleteAction(editor);
-		fExtractAction = new ExtractAction(editor);
-		fSortAction = new SortAction(editor);
 		fRevertAction = new RevertAction(editor);
 		fSaveAction = new SaveAction(editor);
 		fPreferencesAction = new PreferencesAction(editor);
@@ -41,6 +38,7 @@ public class ZipActionGroup extends ActionGroup {
 	}
 	
 	public void fillContextMenu(IMenuManager menu) {
+		lazilyCreateActions();
 		menu.add(new Separator());
 		menu.add(fSaveAction);
 		menu.add(fRevertAction);
@@ -50,14 +48,26 @@ public class ZipActionGroup extends ActionGroup {
 		menu.add(new Separator());
 		menu.add(fDeleteAction);
 		menu.add(new Separator());
-		if (fPropertiesAction == null)
-			fPropertiesAction = new PropertyDialogAction(fEditor.getSite(), fEditor.getViewer());
 		menu.add(fPropertiesAction);
 		
 		updateActionBars();
 	}
 	
-    public void fillToolBarManager(IToolBarManager manager, int mode) {
+    private void lazilyCreateActions() {
+		if (fPropertiesAction == null)
+			fPropertiesAction = new PropertyDialogAction(fEditor.getSite(), fEditor.getViewer());
+		if (fAddAction == null)
+			fAddAction = new AddAction(fEditor.getViewer());
+		if (fExtractAction == null)
+			fExtractAction = new ExtractAction(fEditor.getViewer());
+		if (fDeleteAction == null)
+			fDeleteAction = new DeleteAction(fEditor.getViewer());
+		if (fSortAction == null)
+			fSortAction = new SortAction(fEditor.getViewer(), PreferenceConstants.PREFIX_EDITOR);
+	}
+
+	public void fillToolBarManager(IToolBarManager manager, int mode) {
+		lazilyCreateActions();
 		manager.add(new Separator());
 		manager.add(fAddAction);
 		manager.add(fExtractAction);
@@ -65,25 +75,31 @@ public class ZipActionGroup extends ActionGroup {
 		manager.add(fDeleteAction);
 		manager.add(new Separator());
 		manager.add(fSortAction);
-		if (mode == ToggleViewModeAction.MODE_FOLDER) {
+		if (mode == PreferenceConstants.VIEW_MODE_FOLDER) {
 			manager.add(new Separator());
 			manager.add(fPreferencesAction);
 		}
 	}
     
     public void fillActionBars(IActionBars actionBars) {
+		lazilyCreateActions();
+
 		actionBars.setGlobalActionHandler(ActionFactory.DELETE.getId(), fDeleteAction);
 		actionBars.setGlobalActionHandler(ActionFactory.SAVE.getId(), fSaveAction);
 		actionBars.setGlobalActionHandler(ActionFactory.REVERT.getId(), fRevertAction);
 		actionBars.setGlobalActionHandler(ActionFactory.PROPERTIES.getId(), fPropertiesAction);
+		updateActionBars();
     }
 	
 	public void updateActionBars() {
+		if (getContext() == null)
+			return;
 		IStructuredSelection selection = (IStructuredSelection) getContext().getSelection();
 		boolean empty = selection.isEmpty();
 		boolean onlyFilesSelected = Utils.allNodesAreFileNodes(selection);
 		boolean singleSelection = selection.size() == 1;
 		
+		lazilyCreateActions();
 		fDeleteAction.setEnabled(!empty);
 		fSaveAction.setEnabled(fEditor.isDirty());
 		fRevertAction.setEnabled(fEditor.isDirty());

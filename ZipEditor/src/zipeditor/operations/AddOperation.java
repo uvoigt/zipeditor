@@ -11,22 +11,22 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.ui.progress.UIJob;
 
 import zipeditor.Messages;
 import zipeditor.Utils;
-import zipeditor.ZipEditor;
 import zipeditor.ZipEditorPlugin;
-import zipeditor.model.ZipNode;
+import zipeditor.model.Node;
 
 public class AddOperation {
 	private class AddFilesJob extends Job {
 		private String[] fFilesNames;
-		private ZipNode fParentNode;
+		private Node fParentNode;
 		private boolean fAtLeastOneAdded;
 		private UIJob fRefreshJob;
 
-		public AddFilesJob(String[] filesNames, ZipNode parentNode, UIJob refreshJob) {
+		public AddFilesJob(String[] filesNames, Node parentNode, UIJob refreshJob) {
 			super(Messages.getString("AddOperation.1")); //$NON-NLS-1$
 			fFilesNames = filesNames;
 			fParentNode = parentNode;
@@ -69,27 +69,26 @@ public class AddOperation {
 	};
 	
 	private class RefreshJob extends UIJob {
-		private ZipEditor fEditor;
+		private StructuredViewer fViewer;
 
-		public RefreshJob(ZipEditor editor) {
+		public RefreshJob(StructuredViewer viewer) {
 			super(Messages.getString("AddOperation.3")); //$NON-NLS-1$
-			fEditor = editor;
+			fViewer = viewer;
 		}
 
 		public IStatus runInUIThread(IProgressMonitor monitor) {
-			if (!fEditor.getViewer().getControl().isDisposed()) {
-				fEditor.getViewer().refresh();
-				fEditor.setDirty(true);
+			if (!fViewer.getControl().isDisposed()) {
+				fViewer.refresh();
 			}
 			return Status.OK_STATUS;
 		}
 	};
 	
-	public void execute(String[] fileNames, ZipNode parentNode, ZipEditor editor) {
+	public void execute(String[] fileNames, Node parentNode, StructuredViewer viewer) {
 		
 		while (parentNode != null && !parentNode.isFolder())
 			parentNode = parentNode.getParent();
-		AddFilesJob addFilesJob = new AddFilesJob(fileNames, parentNode, new RefreshJob(editor));
+		AddFilesJob addFilesJob = new AddFilesJob(fileNames, parentNode, new RefreshJob(viewer));
 		addFilesJob.schedule();
 	}
 

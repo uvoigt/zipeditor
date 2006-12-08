@@ -9,140 +9,258 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Hashtable;
-import java.util.Iterator;
-import java.util.List;
+import java.util.Set;
 
 import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.jface.action.ContributionItem;
 import org.eclipse.jface.dialogs.ErrorDialog;
+import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
+import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.jface.viewers.ViewerSorter;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.custom.BusyIndicator;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.program.Program;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.FileDialog;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Table;
-import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.ui.IEditorDescriptor;
+import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorRegistry;
+import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.dialogs.SelectionDialog;
+import org.eclipse.ui.dialogs.SelectionStatusDialog;
 import org.eclipse.ui.editors.text.EditorsUI;
 
+import zipeditor.PreferenceConstants;
+import zipeditor.PreferenceInitializer;
 import zipeditor.Utils;
 import zipeditor.ZipEditorPlugin;
 
 public class OpenWithMenu extends ContributionItem {
-	private class ProgramSelectionDialog extends SelectionDialog {
-		private Table fTable;
-		private Program fSelection;
-		private List fImages;
-		private int topIndex;
-		
-		public ProgramSelectionDialog(Shell parentShell, Program initialSelection) {
+	private class ExecutableSelectionDialog extends SelectionStatusDialog {
+		private TableViewer fTableViewer;
+		private Object fSelection;
+		private String fLastFilterPath;
+		private Set fExternalEditors;
+		private Set fInternalEditors;
+		private Button fBrowseButton;
+
+		public ExecutableSelectionDialog(Shell parentShell, Object initialSelection) {
 			super(parentShell);
-			fImages = new ArrayList();
-			fSelection = lastSelection;
-			setTitle(ActionMessages.getString("OpenWithMenu.3")); //$NON-NLS-1$
+			setShellStyle(getShellStyle() | SWT.RESIZE);
+			fSelection = initialSelection;
+			setTitle(ActionMessages.getString("OpenWithMenu.5")); //$NON-NLS-1$
 		}
-		
+
 		protected Control createDialogArea(Composite parent) {
 			Composite composite = (Composite) super.createDialogArea(parent);
-			composite.setLayout(new GridLayout());
-			composite.setLayoutData(new GridData(GridData.FILL_BOTH));
-			fTable = new Table(composite, SWT.SINGLE | SWT.BORDER);
+			Label label = new Label(composite, SWT.LEFT);
+			label.setText(ActionMessages.getString("OpenWithMenu.6")); //$NON-NLS-1$
+			label.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+			label = new Label(composite, SWT.LEFT);
+			label.setText(ActionMessages.getString("OpenWithMenu.7") + getFileResource().getName()); //$NON-NLS-1$
+			label.setLayoutData(new GridData(GridData.HORIZONTAL_ALIGN_BEGINNING));
+			createExternalEditorGroup(composite);
+			return composite;
+		}
+		
+		private Control createExternalEditorGroup(Composite parent) {
+			Group group = new Group(parent, SWT.NONE);
+			group.setText(ActionMessages.getString("OpenWithMenu.8")); //$NON-NLS-1$
+			group.setLayout(new GridLayout());
+			group.setLayoutData(new GridData(GridData.FILL_BOTH));
+			Button[] buttons = createRadioButtons(group);
+			fTableViewer = createTableViewer(group);
+			
+			fBrowseButton = new Button(group, SWT.PUSH);
+			fBrowseButton.setText(ActionMessages.getString("OpenWithMenu.9")); //$NON-NLS-1$
+			setButtonLayoutData(fBrowseButton);
+			((GridData) fBrowseButton.getLayoutData()).horizontalAlignment |= GridData.HORIZONTAL_ALIGN_BEGINNING;
+			fBrowseButton.addSelectionListener(new SelectionAdapter() {
+				public void widgetSelected(SelectionEvent e) {
+					handleBrowseButtonSelected();
+				}
+			});
+
+			if (buttons[0].getText().equals(previousSelectedRadio)) {
+				handleExternalButtonSelected(buttons[0]);
+				buttons[0].setSelection(true);
+			}
+			if (buttons[1].getText().equals(previousSelectedRadio)) {
+				handleInternalButtonSelected(buttons[1]);
+				buttons[1].setSelection(true);
+			}
+			return group;
+		}
+
+		private Button[] createRadioButtons(Composite parent) {
+			Button[] buttons = { null, null };
+			Composite composite = new Composite(parent, SWT.NONE);
+			composite.setLayout(new GridLayout(2, true));
+			composite.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+			Button button = buttons[0] = new Button(composite, SWT.RADIO);
+			button.setText(ActionMessages.getString("OpenWithMenu.10")); //$NON-NLS-1$
+			setButtonLayoutData(button);
+			button.addSelectionListener(new SelectionAdapter() {
+				public void widgetSelected(SelectionEvent e) {
+					handleExternalButtonSelected((Button) e.widget);
+				}
+			});
+			button = buttons[1] = new Button(composite, SWT.RADIO);
+			button.setText(ActionMessages.getString("OpenWithMenu.11")); //$NON-NLS-1$
+			setButtonLayoutData(button);
+			button.addSelectionListener(new SelectionAdapter() {
+				public void widgetSelected(SelectionEvent e) {
+					handleInternalButtonSelected((Button) e.widget);
+				}
+			});
+			return buttons;
+		}
+
+		private Object getExternalEditors() {
+			if (fExternalEditors == null) {
+				fExternalEditors = new HashSet();
+				fExternalEditors.addAll(Arrays.asList(loadExecutables()));
+			}
+			return fExternalEditors;
+		}
+
+		private Object getInternalEditors() {
+			if (fInternalEditors == null) {
+				fInternalEditors = new HashSet();
+				IEditorRegistry editorRegistry = PlatformUI.getWorkbench().getEditorRegistry();
+				try {
+					fInternalEditors.addAll(Arrays.asList((Object[]) editorRegistry.getClass().getMethod("getSortedEditorsFromPlugins", null).invoke(editorRegistry, null))); //$NON-NLS-1$
+				} catch (Exception ignore) {
+				}
+			}
+			return fInternalEditors;
+		}
+
+		private TableViewer createTableViewer(Composite parent) {
+			TableViewer viewer = new TableViewer(parent, SWT.SINGLE | SWT.BORDER);
+			viewer.setContentProvider(new ArrayContentProvider());
+			viewer.setLabelProvider(new EditorDescriptorLabelProvider());
+			viewer.setSorter(new ViewerSorter());
 			GridData data = new GridData(GridData.FILL_BOTH);
-			data.heightHint = fTable.getItemHeight() * 14;
-			data.widthHint = 250;
-			fTable.setLayoutData(data);
-			fTable.addSelectionListener(new SelectionAdapter() {
+			data.heightHint = convertHeightInCharsToPixels(14);
+			data.widthHint = convertWidthInCharsToPixels(45);
+			viewer.getTable().setLayoutData(data);
+			viewer.getTable().addSelectionListener(new SelectionAdapter() {
 				public void widgetDefaultSelected(SelectionEvent e) {
 					okPressed();
 				}
 			});
-			BusyIndicator.showWhile(parent.getShell().getDisplay(), new Runnable() {
-				public void run() {
-					fillTable();
+			if (fSelection != null)
+				viewer.setSelection(new StructuredSelection(fSelection));
+			viewer.addSelectionChangedListener(new ISelectionChangedListener() {
+				public void selectionChanged(SelectionChangedEvent event) {
+					updateButtons();
 				}
 			});
-			fTable.setTopIndex(topIndex);
-			selectValue(fSelection);
-			return composite;
+			return viewer;
+		}
+
+		protected Control createButtonBar(Composite parent) {
+			Control control = super.createButtonBar(parent);
+			updateButtons();
+			return control;
 		}
 		
-		private void selectValue(Program value) {
-			if (value == null)
+		private String[] loadExecutables() {
+			IPreferenceStore store = ZipEditorPlugin.getDefault().getPreferenceStore();
+			return (String[]) PreferenceInitializer.split(store.getString(PreferenceConstants.EXTERNAL_EDITORS), ",", String.class); //$NON-NLS-1$
+		}
+		
+		private void saveExecutables() {
+			IPreferenceStore store = ZipEditorPlugin.getDefault().getPreferenceStore();
+			store.setValue(PreferenceConstants.EXTERNAL_EDITORS, PreferenceInitializer.join(fExternalEditors.toArray(), ",")); //$NON-NLS-1$
+		}
+
+		private void updateButtons() {
+			getButton(IDialogConstants.OK_ID).setEnabled(!fTableViewer.getSelection().isEmpty());
+		}
+
+		private void handleExternalButtonSelected(Button button) {
+			fTableViewer.setInput(getExternalEditors());
+			fBrowseButton.setEnabled(true);
+			previousSelectedRadio = button.getText();
+		}
+
+		private void handleInternalButtonSelected(Button button) {
+			fTableViewer.setInput(getInternalEditors());
+			fBrowseButton.setEnabled(false);
+			previousSelectedRadio = button.getText();
+		}
+
+		private void handleBrowseButtonSelected() {
+			FileDialog dialog = new FileDialog(getShell(), SWT.OPEN);
+			if (fLastFilterPath != null)
+				dialog.setFilterPath(fLastFilterPath);
+			String selectedFile = dialog.open();
+			if (selectedFile == null)
 				return;
-			TableItem[] items = fTable.getItems();
-			for (int i = 0; i < items.length; i++) {
-				if (value.equals(items[i].getData())) {
-					fTable.select(i);
-					fTable.showSelection();
-					break;
-				}
-			}
+			fExternalEditors.add(selectedFile);
+			fTableViewer.refresh();
 		}
-		
-		private void fillTable() {
-			fTable.setRedraw(false);
-			Program[] programs = Program.getPrograms();
-			for (int i = 0; i < programs.length; i++) {
-				TableItem item = new TableItem(fTable, SWT.NULL);
-				Program program = programs[i];
-				item.setData(program);
-				item.setText(program.getName());
-				ImageData data = program.getImageData();
-				if (data == null)
-					continue;
-				Image image = new Image(getShell().getDisplay(), data);
-				fImages.add(image);
-				item.setImage(image);
-			}
-			fTable.setRedraw(true);
-		}
-		
-		protected void okPressed() {
-			fSelection = fTable.getSelectionCount() > 0 ?
-				(Program) fTable.getSelection()[0].getData() : null;
-			topIndex = fTable.getTopIndex();
-			super.okPressed();
-		}
-		
-		public Program getSelection() {
+
+		public Object getSelection() {
 			return fSelection;
 		}
-		
-		public boolean close() {
-			for (Iterator iter = fImages.iterator(); iter.hasNext();) {
-				Image image = (Image) iter.next();
-				image.dispose();
-			}
-			return super.close();
+
+		protected void computeResult() {
+			fSelection = ((IStructuredSelection) fTableViewer.getSelection()).getFirstElement();
+			saveExecutables();
 		}
 	};
 	
+	
+	private class EditorDescriptorLabelProvider extends LabelProvider {
+		public String getText(Object element) {
+			return element instanceof IEditorDescriptor ?
+					((IEditorDescriptor) element).getLabel() : super.getText(element);
+		}
+		
+		public Image getImage(Object element) {
+			return element instanceof IEditorDescriptor ? ZipEditorPlugin
+					.getImage(((IEditorDescriptor) element)
+							.getImageDescriptor()) : PlatformUI.getWorkbench()
+					.getSharedImages().getImage(ISharedImages.IMG_OBJ_FILE);
+		}
+	};
+
 	private IWorkbenchPage page;
 	private IAdaptable file;
 	private IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
-	private static Hashtable imageCache = new Hashtable(11);
-	private static Program lastSelection;
 
+	private static Hashtable imageCache = new Hashtable(11);
+	private static Object previousExecutableSelection;
+	private static String previousSelectedRadio;
 	public static final String ID = PlatformUI.PLUGIN_ID + ".OpenWithMenu";//$NON-NLS-1$
 	private static final int MATCH_BOTH = IWorkbenchPage.MATCH_INPUT | IWorkbenchPage.MATCH_ID;
 
@@ -164,6 +282,7 @@ public class OpenWithMenu extends ContributionItem {
 		super(ID);
 		this.page = page;
 		this.file = file;
+		getFileResource();
 	}
 
 	private Image getImage(IEditorDescriptor editorDesc) {
@@ -334,12 +453,27 @@ public class OpenWithMenu extends ContributionItem {
 	}
 
 	private void openWithProgram(IFileStore file) {
-		ProgramSelectionDialog dialog = new ProgramSelectionDialog(
-				page.getWorkbenchWindow().getShell(), lastSelection);
+		ExecutableSelectionDialog dialog = new ExecutableSelectionDialog(
+				page.getWorkbenchWindow().getShell(), previousExecutableSelection);
 		if (dialog.open() != Window.OK)
 			return;
-		lastSelection = dialog.getSelection();
-		if (lastSelection != null)
-			lastSelection.execute(file.toString());
+		previousExecutableSelection = dialog.getSelection();
+		if (previousExecutableSelection instanceof String) {
+			try {
+				Runtime.getRuntime().exec(previousExecutableSelection + " " + file.toString()); //$NON-NLS-1$
+			} catch (Exception e) {
+				ZipEditorPlugin.log(e);
+			}
+		} else if (previousExecutableSelection instanceof IEditorDescriptor) {
+			if (!file.fetchInfo().isDirectory() && file.fetchInfo().exists()) {
+				IEditorInput input = Utils.createEditorInput(file);
+				String editorId = ((IEditorDescriptor) previousExecutableSelection).getId();
+				try {
+					page.openEditor(input, editorId);
+				} catch (PartInitException e) {
+					ZipEditorPlugin.log(e);
+				}
+			}
+		}
 	}
 }

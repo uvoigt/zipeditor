@@ -19,7 +19,7 @@ import zipeditor.Utils;
 
 public class ZipActionProvider extends CommonActionProvider {
 	private OpenActionGroup fOpenActionGroup;
-	private ExtractAction fExtractAction;
+	private ViewerAction fExtractAction;
 	private AddAction fAddAction;
 	private IAction fPropertiesAction;
 	

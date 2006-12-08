@@ -13,13 +13,14 @@ import zipeditor.PreferenceConstants;
 import zipeditor.PreferenceInitializer;
 import zipeditor.ZipEditor;
 import zipeditor.ZipEditorPlugin;
+import zipeditor.model.NodeProperty;
 import zipeditor.model.ZipNodeProperty;
 
 public class PreferencesAction extends EditorAction {
 	private class ColumnAction extends Action {
 		private int fType;
 
-		private ColumnAction(ZipNodeProperty nodeProperty) {
+		private ColumnAction(NodeProperty nodeProperty) {
 			super(nodeProperty.toString());
 			Integer[] columns = (Integer[]) PreferenceInitializer.split(
 					fEditor.getPreferenceStore().getString(PreferenceConstants.VISIBLE_COLUMNS), PreferenceConstants.COLUMNS_SEPARATOR, Integer.class);
@@ -91,14 +92,14 @@ public class PreferencesAction extends EditorAction {
 	}
 
 	private void fillColumnsMenu(MenuManager manager) {
-		manager.add(new ColumnAction(ZipNodeProperty.PNAME));
-		manager.add(new ColumnAction(ZipNodeProperty.PTYPE));
-		manager.add(new ColumnAction(ZipNodeProperty.PDATE));
-		manager.add(new ColumnAction(ZipNodeProperty.PSIZE));
+		manager.add(new ColumnAction(NodeProperty.PNAME));
+		manager.add(new ColumnAction(NodeProperty.PTYPE));
+		manager.add(new ColumnAction(NodeProperty.PDATE));
+		manager.add(new ColumnAction(NodeProperty.PSIZE));
 		manager.add(new ColumnAction(ZipNodeProperty.PPACKED_SIZE));
 		manager.add(new ColumnAction(ZipNodeProperty.PRATIO));
 		manager.add(new ColumnAction(ZipNodeProperty.PCRC));
-		manager.add(new ColumnAction(ZipNodeProperty.PPATH));
+		manager.add(new ColumnAction(NodeProperty.PPATH));
 		manager.add(new ColumnAction(ZipNodeProperty.PATTR));
 	}
 	

@@ -21,6 +21,7 @@ import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
@@ -38,10 +39,9 @@ import org.eclipse.ui.model.WorkbenchContentProvider;
 import org.eclipse.ui.model.WorkbenchLabelProvider;
 import org.eclipse.ui.views.navigator.ResourceSorter;
 
-import zipeditor.ZipEditor;
 import zipeditor.ZipEditorPlugin;
 
-public abstract class DialogAction extends EditorAction {
+public abstract class DialogAction extends ViewerAction {
 	private class FileSystemContentProvider implements ITreeContentProvider {
 		public Object[] getChildren(Object parentElement) {
 			if (parentElement instanceof File[])
@@ -255,8 +255,8 @@ public abstract class DialogAction extends EditorAction {
 		}
 	};
 
-	protected DialogAction(String text, ZipEditor editor) {
-		super(text, editor);
+	protected DialogAction(String text, StructuredViewer viewer) {
+		super(text, viewer);
 	}
 
 	protected String[] openDialog(String text, String path, boolean multiSelection, boolean showFiles) {

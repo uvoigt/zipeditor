@@ -9,27 +9,22 @@ import zipeditor.ZipEditor;
 import zipeditor.ZipEditorPlugin;
 
 public class ToggleViewModeAction extends EditorAction {
-	public final static int MODE_FOLDER = 1;
-	public final static int MODE_TREE = 2;
+	private String fPreferenceKey;
 
-	private int fMode;
-
-	public ToggleViewModeAction(ZipEditor editor) {
+	public ToggleViewModeAction(ZipEditor editor, String preferencePrefix) {
 		super(ActionMessages.getString("ToggleViewModeAction.0"), editor); //$NON-NLS-1$
 		setToolTipText(ActionMessages.getString("ToggleViewModeAction.1")); //$NON-NLS-1$
 		setImageDescriptor(ZipEditorPlugin.getImageDescriptor("icons/togglemode.gif")); //$NON-NLS-1$
+		fPreferenceKey = preferencePrefix + PreferenceConstants.VIEW_MODE;
 		
-		fMode = editor.getPreferenceStore().getInt(PreferenceConstants.VIEW_MODE);
-		setChecked(fMode == MODE_TREE);
+		int mode = editor.getPreferenceStore().getInt(fPreferenceKey);
+		setChecked(mode == PreferenceConstants.VIEW_MODE_TREE);
 	}
 	
 	public void run() {
-		fMode = fMode == MODE_FOLDER ? MODE_TREE : MODE_FOLDER;
-		fEditor.getPreferenceStore().setValue(PreferenceConstants.VIEW_MODE, fMode);
-		fEditor.updateView(fMode, true);
-	}
-
-	public int getMode() {
-		return fMode;
+		int mode = fEditor.getPreferenceStore().getInt(fPreferenceKey);
+		mode = mode == PreferenceConstants.VIEW_MODE_FOLDER ? PreferenceConstants.VIEW_MODE_TREE : PreferenceConstants.VIEW_MODE_FOLDER;
+		fEditor.getPreferenceStore().setValue(fPreferenceKey, mode);
+		fEditor.updateView(mode, true);
 	}
 }

@@ -11,7 +11,7 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.StructuredSelection;
 
 import zipeditor.ZipEditor;
-import zipeditor.model.ZipNode;
+import zipeditor.model.Node;
 
 public abstract class EditorAction extends Action {
 	protected ZipEditor fEditor;
@@ -22,16 +22,16 @@ public abstract class EditorAction extends Action {
 		fEditor = editor;
 	}
 
-	protected ZipNode[] getSelectedNodes() {
+	protected Node[] getSelectedNodes() {
 		if (fEditor != null)
 			return fEditor.getSelectedNodes();
 		List list = getSelection().toList();
-		ZipNode[] nodes = new ZipNode[list.size()];
+		Node[] nodes = new Node[list.size()];
 		for (int i = 0; i < nodes.length; i++) {
 			Object element = list.get(i);
-			if (!(element instanceof ZipNode))
-					return new ZipNode[0];
-			nodes[i] = (ZipNode) element;
+			if (!(element instanceof Node))
+					return new Node[0];
+			nodes[i] = (Node) element;
 		}
 		return nodes;
 	}
