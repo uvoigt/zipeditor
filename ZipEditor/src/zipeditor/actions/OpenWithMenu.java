@@ -142,7 +142,7 @@ public class OpenWithMenu extends ContributionItem {
 			return buttons;
 		}
 
-		private Object getExternalEditors() {
+		private Set getExternalEditors() {
 			if (fExternalEditors == null) {
 				fExternalEditors = new HashSet();
 				fExternalEditors.addAll(Arrays.asList(loadExecutables()));
@@ -199,7 +199,7 @@ public class OpenWithMenu extends ContributionItem {
 		
 		private void saveExecutables() {
 			IPreferenceStore store = ZipEditorPlugin.getDefault().getPreferenceStore();
-			store.setValue(PreferenceConstants.EXTERNAL_EDITORS, PreferenceInitializer.join(fExternalEditors.toArray(), ",")); //$NON-NLS-1$
+			store.setValue(PreferenceConstants.EXTERNAL_EDITORS, PreferenceInitializer.join(getExternalEditors().toArray(), ",")); //$NON-NLS-1$
 		}
 
 		private void updateButtons() {
@@ -225,7 +225,7 @@ public class OpenWithMenu extends ContributionItem {
 			String selectedFile = dialog.open();
 			if (selectedFile == null)
 				return;
-			fExternalEditors.add(selectedFile);
+			getExternalEditors().add(selectedFile);
 			fTableViewer.refresh();
 		}
 
