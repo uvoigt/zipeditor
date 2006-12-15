@@ -4,6 +4,7 @@
  */
 package zipeditor.actions;
 
+import java.text.MessageFormat;
 import java.util.MissingResourceException;
 import java.util.ResourceBundle;
 
@@ -19,6 +20,15 @@ public class ActionMessages {
 	public static String getString(String key) {
 		try {
 			return RESOURCE_BUNDLE.getString(key);
+		} catch (MissingResourceException e) {
+			return '!' + key + '!';
+		}
+	}
+
+	public static String getFormattedString(String key, Object argument) {
+		try {
+			String pattern = RESOURCE_BUNDLE.getString(key);
+			return MessageFormat.format(pattern, argument instanceof Object[] ? (Object[]) argument : new Object[] { argument });
 		} catch (MissingResourceException e) {
 			return '!' + key + '!';
 		}
