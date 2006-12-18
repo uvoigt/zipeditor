@@ -22,6 +22,8 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 
 		store.setDefault(PreferenceConstants.PREFIX_OUTLINE + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_TREE);
 		store.setDefault(PreferenceConstants.PREFIX_OUTLINE + PreferenceConstants.SORT_ENABLED, true);
+		store.setDefault(PreferenceConstants.PREFIX_NAVIGATOR + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_TREE);
+		store.setDefault(PreferenceConstants.PREFIX_NAVIGATOR + PreferenceConstants.SORT_ENABLED, true);
 		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_FOLDER);
 		store.setDefault(PreferenceConstants.PREFIX_OUTLINE + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_TREE);
 		store.setDefault(PreferenceConstants.VISIBLE_COLUMNS, join(new Object[] {
