@@ -21,6 +21,10 @@ public class ZipSorter extends ViewerSorter {
 	private int fMode;
 	private String fPreferencePrefix;
 	
+	public ZipSorter() {
+		this(PreferenceConstants.PREFIX_NAVIGATOR);
+	}
+	
 	public ZipSorter(String preferencePrefix) {
 		fPreferencePrefix = preferencePrefix;
 		update(); 
