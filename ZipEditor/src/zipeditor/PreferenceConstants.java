@@ -26,6 +26,8 @@ public class PreferenceConstants {
 
 	public final static String PREFIX_OUTLINE = "outline"; //$NON-NLS-1$
 
+	public final static String PREFIX_NAVIGATOR = "commonNavigator"; //$NON-NLS-1$
+
 	public final static int VIEW_MODE_FOLDER = 1;
 
 	public final static int VIEW_MODE_TREE = 2;
