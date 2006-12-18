@@ -5,13 +5,13 @@
          point="org.eclipse.core.contenttype.contentTypes">
       <content-type
             id="archive"
-            name="Archive"
+            name="%content-type.name.0"
             priority="normal"/>
       <content-type
             base-type="archive"
             describer="zipeditor.model.ZipContentDescriber"
             id="zipfile"
-            name="Zip archive"
+            name="%content-type.name.1"
             priority="normal">
          <property
                default="ZIP"
@@ -21,7 +21,7 @@
             base-type="archive"
             describer="zipeditor.model.ZipContentDescriber"
             id="targzfile"
-            name="Tar GZ archive"
+            name="%content-type.name.2"
             priority="normal">
          <property
                default="TGZ"
@@ -31,7 +31,7 @@
             base-type="archive"
             describer="zipeditor.model.ZipContentDescriber"
             id="tarfile"
-            name="Tar archive"
+            name="%content-type.name.3"
             priority="normal">
          <property
                default="TAR"
@@ -41,7 +41,7 @@
             base-type="archive"
             describer="zipeditor.model.ZipContentDescriber"
             id="gzipfile"
-            name="GZip archive"
+            name="%content-type.name.4"
             priority="normal">
          <property
                default="GZ"
@@ -67,7 +67,7 @@
             default="true"
             icon="icons/zipicon.gif"
             id="zipeditor.ZipEditor"
-            name="ZipEditor">
+            name="%editor.name.0">
          <contentTypeBinding contentTypeId="ZipEditor.zipfile"/>
          <contentTypeBinding contentTypeId="ZipEditor.gzipfile"/>
          <contentTypeBinding contentTypeId="ZipEditor.tarfile"/>
@@ -86,7 +86,7 @@
             icon="icons/zipicon.gif"
             id="zipeditor.navigatorContent"
             labelProvider="zipeditor.ZipLabelProvider"
-            name="Zip Archives">
+            name="%navigatorContent.name.0">
          <triggerPoints>
             <or>
                <instanceof value="org.eclipse.core.resources.IFile"/>
@@ -107,7 +107,14 @@
          </possibleChildren>
          <commonSorter
                class="zipeditor.ZipSorter"
-               id="zipeditor.ZipSorter"/>
+               id="zipeditor.ZipSorter">
+            <parentExpression>
+               <or>
+                  <instanceof value="zipeditor.model.Node"/>
+                  <instanceof value="org.eclipse.core.resources.IFile"/>
+               </or>
+            </parentExpression>
+         </commonSorter>
          <actionProvider
                class="zipeditor.actions.ZipActionProvider"
                overrides="org.eclipse.ui.navigator.resources.OpenActions">
@@ -133,12 +140,12 @@
       <page
             class="zipeditor.ZipNodePropertyPage"
             id="zipeditor.ZipNodePropertyPage"
-            name="Zip element"
+            name="%page.name.0"
             objectClass="zipeditor.model.ZipNode"/>
       <page
             class="zipeditor.TarNodePropertyPage"
             id="zipeditor.TarNodePropertyPage"
-            name="Tar element"
+            name="%page.name.1"
             objectClass="zipeditor.model.TarNode"/>
    </extension>
 
