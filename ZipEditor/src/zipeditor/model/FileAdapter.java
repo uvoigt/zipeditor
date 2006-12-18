@@ -24,7 +24,8 @@ public class FileAdapter implements IAdaptable {
 			if (fFileStore == null)
 				fFileStore = extractNode();
 			return fFileStore; 
-		}
+		} else if (Node.class.equals(adapter))
+			return fNode;
 		return null;
 	}
 	
