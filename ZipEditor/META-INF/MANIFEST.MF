@@ -1,8 +1,8 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: ZipEditor Plug-in
+Bundle-Name: %Bundle-Name.0
 Bundle-SymbolicName: ZipEditor;singleton:=true
-Bundle-Version: 1.0.1
+Bundle-Version: 1.0.2
 Bundle-Activator: zipeditor.ZipEditorPlugin
 Bundle-Localization: plugin
 Require-Bundle: org.eclipse.core.runtime,
@@ -14,4 +14,4 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui.editors,
  org.eclipse.ui.views
 Eclipse-LazyStart: true
-Bundle-Vendor: Uwe Voigt
+Bundle-Vendor: %Bundle-Vendor.0
