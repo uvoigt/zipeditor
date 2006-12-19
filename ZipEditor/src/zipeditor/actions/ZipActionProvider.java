@@ -15,8 +15,6 @@ import org.eclipse.ui.dialogs.PropertyDialogAction;
 import org.eclipse.ui.navigator.CommonActionProvider;
 import org.eclipse.ui.navigator.ICommonActionExtensionSite;
 
-import zipeditor.Utils;
-
 public class ZipActionProvider extends CommonActionProvider {
 	private OpenActionGroup fOpenActionGroup;
 	private ViewerAction fExtractAction;
@@ -26,25 +24,23 @@ public class ZipActionProvider extends CommonActionProvider {
 	public void init(ICommonActionExtensionSite aSite) {
 		super.init(aSite);
 		fOpenActionGroup = new OpenActionGroup(null);
-		fExtractAction = new ExtractAction(null);
-		fAddAction = new AddAction(null);
+		fExtractAction = new ExtractAction(aSite.getStructuredViewer());
+		fAddAction = new AddAction(aSite.getStructuredViewer());
 	}
 
 	public void fillContextMenu(IMenuManager menu) {
 		fOpenActionGroup.setContext(getContext());
 		fOpenActionGroup.fillContextMenu(menu);
 		IStructuredSelection selection = (IStructuredSelection) getContext().getSelection();
-		if (Utils.allNodesAreFileNodes(selection) || Utils.allElementsAreArchives(selection)) {
-			menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new Separator());
-			menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fAddAction);
-			menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fExtractAction);
-			fExtractAction.setSelection(selection);
-			fAddAction.setSelection(selection);
-			menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new Separator());
-			if (fPropertiesAction == null)
-				fPropertiesAction = new PropertyDialogAction(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActivePart().getSite(), getActionSite().getViewSite().getSelectionProvider());
-			menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fPropertiesAction);
-		}
+		menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new Separator());
+		menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fAddAction);
+		menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fExtractAction);
+		fExtractAction.setSelection(selection);
+		fAddAction.setSelection(selection);
+		menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new Separator());
+		if (fPropertiesAction == null)
+			fPropertiesAction = new PropertyDialogAction(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActivePart().getSite(), getActionSite().getViewSite().getSelectionProvider());
+		menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fPropertiesAction);
 	}
 
 	public void fillActionBars(IActionBars actionBars) {
