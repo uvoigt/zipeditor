@@ -14,10 +14,12 @@ import org.eclipse.core.runtime.content.IContentDescription;
 import zipeditor.ZipEditorPlugin;
 
 public class ZipContentDescriber implements IContentDescriber {
-	public static String ZIP_FILE = ZipEditorPlugin.PLUGIN_ID + ".zipfile"; //$NON-NLS-1$
-	public static String GZ_FILE = ZipEditorPlugin.PLUGIN_ID + ".gzipfile"; //$NON-NLS-1$
-	public static String TAR_FILE = ZipEditorPlugin.PLUGIN_ID + ".tarfile"; //$NON-NLS-1$
-	public static String TGZ_FILE = ZipEditorPlugin.PLUGIN_ID + ".targzfile"; //$NON-NLS-1$
+	public final static String ZIP_FILE = ZipEditorPlugin.PLUGIN_ID + ".zipfile"; //$NON-NLS-1$
+	public final static String GZ_FILE = ZipEditorPlugin.PLUGIN_ID + ".gzipfile"; //$NON-NLS-1$
+	public final static String TAR_FILE = ZipEditorPlugin.PLUGIN_ID + ".tarfile"; //$NON-NLS-1$
+	public final static String TGZ_FILE = ZipEditorPlugin.PLUGIN_ID + ".targzfile"; //$NON-NLS-1$
+	
+	private final static String EMPTY = "empty"; //$NON-NLS-1$
 	
 	public int describe(InputStream contents, IContentDescription description)
 			throws IOException {
@@ -25,7 +27,7 @@ public class ZipContentDescriber implements IContentDescriber {
 		String type = detectType(contents);
 		if (type == null)
 			return INVALID;
-		if (description == null)
+		if (description == null || type == EMPTY)
 			return VALID;
 
 		String contentTypeId = description.getContentType() != null ? description.getContentType().getId() : null;
@@ -49,6 +51,8 @@ public class ZipContentDescriber implements IContentDescriber {
 			return GZ_FILE;
 		case ZipModel.TARGZ:
 			return TGZ_FILE;
+		case ZipModel.EMPTY:
+			return EMPTY; 
 		}
 	}
 
