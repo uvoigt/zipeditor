@@ -27,6 +27,11 @@ public class ZipActionProvider extends CommonActionProvider {
 		fExtractAction = new ExtractAction(aSite.getStructuredViewer());
 		fAddAction = new AddAction(aSite.getStructuredViewer());
 	}
+	
+	public void dispose() {
+		super.dispose();
+		fOpenActionGroup.dispose();
+	}
 
 	public void fillContextMenu(IMenuManager menu) {
 		fOpenActionGroup.setContext(getContext());
