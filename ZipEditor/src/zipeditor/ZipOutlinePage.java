@@ -5,6 +5,8 @@
 package zipeditor;
 
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
+import org.eclipse.jface.action.IContributionManager;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IStatusLineManager;
@@ -12,15 +14,20 @@ import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.swt.dnd.DND;
 import org.eclipse.swt.dnd.FileTransfer;
 import org.eclipse.swt.dnd.Transfer;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Menu;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionFactory;
+import org.eclipse.ui.dialogs.PropertyDialogAction;
 import org.eclipse.ui.views.contentoutline.ContentOutlinePage;
 
+import zipeditor.ZipEditor.NodeComparer;
 import zipeditor.actions.AddAction;
 import zipeditor.actions.CollapseAllAction;
 import zipeditor.actions.DeleteAction;
@@ -42,6 +49,12 @@ public class ZipOutlinePage extends ContentOutlinePage {
 		public void run() {
 			boolean checked = isChecked();
 			ZipEditorPlugin.getDefault().getPreferenceStore().setValue(PREFERENCE_LINKED, checked);
+			IEditorPart editor = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor();
+			if (editor instanceof ZipEditor) {
+				Node[] nodes = ((ZipEditor) editor).getSelectedNodes();
+				if (nodes.length == 1)
+				setSelection(new StructuredSelection(nodes[0]));
+			}
 		}
 	};
 
@@ -50,24 +63,22 @@ public class ZipOutlinePage extends ContentOutlinePage {
 	private AddAction fAddAction;
 	private ViewerAction fExtractAction;
 	private ViewerAction fDeleteAction;
+	private IAction fPropertiesAction;
 	private SelectAllAction fSelectAllAction;
 
 	public void createControl(Composite parent) {
 		super.createControl(parent);
-		super.createControl(parent);
 		getTreeViewer().setContentProvider(new ZipContentProvider(PreferenceConstants.VIEW_MODE_TREE));
 		getTreeViewer().setLabelProvider(new ZipLabelProvider());
 		getTreeViewer().setSorter(new ZipSorter(PreferenceConstants.PREFIX_OUTLINE));
+		getTreeViewer().setComparer(new NodeComparer());
 
 		createActions();
 		MenuManager manager = new MenuManager();
 		manager.setRemoveAllWhenShown(true);
 		manager.addMenuListener(new IMenuListener() {
 			public void menuAboutToShow(IMenuManager manager) {
-				manager.add(fAddAction);
-				manager.add(fExtractAction);
-				manager.add(new Separator());
-				manager.add(fDeleteAction);
+				contextMenuAboutToShow(manager);
 			}
 		});
 		Menu contextMenu = manager.createContextMenu(getTreeViewer().getControl());
@@ -81,6 +92,8 @@ public class ZipOutlinePage extends ContentOutlinePage {
 		fExtractAction = new ExtractAction(getTreeViewer());
 		fDeleteAction = new DeleteAction(getTreeViewer());
 		fSelectAllAction = new SelectAllAction(getTreeViewer());
+		fPropertiesAction = new PropertyDialogAction(getSite(), getTreeViewer());
+
 		updateActions();
 	}
 
@@ -88,6 +101,7 @@ public class ZipOutlinePage extends ContentOutlinePage {
 		fDeleteAction.setEnabled(!getSelection().isEmpty());
 		getSite().getActionBars().setGlobalActionHandler(ActionFactory.DELETE.getId(), fDeleteAction);
 		getSite().getActionBars().setGlobalActionHandler(ActionFactory.SELECT_ALL.getId(), fSelectAllAction);
+		getSite().getActionBars().setGlobalActionHandler(ActionFactory.PROPERTIES.getId(), fPropertiesAction);
 	}
 
 	private void initDragAndDrop(StructuredViewer viewer) {
@@ -98,6 +112,15 @@ public class ZipOutlinePage extends ContentOutlinePage {
         viewer.addDropSupport(ops | DND.DROP_DEFAULT, transfers, new ZipEditorDropAdapter(viewer));
 	}
 	
+	private void contextMenuAboutToShow(IContributionManager manager) {
+		manager.add(fAddAction);
+		manager.add(fExtractAction);
+		manager.add(new Separator());
+		manager.add(fDeleteAction);
+		manager.add(new Separator());
+		manager.add(fPropertiesAction);
+	}
+
 	public void makeContributions(IMenuManager menuManager, IToolBarManager toolBarManager,
 			IStatusLineManager statusLineManager) {
 		toolBarManager.add(new SortAction(getTreeViewer(), PreferenceConstants.PREFIX_OUTLINE));
