@@ -388,7 +388,7 @@ public class OpenWithMenu extends ContributionItem {
 			boolean empty = fTableViewer.getSelection().isEmpty();
 			if (getButton(IDialogConstants.OK_ID) != null)
 				getButton(IDialogConstants.OK_ID).setEnabled(!empty);
-			fAddAction.setEnabled(fAddButton.isEnabled() && !empty);
+			fAddAction.setEnabled(fAddButton.isEnabled());
 			fEditAction.setEnabled(fAddButton.isEnabled() && !empty);
 			fRemoveAction.setEnabled(fAddButton.isEnabled() && !empty);
 		}
