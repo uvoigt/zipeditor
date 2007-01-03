@@ -6,8 +6,12 @@ package zipeditor.model;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.zip.GZIPInputStream;
 
 public class TarNode extends Node {
 	private class EntryStream extends InputStream {
@@ -16,9 +20,17 @@ public class TarNode extends Node {
 			for (TarEntry e = null; (e = in.getNextEntry()) != null; ) {
 				if (!entry.equals(e))
 					continue;
-				ByteArrayOutputStream out = new ByteArrayOutputStream();
-				in.copyEntryContents(out);
-				this.in = new ByteArrayInputStream(out.toByteArray());
+				if (entry.getSize() < 10000000) {
+					ByteArrayOutputStream out = new ByteArrayOutputStream();
+					in.copyEntryContents(out);
+					this.in = new ByteArrayInputStream(out.toByteArray());
+				} else {
+					File tmpFile = new File(model.getTempDir(), Integer.toString((int) System.currentTimeMillis()));
+					FileOutputStream out = new FileOutputStream(tmpFile);
+					in.copyEntryContents(out);
+					out.close();
+					this.in = new FileInputStream(tmpFile);
+				}
 				break;
 			}
 			in.close();
@@ -34,9 +46,9 @@ public class TarNode extends Node {
 
 	private TarEntry tarEntry;
 	private int groupId;
-	private String groupName;
+	private String groupName = new String();
 	private int userId;
-	private String userName;
+	private String userName = new String();
 	private int mode;
 
 	public TarNode(ZipModel model, TarEntry entry, String name, boolean isFolder) {
@@ -83,10 +95,27 @@ public class TarNode extends Node {
 		if (in != null)
 			return in;
 		if (tarEntry != null)
-			return new EntryStream(tarEntry, model.getTarFile());
+			return new EntryStream(tarEntry, getTarFile());
 		return null;
 	}
 	
+	private TarInputStream getTarFile() throws IOException {
+		switch (model.getType()) {
+		default:
+		case ZipModel.TAR:
+			return new TarInputStream(new FileInputStream(model.getZipPath()));
+		case ZipModel.TARGZ:
+			return new TarInputStream(new GZIPInputStream(new FileInputStream(model.getZipPath())));
+		}
+	}
+	
+	public void reset() {
+		super.reset();
+		size = tarEntry.getSize();
+		if (tarEntry.getModTime() != null)
+			time = tarEntry.getModTime().getTime();
+	}
+
 	public Node create(ZipModel model, String name, boolean isFolder) {
 		return new TarNode(model, name, isFolder);
 	}
