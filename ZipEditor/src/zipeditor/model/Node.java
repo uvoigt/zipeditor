@@ -13,18 +13,27 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.PlatformObject;
+import org.eclipse.ui.model.IWorkbenchAdapter;
 
 import zipeditor.ZipEditorPlugin;
 
-public abstract class Node {
+public class Node extends PlatformObject {
 	protected Node parent;
 	protected List children;
-	protected boolean isFolder;
+	protected int state;
 	protected String name;
 	protected long time;
 	protected long size;
 	protected File file;
 	protected ZipModel model;
+	
+	private String path;
+	private String fullPath;
+	
+	private final static int FOLDER = 0x01;
+	private final static int MODIFIED = 0x02;
+	private final static int ADDED = 0x04;
 
 	public Node(ZipModel model, String name, boolean isFolder) {
 		if (model == null)
@@ -33,7 +42,7 @@ public abstract class Node {
 			throw new NullPointerException();
 		this.model = model;
 		this.name = name;
-		this.isFolder = isFolder;
+		state |= isFolder ? FOLDER : 0;
 		this.time = System.currentTimeMillis();			
 	}
 
@@ -51,26 +60,35 @@ public abstract class Node {
 
 	public void setName(String name) {
 		this.name = name;
+		state |= MODIFIED;
 		model.setDirty(true);
 		model.notifyListeners();
 	}
 
 	public String getPath() {
-		if (parent == null)
-			return ""; //$NON-NLS-1$
-		StringBuffer sb = new StringBuffer(parent.getPath());
-		if (children != null)
-			sb.append(name);
-		if (isFolder)
-			sb.append('/');
-		return sb.toString();
+		if (path == null) {
+			if (parent == null) {
+				path = new String();
+			} else {
+				StringBuffer sb = new StringBuffer(parent.getPath());
+				if (children != null)
+					sb.append(name);
+				if (isFolder())
+					sb.append('/');
+				path = sb.toString();
+			}
+		}
+		return path;
 	}
 
 	public String getFullPath() {
-		StringBuffer sb = new StringBuffer(getPath());
-		if (!isFolder)
-			sb.append(name);
-		return sb.toString();
+		if (fullPath == null) {
+			StringBuffer sb = new StringBuffer(getPath());
+			if (!isFolder())
+				sb.append(name);
+			fullPath = sb.toString();
+		}
+		return fullPath;
 	}
 
 	public String getType() {
@@ -79,7 +97,15 @@ public abstract class Node {
 	}
 
 	public boolean isFolder() {
-		return isFolder;
+		return (state & FOLDER) > 0;
+	}
+	
+	public boolean isModified() {
+		return (state & MODIFIED) > 0;
+	}
+
+	public boolean isAdded() {
+		return (state & ADDED) > 0;
 	}
 
 	public long getTime() {
@@ -142,7 +168,8 @@ public abstract class Node {
 	public void add(File file, IProgressMonitor monitor) throws IllegalArgumentException {
 		Node node = create(model, file.getName(), file.isDirectory());
 		add(node);
-		if (node.isFolder) {
+		node.state |= ADDED;
+		if (node.isFolder()) {
 			File[] files = file.listFiles();
 			if (files != null) {
 				for (int i = 0; i < files.length; i++) {
@@ -152,6 +179,7 @@ public abstract class Node {
 					node.add(files[i], monitor);
 				}
 			}
+			node.state |= MODIFIED;
 		} else {
 			node.updateContent(file);
 			monitor.worked(1);
@@ -162,7 +190,9 @@ public abstract class Node {
 		this.file = file;
 		time = System.currentTimeMillis();
 		size = file.length();
+		state |= MODIFIED;
 		model.setDirty(true);
+		model.notifyListeners();
 	}
 
 	public void remove(Node node) {
@@ -175,11 +205,24 @@ public abstract class Node {
 		model.setDirty(true);
 		model.notifyListeners();
 	}
+	
+	public void reset() {
+		model.deleteFile(file);
+		file = null;
+		state &= -1 ^ MODIFIED;
+		model.notifyListeners();
+	}
 
-	public abstract Node create(ZipModel model, String name, boolean isFolder);
+	public Node create(ZipModel model, String name, boolean isFolder) {
+		return new Node(model, name, isFolder);
+	}
 
 	public String toString() {
 		return getFullPath();
 	}
 
+	public Object getAdapter(Class adapter) {
+		return IWorkbenchAdapter.class == adapter ?
+				new NodeWorkbenchAdapter(this) : super.getAdapter(adapter);
+	}
 }
