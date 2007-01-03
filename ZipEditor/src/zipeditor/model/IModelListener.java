@@ -8,15 +8,28 @@ import java.util.EventListener;
 
 public interface IModelListener extends EventListener {
 	public class ModelChangeEvent {
-		private ZipModel fModel;
+		private int fModelState;
+		private Node fModelRoot;
 		
 		public ModelChangeEvent(ZipModel model) {
-			super();
-			fModel = model;
+			fModelState = model.getState();
+			fModelRoot = model.getRoot();
 		}
 
-		public ZipModel getModel() {
-			return fModel;
+		public boolean isInitStarted() {
+			return (fModelState & ZipModel.INIT_STARTED) > 0;
+		}
+		
+		public boolean isInitFinished() {
+			return (fModelState & ZipModel.INIT_FINISHED) > 0;
+		}
+		
+		public boolean isInitializing() {
+			return (fModelState & ZipModel.INITIALIZING) > 0;
+		}
+		
+		public Node getModelRoot() {
+			return fModelRoot;
 		}
 	};
 
