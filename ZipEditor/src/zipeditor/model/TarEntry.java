@@ -513,6 +513,10 @@ public class TarEntry implements TarConstants {
     public void setSize(long size) {
         this.size = size;
     }
+    
+    int getCheckSum() {
+		return checkSum;
+	}
 
 
     /**
