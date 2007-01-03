@@ -24,7 +24,6 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.content.IContentDescription;
 import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.viewers.ISelection;
@@ -47,19 +46,17 @@ import zipeditor.operations.OpenFileOperation;
 
 public class Utils {
 	private static class ExtractAndOpenJob extends Job {
-		private ZipEditor fEditor;
 		private Node[] fNodes;
 
-		public ExtractAndOpenJob(ZipEditor editor, Node[] nodes) {
+		public ExtractAndOpenJob(Node[] nodes) {
 			super(Messages.getString("Utils.0")); //$NON-NLS-1$
 			fNodes = nodes;
-			fEditor = editor;
 		}
 		
 		protected IStatus run(IProgressMonitor monitor) {
 			monitor.beginTask(Messages.getString("Utils.1"), fNodes.length); //$NON-NLS-1$
 			try {
-				internalOpenFilesFromNodes(fEditor, fNodes, monitor);
+				internalOpenFilesFromNodes(fNodes, monitor);
 			} finally {
 				monitor.done();
 			}
@@ -104,14 +101,14 @@ public class Utils {
 		return fileStore.getChild(file.getName());
 	}
 	
-	public static void openFilesFromNodes(ZipEditor editor, Node[] nodes) {
+	public static void openFilesFromNodes(Node[] nodes) {
 		if (nodes == null || nodes.length == 0)
 			return;
-		ExtractAndOpenJob job = new ExtractAndOpenJob(editor, nodes);
+		ExtractAndOpenJob job = new ExtractAndOpenJob(nodes);
 		job.schedule();
 	}
-	
-	private static void internalOpenFilesFromNodes(ZipEditor editor, Node[] nodes, IProgressMonitor monitor) {
+
+	private static void internalOpenFilesFromNodes(Node[] nodes, IProgressMonitor monitor) {
 		File tmpDir = nodes[0].getModel().getTempDir();
 		ExtractOperation extractOperation = new ExtractOperation();
 		OpenFileOperation openFileOperation = new OpenFileOperation();
@@ -119,9 +116,8 @@ public class Utils {
 			Node node = nodes[i];
 			monitor.subTask(node.getName());
 			File file = extractOperation.extract(node, tmpDir, true, monitor);
-			if (openFileOperation.execute(file) != null)
-				if (editor != null)
-					editor.addFileMonitor(file, node);
+			openFileOperation.execute(file);
+			ZipEditorPlugin.getDefault().addFileMonitor(file, node);
 			monitor.worked(1);
 		}
 	}
@@ -256,27 +252,6 @@ public class Utils {
 		return true;
 	}
 	
-	public static boolean allElementsAreArchives(IStructuredSelection selection) {
-		for (Iterator it = selection.iterator(); it.hasNext();) {
-			Object element = it.next();
-			if (!(element instanceof IFile))
-				return false;
-			IContentDescription contentDescription = null;
-			try {
-				contentDescription = ((IFile) element).getContentDescription();
-			} catch (CoreException e) {
-				ZipEditorPlugin.log(e);
-			}
-			IContentType contentType = contentDescription != null ? contentDescription.getContentType() : null;
-			if (contentType == null)
-				return false;
-			if (!"ZipEditor.zipfile".equals(contentType.getId())) //$NON-NLS-1$
-					return false;
-			
-		}
-		return true;
-	}
-
 	public static Node[] getSelectedNodes(ISelection selection) {
 		if (!(selection instanceof IStructuredSelection))
 			return new Node[0];

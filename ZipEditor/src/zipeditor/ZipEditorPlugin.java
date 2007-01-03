@@ -4,6 +4,7 @@
  */
 package zipeditor;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -11,10 +12,15 @@ import java.util.Map;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
+
+import zipeditor.model.Node;
+import zipeditor.model.ZipModel;
 
 /**
  * The activator class controls the plug-in life cycle
@@ -31,6 +37,8 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 
 	private Map images;
 	
+	private Map fModelToFileNode = new HashMap();
+
 	/**
 	 * The constructor
 	 */
@@ -59,6 +67,8 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 			images.clear();
 			images = null;
 		}
+		fModelToFileNode.clear();
+		fModelToFileNode = null;
 		super.stop(context);
 	}
 
@@ -71,6 +81,45 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 		return plugin;
 	}
 	
+	public void addFileMonitor(File file, Node node) {
+		Map fileToNode = (Map) fModelToFileNode.get(node.getModel());
+		if (fileToNode == null)
+			fModelToFileNode.put(node.getModel(), fileToNode = new HashMap());
+		fileToNode.put(file, new Object[] { node, new Long(System.currentTimeMillis()) });
+	}
+	
+	public void removeFileMonitors(ZipModel model) {
+		Map fileToNode = (Map) fModelToFileNode.remove(model);
+		if (fileToNode != null)
+			fileToNode.clear();
+	}
+
+	public void checkFilesForModification(ZipModel model) {
+		Map fileToNode = (Map) fModelToFileNode.get(model);
+		if (fileToNode == null)
+			return;
+		for (Iterator it = fileToNode.keySet().iterator(); it.hasNext(); ) {
+			File file = (File) it.next();
+			Object[] value = (Object[]) fileToNode.get(file);
+			long creationTime = ((Long) value[1]).longValue();
+			if (file.lastModified() > creationTime) {
+				value[1] = new Long(file.lastModified());
+				indicateModification(fileToNode, file, (Node) value[0]);
+			}
+		}
+	}
+
+	private void indicateModification(Map fileToNode, File file, Node node) {
+		if (MessageDialog.openQuestion(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
+				Messages.getString("ZipEditor.1"), Messages.getFormattedString("ZipEditor.0", //$NON-NLS-1$ //$NON-NLS-2$
+						new Object[] { file.getName(), node.getModel().getZipPath().getName() }))) {
+			node.updateContent(file);
+		} else {
+			node.reset();
+			fileToNode.remove(file);
+		}
+	}
+
 	public static void log(Object message) {
 		IStatus status = null;
 		Object debugMessage = message;
