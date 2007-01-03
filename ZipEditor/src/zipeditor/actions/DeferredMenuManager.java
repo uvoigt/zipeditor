@@ -89,7 +89,7 @@ public class DeferredMenuManager extends MenuManager {
 		});
 	}
 
-	public static void addToMenu(IMenuManager parentMenu, String menuText, String menuId, MenuJob job) {
+	public static void addToMenu(IMenuManager parentMenu, String parentId, String menuText, String menuId, MenuJob job) {
 		Assert.isNotNull(parentMenu);
 		Assert.isNotNull(job);
 		DeferredMenuManager menuFromRunningJob = getMenuFromRunningJob(job.fFamily, job.fProperty); 
@@ -102,7 +102,10 @@ public class DeferredMenuManager extends MenuManager {
 			job.fMenuManager = subMenu;
 			job.schedule();
 		}
-		parentMenu.add(subMenu);
+		if (parentId != null && parentMenu.find(parentId) != null)
+			parentMenu.appendToGroup(parentId, subMenu);
+		else
+			parentMenu.add(subMenu);
 	}
 	
 	public static boolean isRunning(Object jobFamily, Object propertyValue) {
