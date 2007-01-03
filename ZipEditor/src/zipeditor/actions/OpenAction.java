@@ -17,11 +17,10 @@ public class OpenAction extends EditorAction {
 		setToolTipText(ActionMessages.getString("OpenAction.1")); //$NON-NLS-1$
 		setImageDescriptor(PlatformUI.getWorkbench().getSharedImages().
 				getImageDescriptor(ISharedImages.IMG_OBJ_FILE));
-		fEditor = editor;
 	}
 
 	public void run() {
-		Utils.openFilesFromNodes(fEditor, getSelectedNodes());
+		Utils.openFilesFromNodes(getSelectedNodes());
 	}
 
 }
