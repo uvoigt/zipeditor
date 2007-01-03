@@ -5,7 +5,10 @@
 package zipeditor;
 
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 
+import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.viewers.ITableLabelProvider;
@@ -21,14 +24,19 @@ import zipeditor.model.ZipNode;
 import zipeditor.model.ZipNodeProperty;
 
 public class ZipLabelProvider extends LabelProvider implements ITableLabelProvider {
-	private static final DateFormat DATE_FORMAT = DateFormat.getDateTimeInstance();
+	private static final DateFormat DATE_FORMAT = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss"); //$NON-NLS-1$
 	private int[] fOrder;
 
 	public String getText(Object element) {
-		return element instanceof Node ? ((Node) element).getName() : super
+		return element instanceof Node ? getNodeText((Node) element) : super
 				.getText(element);
 	}
 	
+	private String getNodeText(Node node) {
+		String prefix = node.isAdded() ? "*" : node.isModified() ? ">" : new String(); //$NON-NLS-1$ //$NON-NLS-2$
+		return prefix + node.getName();
+	}
+
 	public Image getImage(Object element) {
 		if (element instanceof Node) {
 			Node node = (Node) element;
@@ -67,10 +75,11 @@ public class ZipLabelProvider extends LabelProvider implements ITableLabelProvid
 		default:
 			return getText(element);
 		case NodeProperty.NAME:
-			return node.getName();
+			return getNodeText(node);
 		case NodeProperty.TYPE:
 			Program program = Program.findProgram(node.getType());
-			return program != null ? program.getName() : Messages.getFormattedString("ZipNodePropertyPage.0", node.getType()); //$NON-NLS-1$
+			IContentType contentType = Platform.getContentTypeManager().findContentTypeFor(node.getName());
+			return contentType != null ? contentType.getName() : program != null ? program.getName() : Messages.getFormattedString("ZipNodePropertyPage.0", node.getType()); //$NON-NLS-1$
 		case NodeProperty.DATE:
 			return formatDate(node.getTime());
 		case NodeProperty.SIZE:
