@@ -6,7 +6,6 @@ package zipeditor.operations;
 
 import java.io.File;
 
-import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorInput;
@@ -22,10 +21,9 @@ import zipeditor.ZipEditorPlugin;
 public class OpenFileOperation {
 
 	public IEditorPart execute(File file) {
-		IFileStore fileStore = Utils.getFileStore(file);
-		if (!fileStore.fetchInfo().isDirectory() && fileStore.fetchInfo().exists()) {
-			final IEditorInput input = Utils.createEditorInput(fileStore);
-			final String editorId = Utils.getEditorId(fileStore);
+		if (!file.isDirectory() && file.exists()) {
+			final IEditorInput input = Utils.createEditorInput(file);
+			final String editorId = Utils.getEditorId(file);
 			if (Utils.isUIThread()) {
 				return openEditor(input, editorId);
 			} else {

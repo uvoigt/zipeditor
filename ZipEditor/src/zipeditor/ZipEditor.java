@@ -5,6 +5,7 @@
 package zipeditor;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,8 +13,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.eclipse.core.filesystem.EFS;
-import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceChangeEvent;
@@ -25,7 +24,6 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
@@ -79,13 +77,13 @@ import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorSite;
 import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.IPathEditorInput;
-import org.eclipse.ui.IStorageEditorInput;
 import org.eclipse.ui.IViewSite;
 import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.actions.ActionContext;
 import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.dialogs.SaveAsDialog;
+import org.eclipse.ui.editors.text.ILocationProvider;
 import org.eclipse.ui.part.EditorPart;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.progress.UIJob;
@@ -216,7 +214,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 	private ZipModel fModel;
 	private ZipOutlinePage fOutlinePage;
 	private ISelectionChangedListener fOutlineSelectionChangedListener;
-	private DisposeListener fTableDisposeListener = new DisposeListener() {
+	private DisposeListener fDisposeListener = new DisposeListener() {
 		public void widgetDisposed(DisposeEvent e) {
 			storeTableColumnPreferences();
 		}
@@ -301,9 +299,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		} catch (Exception e) {
 			ZipEditorPlugin.log(e);
 		}
-		IFileStore fileStore = EFS.getLocalFileSystem().getStore(new Path(file.getParentFile().getAbsolutePath()));
-		fileStore = fileStore.getChild(file.getName());
-		return new LocalFileEditorInput(fileStore);
+		return new LocalFileEditorInput(file);
 	}
 
 	public void doSaveAs() {
@@ -408,11 +404,11 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 			} catch (CoreException e) {
 				throw new RuntimeException(e);
 			}
-		} else if (input instanceof IPathEditorInput && input instanceof IStorageEditorInput) {
-			path = ((IPathEditorInput) input).getPath();
+		} else if (input instanceof ILocationProvider) {
+			path = ((ILocationProvider) input).getPath(input);
 			try {
-				in = ((IStorageEditorInput) input).getStorage().getContents();
-			} catch (CoreException e) {
+				in = new FileInputStream(path.toFile());
+			} catch (IOException e) {
 				ZipEditorPlugin.log(e);
 			}
 		}
@@ -451,6 +447,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		ToolBarManager bar = new ToolBarManager(SWT.HORIZONTAL | SWT.FLAT);
 		Control control = bar.createControl(parent);
 		control.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		control.addDisposeListener(fDisposeListener);
 		return bar;
 	}
 	
@@ -473,7 +470,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		Control[] children = parent.getChildren();
 		for (int i = 0; i < children.length; i++) {
 			if (!savePreferences)
-				children[i].removeDisposeListener(fTableDisposeListener);
+				children[i].removeDisposeListener(fDisposeListener);
 			children[i].dispose();
 		}
 		createContent(parent, mode);
@@ -482,7 +479,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		fZipViewer.getControl().setFocus();
 		((ZipContentProvider) fZipViewer.getContentProvider()).disposeModel(true);
 	}
-	
+
 	private StructuredViewer createZipViewer(Composite parent, int mode) {
 		StructuredViewer viewer = null;
 		switch (mode) {
@@ -623,7 +620,6 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		Table table = viewer.getTable();
 		table.setHeaderVisible(true);
 		createTableColumns(table);
-		table.addDisposeListener(fTableDisposeListener);
 		return viewer;
 	}
 	
@@ -650,10 +646,9 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 	private TableColumn createTableColumn(Table table, String text, int colType, int sortColumn, int sortDirection) {
 		int style = colType == ZipNodeProperty.PACKED_SIZE || colType == NodeProperty.SIZE ? SWT.RIGHT : SWT.LEFT;
 		TableColumn column = new TableColumn(table, style);
+		column.setImage(getSortImage(sortColumn == colType ? sortDirection : SWT.NONE));
 		column.setText(text);
 		column.setData(new Integer(colType));
-		column.setMoveable(true);
-		column.setImage(getSortImage(sortColumn == colType ? sortDirection : SWT.NONE));
 		column.addSelectionListener(new SelectionAdapter() {
 			public void widgetSelected(SelectionEvent e) {
 				handleSortColumnSelected((TableColumn) e.widget);
@@ -668,12 +663,12 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		Table table = ((TableViewer) fZipViewer).getTable();
 		IPreferenceStore store = getPreferenceStore();
 		TableColumn[] columns = table.getColumns();
-		int[] order = table.getColumnOrder();
+		int[] order = new int[columns.length];
 		for (int i = 0; i < columns.length; i++) {
 			store.setValue(PreferenceConstants.SORT_COLUMN_WIDTH + columns[i].getData(), columns[i].getWidth());
 		}
 		for (int i = 0; i < order.length; i++) {
-			order[i] = ((Integer) columns[order[i]].getData()).intValue();
+			order[i] = ((Integer) columns[i].getData()).intValue();
 		}
 		store.setValue(PreferenceConstants.VISIBLE_COLUMNS, PreferenceInitializer.join(order, PreferenceConstants.COLUMNS_SEPARATOR));
 	}

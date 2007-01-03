@@ -15,7 +15,6 @@ import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionGroup;
-import org.eclipse.ui.navigator.ICommonActionConstants;
 
 import zipeditor.Utils;
 import zipeditor.ZipEditor;
@@ -31,9 +30,8 @@ public class OpenActionGroup extends ActionGroup {
 
 	public OpenActionGroup(ZipEditor editor) {
 		fOpenAction = new OpenAction(editor);
-		fOpenAction.setActionDefinitionId(ICommonActionConstants.OPEN);
 	}
-	
+
 	public void dispose() {
 		fDisposed = true;
 		super.dispose();
@@ -50,7 +48,7 @@ public class OpenActionGroup extends ActionGroup {
 			} else {
 				menu.add(fOpenAction);
 				menu.add(new GroupMarker(GROUP_OPEN_RECENTLY_USED));
-			}
+		}
 	        if (selection.size() == 1) {
 		        Object element = selection.getFirstElement();
 		        if (element instanceof Node) {
@@ -59,7 +57,7 @@ public class OpenActionGroup extends ActionGroup {
 		        	FileOpener fileOpener = new FileOpener(getActivePage(), node);
 		        	fillOpenWithMenu(menu, adapter, fileOpener);
 		        	fillMostRecentlyUsedItems(menu, adapter, fileOpener);
-		        }
+	}
 	        }
 		}
 	}
@@ -70,8 +68,6 @@ public class OpenActionGroup extends ActionGroup {
 	}
 	
 	public void fillActionBars(IActionBars actionBars) {
-		if (actionBars.getGlobalActionHandler(ICommonActionConstants.OPEN) == null)
-			actionBars.setGlobalActionHandler(ICommonActionConstants.OPEN, fOpenAction);
 		updateActionBars();
 	}
 	
@@ -92,7 +88,7 @@ public class OpenActionGroup extends ActionGroup {
 			if (menu.find(IWorkbenchActionConstants.MB_ADDITIONS) != null)
 				menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, subMenu);
 			else
-				menu.add(subMenu);
+        	menu.add(subMenu);
 		} else {
 			MenuJob menuJob = new MenuJob(fileAdapter, null) {
 				protected IStatus addToMenu(IProgressMonitor monitor, IMenuManager menu) {

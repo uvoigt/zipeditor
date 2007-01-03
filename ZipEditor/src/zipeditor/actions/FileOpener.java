@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.ui.IEditorDescriptor;
@@ -97,12 +96,12 @@ public class FileOpener {
 		fNode = node;
 	}
 
-	public void openFromOther(IFileStore file, Editor editor) {
+	public void openFromOther(File file, Editor editor) {
 		if (editor.getDescriptor() == null) {
 			try {
 				processCommand(file, editor);
 				addToRecentlyUsedExecutables(editor);
-				ZipEditorPlugin.getDefault().addFileMonitor(new File(file.toURI()), fNode);
+				ZipEditorPlugin.getDefault().addFileMonitor(file, fNode);
 			} catch (Exception e) {
 				ZipEditorPlugin.log(e);
 				ErrorDialog.openError(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
@@ -110,12 +109,12 @@ public class FileOpener {
 						ZipEditorPlugin.createErrorStatus(e.getClass().getName(), e));
 			}
 		} else {
-			if (!file.fetchInfo().isDirectory() && file.fetchInfo().exists()) {
+			if (!file.isDirectory() && file.exists()) {
 				IEditorInput input = Utils.createEditorInput(file);
 				String editorId = editor.getDescriptor().getId();
 				try {
 					fPage.openEditor(input, editorId);
-					ZipEditorPlugin.getDefault().addFileMonitor(new File(file.toURI()), fNode);
+					ZipEditorPlugin.getDefault().addFileMonitor(file, fNode);
 					addToRecentlyUsedExecutables(editor);
 				} catch (PartInitException e) {
 					ZipEditorPlugin.log(e);
@@ -124,7 +123,7 @@ public class FileOpener {
 		}
 	}
 
-	private void processCommand(IFileStore file, Editor editor) throws Exception {
+	private void processCommand(File file, Editor editor) throws Exception {
 		String commandString = editor.getPath();
 		commandString = replaceAll(commandString, "$p", file.toString()); //$NON-NLS-1$
 		commandString = replaceAll(commandString, "$f", file.getName()); //$NON-NLS-1$
@@ -177,7 +176,7 @@ public class FileOpener {
 			out.flush();
 			if (out.getChannel().isOpen())
 				out.close();
-			fPage.openEditor(Utils.createEditorInput(Utils.getFileStore(tmpFile)), EditorsUI.DEFAULT_TEXT_EDITOR_ID);
+			fPage.openEditor(Utils.createEditorInput(tmpFile), EditorsUI.DEFAULT_TEXT_EDITOR_ID);
 		} else {
 			Process outCommandProcess = Runtime.getRuntime().exec(outCommand);
 			BufferedOutputStream out = new BufferedOutputStream(outCommandProcess.getOutputStream());

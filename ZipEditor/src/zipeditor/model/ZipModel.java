@@ -22,9 +22,10 @@ import java.util.zip.ZipOutputStream;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.ListenerList;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.util.ListenerList;
 
 import zipeditor.Messages;
 import zipeditor.Utils;
@@ -207,15 +208,15 @@ public class ZipModel {
 						for (int count = 0; (count = zipStream.read(nulBuf)) != -1; )
 							entrySize += count;
 					} catch (Exception ignore) {
-					}
+			}
 					
-				}
+		}
 				newChild.setSize(entrySize);
 			}
 			state &= -1 ^ INIT_STARTED;
 		}
 	}
-
+	
 	private InputStream detectStream(InputStream contents) throws IOException {
 		BufferedInputStream in = new BufferedInputStream(contents);
 		switch (type = detectType(in)) {
@@ -345,7 +346,7 @@ public class ZipModel {
 		tempDir = null;
 		ZipEditorPlugin.getDefault().removeFileMonitors(this);
 	}
-	
+
 	private void deleteTempDir(final File tmpDir) {
 		if (deleteFile(tmpDir))
 			return;
@@ -356,7 +357,7 @@ public class ZipModel {
 					try {
 						Thread.sleep(2000);
 					} catch (InterruptedException e) {
-					}
+	}
 				} while (!deleteFile(tmpDir));
 				monitor.done();
 				return Status.OK_STATUS;
@@ -365,7 +366,7 @@ public class ZipModel {
 		job.setRule(ResourcesPlugin.getWorkspace().getRoot());
 		job.schedule();
 	}
-
+	
 	boolean deleteFile(File file) {
 		if (file == null)
 			return true;
@@ -395,11 +396,11 @@ public class ZipModel {
 	public Node getRoot() {
 		return root;
 	}
-	
+
 	public int getType() {
 		return type;
 	}
-	
+
 	int getState() {
 		return state;
 	}

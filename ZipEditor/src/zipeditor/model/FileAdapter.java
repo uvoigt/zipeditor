@@ -2,16 +2,14 @@ package zipeditor.model;
 
 import java.io.File;
 
-import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.NullProgressMonitor;
 
-import zipeditor.Utils;
 import zipeditor.operations.ExtractOperation;
 
 public class FileAdapter implements IAdaptable {
 	private Node fNode;
-	private IFileStore fFileStore;
+	private File fFileStore;
 	
 	public FileAdapter(Node node) {
 		if (node == null)
@@ -20,7 +18,7 @@ public class FileAdapter implements IAdaptable {
 	}
 
 	public Object getAdapter(Class adapter) {
-		if (IFileStore.class.equals(adapter)) {
+		if (File.class.equals(adapter)) {
 			if (fFileStore == null)
 				fFileStore = extractNode();
 			return fFileStore; 
@@ -41,10 +39,9 @@ public class FileAdapter implements IAdaptable {
 		return fNode.equals(((FileAdapter) obj).fNode);
 	}
 
-	private IFileStore extractNode() {
+	private File extractNode() {
 		ExtractOperation operation = new ExtractOperation();
-		File path = operation.extract(fNode, fNode.getModel().getTempDir(), true, new NullProgressMonitor());
-		return Utils.getFileStore(path);
+		return operation.extract(fNode, fNode.getModel().getTempDir(), true, new NullProgressMonitor());
 	}
 
 }

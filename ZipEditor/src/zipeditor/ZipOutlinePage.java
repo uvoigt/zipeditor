@@ -92,7 +92,7 @@ public class ZipOutlinePage extends ContentOutlinePage {
 		fExtractAction = new ExtractAction(getTreeViewer());
 		fDeleteAction = new DeleteAction(getTreeViewer());
 		fSelectAllAction = new SelectAllAction(getTreeViewer());
-		fPropertiesAction = new PropertyDialogAction(getSite(), getTreeViewer());
+		fPropertiesAction = new PropertyDialogAction(getSite().getShell(), getTreeViewer());
 
 		updateActions();
 	}

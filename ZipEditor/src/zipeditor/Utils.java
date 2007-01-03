@@ -5,19 +5,16 @@
 package zipeditor;
 
 import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import org.eclipse.core.filesystem.EFS;
-import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -96,18 +93,13 @@ public class Utils {
 		return Display.getCurrent() != null;
 	}
 	
-	public static IFileStore getFileStore(File file) {
-		IFileStore fileStore = EFS.getLocalFileSystem().getStore(new Path(file.getParentFile().getAbsolutePath()));
-		return fileStore.getChild(file.getName());
-	}
-	
 	public static void openFilesFromNodes(Node[] nodes) {
 		if (nodes == null || nodes.length == 0)
 			return;
 		ExtractAndOpenJob job = new ExtractAndOpenJob(nodes);
 		job.schedule();
 	}
-
+	
 	private static void internalOpenFilesFromNodes(Node[] nodes, IProgressMonitor monitor) {
 		File tmpDir = nodes[0].getModel().getTempDir();
 		ExtractOperation extractOperation = new ExtractOperation();
@@ -122,17 +114,17 @@ public class Utils {
 		}
 	}
 	
-	public static IEditorInput createEditorInput(IFileStore fileStore) {
+	public static IEditorInput createEditorInput(File fileStore) {
 		IFile workspaceFile = getWorkspaceFile(fileStore);
 		if (workspaceFile != null)
 			return new FileEditorInput(workspaceFile);
 		return new LocalFileEditorInput(fileStore);
 	}
 	
-	public static String getEditorId(IFileStore file) {
+	public static String getEditorId(File file) {
 		IWorkbench workbench = PlatformUI.getWorkbench();
 		IEditorRegistry editorRegistry = workbench.getEditorRegistry();
-		IEditorDescriptor descriptor = editorRegistry.getDefaultEditor(file.getName(), getContentType(file));
+		IEditorDescriptor descriptor = editorRegistry.getDefaultEditor(file.getName());
 
 		// check the OS for in-place editor (OLE on Win32)
 		if (descriptor == null && editorRegistry.isSystemInPlaceEditorAvailable(file.getName()))
@@ -148,22 +140,16 @@ public class Utils {
 		return EditorsUI.DEFAULT_TEXT_EDITOR_ID;
 	}
 
-	public static IContentType getContentType(IFileStore fileStore) {
+	public static IContentType getContentType(File fileStore) {
 		if (fileStore == null)
 			return null;
 
 		InputStream stream= null;
 		try {
-			stream = fileStore.openInputStream(EFS.NONE, null);
+			stream = new FileInputStream(fileStore);
 			return Platform.getContentTypeManager().findContentTypeFor(stream, fileStore.getName());
 		} catch (IOException e) {
 			ZipEditorPlugin.log(e);
-			return null;
-		} catch (CoreException e) {
-			// Do not log FileNotFoundException (no access)
-			if (!(e.getStatus().getException() instanceof FileNotFoundException))
-				ZipEditorPlugin.log(e);
-			
 			return null;
 		} finally {
 			try {
@@ -175,7 +161,7 @@ public class Utils {
 		}
 	}
 
-	private static IFile getWorkspaceFile(IFileStore fileStore) {
+	private static IFile getWorkspaceFile(File fileStore) {
 		IWorkspace workspace = ResourcesPlugin.getWorkspace();
 		final IFile[] files = filterNonExistentFiles(workspace.getRoot().
 				findFilesForLocation(new Path(fileStore.toURI().getPath())));

@@ -4,7 +4,8 @@
  */
 package zipeditor.actions;
 
-import org.eclipse.core.filesystem.IFileStore;
+import java.io.File;
+
 import org.eclipse.jface.action.ContributionItem;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.SWT;
@@ -47,7 +48,7 @@ public class MostRecentlyUsedMenu extends ContributionItem {
 				public void handleEvent(Event event) {
 					switch (event.type) {
 					case SWT.Selection:
-						fFileOpener.openFromOther((IFileStore) fFileAdapter.getAdapter(IFileStore.class), editor);
+						fFileOpener.openFromOther((File) fFileAdapter.getAdapter(File.class), editor);
 						break;
 					}
 				}

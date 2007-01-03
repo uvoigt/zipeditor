@@ -14,7 +14,6 @@ import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Set;
 
-import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ContributionItem;
@@ -220,7 +219,7 @@ public class OpenWithMenu extends ContributionItem {
 			fEditAction = new EditAction();
 			fRemoveAction = new RemoveAction();
 		}
-		
+
 		protected Control createContents(Composite parent) {
 			Control control = super.createContents(parent);
 			if (fSelection != null)
@@ -248,7 +247,7 @@ public class OpenWithMenu extends ContributionItem {
 			group.setLayoutData(new GridData(GridData.FILL_BOTH));
 			Button[] buttons = createRadioButtons(group);
 			fTableViewer = createTableViewer(group);
-
+			
 			Composite btnComposite = new Composite(group, SWT.NONE);
 			btnComposite.setLayout(new GridLayout(2, false));
 			btnComposite.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
@@ -318,7 +317,7 @@ public class OpenWithMenu extends ContributionItem {
 			}
 			return fInternalEditors;
 		}
-		
+
 		private TableViewer createTableViewer(Composite parent) {
 			TableViewer viewer = new TableViewer(parent, SWT.SINGLE | SWT.BORDER);
 			viewer.setContentProvider(new ArrayContentProvider());
@@ -388,7 +387,7 @@ public class OpenWithMenu extends ContributionItem {
 			boolean empty = fTableViewer.getSelection().isEmpty();
 			if (getButton(IDialogConstants.OK_ID) != null)
 				getButton(IDialogConstants.OK_ID).setEnabled(!empty);
-			fAddAction.setEnabled(fAddButton.isEnabled() && !empty);
+			fAddAction.setEnabled(fAddButton.isEnabled());
 			fEditAction.setEnabled(fAddButton.isEnabled() && !empty);
 			fRemoveAction.setEnabled(fAddButton.isEnabled() && !empty);
 		}
@@ -438,7 +437,7 @@ public class OpenWithMenu extends ContributionItem {
 			saveExecutables();
 		}
 	};
-
+	
 	private IWorkbenchPage fPage;
 	private IAdaptable fFile;
 	private IEditorRegistry registry = PlatformUI.getWorkbench().getEditorRegistry();
@@ -448,7 +447,6 @@ public class OpenWithMenu extends ContributionItem {
 	private static Editor previouslySelectedEditor;
 	private static String previouslySelectedRadio;
 	public static final String ID = PlatformUI.PLUGIN_ID + ".OpenWithMenu";//$NON-NLS-1$
-	private static final int MATCH_BOTH = IWorkbenchPage.MATCH_INPUT | IWorkbenchPage.MATCH_ID;
 
 	private static final Comparator comparer = new Comparator() {
 		private Collator collator = Collator.getInstance();
@@ -520,14 +518,14 @@ public class OpenWithMenu extends ContributionItem {
 	}
 
     public void fill(Menu menu, int index) {
-		IFileStore file = getFileResource();
+		File file = getFileResource();
 		if (file == null) {
 			return;
 		}
 
 		IEditorDescriptor defaultEditor = registry.findEditor(EditorsUI.DEFAULT_TEXT_EDITOR_ID);
 
-		Object[] editors = registry.getEditors(file.getName(), Utils.getContentType(file));
+		Object[] editors = registry.getEditors(file.getName());
 		Collections.sort(Arrays.asList(editors), comparer);
 
 		boolean defaultFound = false;
@@ -566,13 +564,13 @@ public class OpenWithMenu extends ContributionItem {
 		createChooseItem(menu, file);
 	}
 	
-	private IFileStore getFileResource() {
-		if (fFile instanceof IFileStore) {
-			return (IFileStore) fFile;
+	private File getFileResource() {
+		if (fFile instanceof File) {
+			return (File) fFile;
 		}
-		return (IFileStore) fFile.getAdapter(IFileStore.class);
+		return (File) fFile.getAdapter(File.class);
 	}
-	
+
 	private Node getNode() {
 		return (Node) (fFile instanceof Node ? fFile : fFile.getAdapter(Node.class));
 	}
@@ -582,21 +580,21 @@ public class OpenWithMenu extends ContributionItem {
 	}
 
     private void openEditor(IEditorDescriptor editor) {
-		IFileStore file = getFileResource();
+		File file = getFileResource();
 		if (file == null) {
 			return;
 		}
 		try {
 			String editorId = editor == null ? IEditorRegistry.SYSTEM_EXTERNAL_EDITOR_ID : editor.getId();
-			fPage.openEditor(Utils.createEditorInput(file), editorId, true, MATCH_BOTH);
-			ZipEditorPlugin.getDefault().addFileMonitor(new File(file.toURI()), getNode());
+			fPage.openEditor(Utils.createEditorInput(file), editorId);
+			ZipEditorPlugin.getDefault().addFileMonitor(file, getNode());
 		} catch (PartInitException e) {
 			ErrorDialog.openError(fPage.getWorkbenchWindow().getShell(),
 					ActionMessages.getString("OpenWithMenu.0"), e.getMessage(), ZipEditorPlugin.createErrorStatus(e.getMessage(), e)); //$NON-NLS-1$
 		}
 	}
 
-	private void openWithProgram(IFileStore file) {
+	private void openWithProgram(File file) {
 		ExecutableSelectionDialog dialog = new ExecutableSelectionDialog(
 				fPage.getWorkbenchWindow().getShell(), previouslySelectedEditor);
 		if (dialog.open() != Window.OK)
@@ -604,7 +602,7 @@ public class OpenWithMenu extends ContributionItem {
 		fFileOpener.openFromOther(file, previouslySelectedEditor = (Editor) dialog.getSelection());
 	}
 
-	private void createDefaultMenuItem(Menu menu, final IFileStore file) {
+	private void createDefaultMenuItem(Menu menu, final File file) {
 		final MenuItem menuItem = new MenuItem(menu, SWT.RADIO);
 		menuItem.setText(ActionMessages.getString("OpenWithMenu.1")); //$NON-NLS-1$
 
@@ -614,9 +612,8 @@ public class OpenWithMenu extends ContributionItem {
 				case SWT.Selection:
 					if (menuItem.getSelection()) {
 						try {
-							fPage.openEditor(Utils.createEditorInput(file), Utils.getEditorId(file),
-									true, MATCH_BOTH);
-							ZipEditorPlugin.getDefault().addFileMonitor(new File(file.toURI()), getNode());
+							fPage.openEditor(Utils.createEditorInput(file), Utils.getEditorId(file));
+							ZipEditorPlugin.getDefault().addFileMonitor(file, getNode());
 						} catch (PartInitException e) {
 							ErrorDialog.openError(fPage.getWorkbenchWindow().getShell(),
 									ActionMessages.getString("OpenWithMenu.2"), e.getMessage(), ZipEditorPlugin.createErrorStatus(e.getMessage(), e)); //$NON-NLS-1$
@@ -630,7 +627,7 @@ public class OpenWithMenu extends ContributionItem {
 		menuItem.addListener(SWT.Selection, listener);
 	}
 
-	private void createChooseItem(Menu menu, final IFileStore file) {
+	private void createChooseItem(Menu menu, final File file) {
 		final MenuItem menuItem = new MenuItem(menu, SWT.RADIO);
 		menuItem.setText(ActionMessages.getString("OpenWithMenu.4")); //$NON-NLS-1$
 

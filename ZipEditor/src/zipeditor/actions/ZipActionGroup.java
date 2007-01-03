@@ -55,7 +55,7 @@ public class ZipActionGroup extends ActionGroup {
 	
     private void lazilyCreateActions() {
 		if (fPropertiesAction == null)
-			fPropertiesAction = new PropertyDialogAction(fEditor.getSite(), fEditor.getViewer());
+			fPropertiesAction = new PropertyDialogAction(fEditor.getSite().getShell(), fEditor.getViewer());
 		if (fAddAction == null)
 			fAddAction = new AddAction(fEditor.getViewer());
 		if (fExtractAction == null)

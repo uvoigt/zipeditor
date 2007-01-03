@@ -89,7 +89,7 @@ public abstract class DialogAction extends ViewerAction {
 				File file = (File) element;
 				if (file.isDirectory())
 					return PlatformUI.getWorkbench().getSharedImages().getImage(ISharedImages.IMG_OBJ_FOLDER);
-				ImageDescriptor descriptor = PlatformUI.getWorkbench().getEditorRegistry().getImageDescriptor(file.getName(), null);
+				ImageDescriptor descriptor = PlatformUI.getWorkbench().getEditorRegistry().getImageDescriptor(file.getName());
 				if (descriptor != null)
 					return ZipEditorPlugin.getImage(descriptor);
 				return PlatformUI.getWorkbench().getSharedImages().getImage(ISharedImages.IMG_OBJ_FILE);

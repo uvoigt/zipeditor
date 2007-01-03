@@ -4,10 +4,11 @@
  */
 package zipeditor;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 
-import org.eclipse.core.filesystem.EFS;
-import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.resources.IStorage;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
@@ -41,17 +42,20 @@ public class LocalFileEditorInput implements IPathEditorInput, IStorageEditorInp
 	};
 
 	private class FileStorage implements IStorage {
-		private IFileStore fFileStore;
+		private File fFileStore;
 		private IPath fFullPath;
 		
-		public FileStorage(IFileStore fileStore) {
+		public FileStorage(File fileStore) {
 			Assert.isNotNull(fileStore);
-			Assert.isTrue(EFS.SCHEME_FILE.equals(fileStore.getFileSystem().getScheme()));
 			fFileStore = fileStore;
 		}
 		
 		public InputStream getContents() throws CoreException {
-			return fFileStore.openInputStream(EFS.NONE, null);
+			try {
+				return new FileInputStream(fFileStore);
+			} catch (FileNotFoundException e) {
+				throw new CoreException(ZipEditorPlugin.createErrorStatus(e.getMessage(), e));
+			}
 		}
 
 		public IPath getFullPath() {
@@ -65,7 +69,7 @@ public class LocalFileEditorInput implements IPathEditorInput, IStorageEditorInp
 		}
 
 		public boolean isReadOnly() {
-			return fFileStore.fetchInfo().getAttribute(EFS.ATTRIBUTE_READ_ONLY);
+			return !fFileStore.canWrite();
 		}
 
 		public Object getAdapter(Class adapter) {
@@ -73,20 +77,19 @@ public class LocalFileEditorInput implements IPathEditorInput, IStorageEditorInp
 		}
 	};
 
-	private IFileStore fFileStore;
+	private File fFile;
 	private WorkbenchAdapter fWorkbenchAdapter = new WorkbenchAdapter();
 	private IStorage fStorage;
 	private IPath fPath;
 	
-	public LocalFileEditorInput(IFileStore fileStore) {
+	public LocalFileEditorInput(File fileStore) {
 		Assert.isNotNull(fileStore);
-		Assert.isTrue(EFS.SCHEME_FILE.equals(fileStore.getFileSystem().getScheme()));
-		fFileStore = fileStore;
+		fFile = fileStore;
 		fWorkbenchAdapter = new WorkbenchAdapter();
 	}
 
 	public boolean exists() {
-		return fFileStore.fetchInfo().exists();
+		return fFile.exists();
 	}
 
 	public ImageDescriptor getImageDescriptor() {
@@ -94,7 +97,7 @@ public class LocalFileEditorInput implements IPathEditorInput, IStorageEditorInp
 	}
 
 	public String getName() {
-		return fFileStore.getName();
+		return fFile.getName();
 	}
 
 	public IPersistableElement getPersistable() {
@@ -102,7 +105,7 @@ public class LocalFileEditorInput implements IPathEditorInput, IStorageEditorInp
 	}
 
 	public String getToolTipText() {
-		return fFileStore.toString();
+		return fFile.toString();
 	}
 
 	public Object getAdapter(Class adapter) {
@@ -122,7 +125,7 @@ public class LocalFileEditorInput implements IPathEditorInput, IStorageEditorInp
 
     public IPath getPath() {
     	if (fPath == null)
-    		fPath = new Path(fFileStore.toURI().getPath());
+    		fPath = new Path(fFile.getAbsolutePath());
     	return fPath;
     }
 
@@ -132,7 +135,7 @@ public class LocalFileEditorInput implements IPathEditorInput, IStorageEditorInp
 
 		if (o instanceof LocalFileEditorInput) {
 			LocalFileEditorInput input = (LocalFileEditorInput) o;
-			return fFileStore.equals(input.fFileStore);
+			return fFile.equals(input.fFile);
 		}
 
         if (o instanceof IPathEditorInput) {
@@ -143,12 +146,12 @@ public class LocalFileEditorInput implements IPathEditorInput, IStorageEditorInp
 	}
 
 	public int hashCode() {
-		return fFileStore.hashCode();
+		return fFile.hashCode();
 	}
 
 	public IStorage getStorage() throws CoreException {
 		if (fStorage == null)
-			fStorage = new FileStorage(fFileStore);
+			fStorage = new FileStorage(fFile);
 		return fStorage;
 	}
 
