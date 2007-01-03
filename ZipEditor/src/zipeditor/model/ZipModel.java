@@ -16,14 +16,13 @@ import java.util.List;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.ListenerList;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 
@@ -37,6 +36,7 @@ public class ZipModel {
 	public final static int TAR = 2;
 	public final static int GZ = 3;
 	public final static int TARGZ = 4;
+	public final static int EMPTY = 99;
 
 	public final static int INIT_STARTED = 0x01;
 	public final static int INIT_FINISHED = 0x02;
@@ -46,10 +46,10 @@ public class ZipModel {
 	public static int typeFromName(String string) {
 		if (string != null) {
 			String lowerCase = string.toLowerCase();
-			if (lowerCase.endsWith(".gz")) //$NON-NLS-1$
-				return GZ;
 			if (lowerCase.endsWith(".tgz") || lowerCase.endsWith(".tar.gz")) //$NON-NLS-1$ //$NON-NLS-2$
 				return TARGZ;
+			if (lowerCase.endsWith(".gz")) //$NON-NLS-1$
+				return GZ;
 			if (lowerCase.endsWith(".tar")) //$NON-NLS-1$
 				return TAR;
 		}
@@ -60,7 +60,11 @@ public class ZipModel {
 		if (!contents.markSupported())
 			contents = new BufferedInputStream(contents);
 		try {
-			contents.mark(TarBuffer.DEFAULT_BLKSIZE);
+			contents.mark(1000000); // an entry which exceeds this limit cannot be detected
+			int count = contents.read();
+			contents.reset();
+			if (count == -1)
+				return EMPTY;
 			ZipInputStream zip = new ZipInputStream(contents);
 			if (zip.getNextEntry() != null) {
 				contents.reset();
@@ -71,7 +75,7 @@ public class ZipModel {
 				GZIPInputStream gzip = new GZIPInputStream(contents);
 				TarInputStream tar = new TarInputStream(gzip);
 				TarEntry tarEntry = tar.getNextEntry();
-				if (tarEntry != null && tar.entrySize >= 0) {
+				if (tarEntry != null && tar.entrySize >= 0 && tarEntry.getCheckSum() != 0) {
 					contents.reset();
 					return TARGZ;
 				} else {
@@ -96,43 +100,59 @@ public class ZipModel {
 	private int state;
 	private int type;
 	private File tempDir;
-	private List tempFilesToDelete;
 	private ListenerList listenerList = new ListenerList();
-	private Job initJob;
 	
 	public ZipModel(File path, final InputStream inputStream) {
 		zipPath = path;
 		state |= INITIALIZING;
 		if (path.length() >= 10000000) {
-			initJob = new Job(Messages.getString("ZipModel.0")) { //$NON-NLS-1$
-				protected IStatus run(IProgressMonitor monitor) {
-					monitor.beginTask(Messages.getString("ZipModel.1"), IProgressMonitor.UNKNOWN); //$NON-NLS-1$
-					initialize(inputStream, monitor);
-					monitor.done();
-					initJob = null;
-					return Status.OK_STATUS;
+			Thread initThread = new Thread(Messages.getFormattedString("ZipModel.0", path.getName())) { //$NON-NLS-1$
+				public void run() {
+					initialize(inputStream);
 				}
 			};
-			initJob.schedule();
+			initThread.start();
 		} else {
-			initialize(inputStream, new NullProgressMonitor());
+			initialize(inputStream);
 		}
 	}
 	
-	private void initialize(InputStream inputStream, IProgressMonitor monitor) {
+	private void initialize(InputStream inputStream) {
 		long time = System.currentTimeMillis();
 		InputStream zipStream = inputStream;
 		try {
 			zipStream = detectStream(inputStream);
 		} catch (Exception ignore) {
 		}
+		try {
+			root = zipStream instanceof ZipInputStream ? new ZipNode(this, new String(), true) :
+				zipStream instanceof TarInputStream ? (Node) new TarNode(this, new String(), true)
+						: new GzipNode(this, new String(), true);
+			readStream(zipStream);
+		} finally {
+			if (zipStream != null) {
+				try {
+					zipStream.close();
+				} catch (IOException e) {
+					ZipEditorPlugin.log(e);
+				}
+			}
+			state &= -1 ^ INITIALIZING;
+			state |= INIT_FINISHED;
+			notifyListeners();
+			state &= -1 ^ INIT_FINISHED;
+			if (ZipEditorPlugin.DEBUG)
+				System.out.println(zipPath + " initialized in " + (System.currentTimeMillis() - time) + "ms"); //$NON-NLS-1$ //$NON-NLS-2$
+		}
+	}
+	
+	private void readStream(InputStream zipStream) {
 		ZipEntry zipEntry = null;
 		TarEntry tarEntry = null;
-		root = new ZipNode(this, "", true); //$NON-NLS-1$
 		state |= INIT_STARTED;
 		boolean isGzipStream = zipStream instanceof GZIPInputStream;
 		while (true) {
-			if (monitor.isCanceled()) {
+			if (!isInitializing()) {
 				state |= DIRTY;
 				break;
 			}
@@ -162,7 +182,7 @@ public class ZipModel {
 				Node parent = node != null ? node : root;
 				node = parent.getChildByName(pathSeg, false);
 				if (node == null)
-					parent.add(node = new ZipNode(this, pathSeg, true));
+					parent.add(node = parent.create(this, pathSeg, true));
 			}
 			boolean isFolder = entryName.endsWith("/") || entryName.endsWith("\\") || //$NON-NLS-1$ //$NON-NLS-2$
 					(zipEntry != null && zipEntry.isDirectory() || tarEntry != null && tarEntry.isDirectory());
@@ -180,25 +200,22 @@ public class ZipModel {
 						ZipEditorPlugin.log(e);
 					}
 				}
-				newChild.setSize(zipEntry != null ? zipEntry.getSize() : tarEntry != null ? tarEntry.getSize() : 0);
+				long entrySize = zipEntry != null ? zipEntry.getSize() : tarEntry != null ? tarEntry.getSize() : 0;
+				if (isGzipStream) {
+					byte[] nulBuf = new byte[8000];
+					try {
+						for (int count = 0; (count = zipStream.read(nulBuf)) != -1; )
+							entrySize += count;
+					} catch (Exception ignore) {
+					}
+					
+				}
+				newChild.setSize(entrySize);
 			}
 			state &= -1 ^ INIT_STARTED;
 		}
-		if (zipStream != null) {
-			try {
-				zipStream.close();
-			} catch (IOException e) {
-				ZipEditorPlugin.log(e);
-			}
-		}
-		state &= -1 ^ INITIALIZING;
-		state |= INIT_FINISHED;
-		notifyListeners();
-		state &= -1 ^ INIT_FINISHED;
-		if (ZipEditorPlugin.DEBUG)
-			System.out.println(zipPath + " initialized in " + (System.currentTimeMillis() - time) + "ms"); //$NON-NLS-1$ //$NON-NLS-2$
 	}
-	
+
 	private InputStream detectStream(InputStream contents) throws IOException {
 		BufferedInputStream in = new BufferedInputStream(contents);
 		switch (type = detectType(in)) {
@@ -315,35 +332,43 @@ public class ZipModel {
 	}
 	
 	protected void notifyListeners() {
-//System.out.println("ZipModel.notifyListeners(): state=" + state);
 		Object[] listeners = listenerList.getListeners();
+		ModelChangeEvent event = new ModelChangeEvent(this);
 		for (int i = 0; i < listeners.length; i++) {
-			((IModelListener) listeners[i]).modelChanged(new ModelChangeEvent(this));
+			((IModelListener) listeners[i]).modelChanged(event);
 		}
 	}
 
 	public void dispose() {
-		if (initJob != null)
-			initJob.cancel();
-		if (tempFilesToDelete != null) {
-			for (int i = 0, n = tempFilesToDelete.size(); i < n; i++) {
-				deleteFile(((File) tempFilesToDelete.get(i)));
-			}
-			tempFilesToDelete.clear();
-			tempFilesToDelete = null;
-		}
+		state &= -1 ^ INITIALIZING;
+		deleteTempDir(tempDir);
 		tempDir = null;
-	}
-
-	public void deleteFileOnDispose(File file) {
-		if (file == null)
-			return;
-		if (tempFilesToDelete == null)
-			tempFilesToDelete = new ArrayList();
-		tempFilesToDelete.add(file);
+		ZipEditorPlugin.getDefault().removeFileMonitors(this);
 	}
 	
-	private void deleteFile(File file) {
+	private void deleteTempDir(final File tmpDir) {
+		if (deleteFile(tmpDir))
+			return;
+		Job job = new Job("Deleting temporary directory") { //$NON-NLS-1$
+			protected IStatus run(IProgressMonitor monitor) {
+				monitor.beginTask("Waiting for accessing tasks to be finished", IProgressMonitor.UNKNOWN); //$NON-NLS-1$
+				do {
+					try {
+						Thread.sleep(2000);
+					} catch (InterruptedException e) {
+					}
+				} while (!deleteFile(tmpDir));
+				monitor.done();
+				return Status.OK_STATUS;
+			}
+		};
+		job.setRule(ResourcesPlugin.getWorkspace().getRoot());
+		job.schedule();
+	}
+
+	boolean deleteFile(File file) {
+		if (file == null)
+			return true;
 		if (file.isDirectory()) {
 			File[] files = file.listFiles();
 			if (files != null) {
@@ -352,8 +377,10 @@ public class ZipModel {
 				}
 			}
 		}
-		if (!file.delete())
+		boolean success = file.delete();
+		if (!success)
 			System.out.println("Couldn't delete " + file); //$NON-NLS-1$
+		return success;
 	}
 
 	public File getTempDir() {
@@ -361,7 +388,6 @@ public class ZipModel {
 			File sysTmpDir = new File(System.getProperty("java.io.tmpdir")); //$NON-NLS-1$
 			tempDir = new File(sysTmpDir, "zip" + (int) System.currentTimeMillis()); //$NON-NLS-1$
 			tempDir.mkdirs();
-			deleteFileOnDispose(tempDir);
 		}
 		return tempDir;
 	}
@@ -369,17 +395,17 @@ public class ZipModel {
 	public Node getRoot() {
 		return root;
 	}
+	
+	public int getType() {
+		return type;
+	}
+	
+	int getState() {
+		return state;
+	}
 
 	public boolean isInitializing() {
 		return (state & INITIALIZING) > 0;
-	}
-
-	public boolean isInitStarted() {
-		return (state & INIT_STARTED) > 0;
-	}
-
-	public boolean isInitFinished() {
-		return (state & INIT_FINISHED) > 0;
 	}
 
 	public boolean isDirty() {
@@ -392,20 +418,6 @@ public class ZipModel {
 				state |= DIRTY;
 		} else {
 			state &= -1 ^ DIRTY;
-		}
-	}
-
-	public ZipFile getZipFile() throws IOException {
-		return new ZipFile(zipPath);
-	}
-	
-	public TarInputStream getTarFile() throws IOException {
-		switch (type) {
-		default:
-		case TAR:
-			return new TarInputStream(new FileInputStream(zipPath));
-		case TARGZ:
-			return new TarInputStream(new GZIPInputStream(new FileInputStream(zipPath)));
 		}
 	}
 
