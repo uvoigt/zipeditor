@@ -17,11 +17,13 @@ import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.Viewer;
 
 import zipeditor.model.Node;
+import zipeditor.model.ZipContentDescriber;
 import zipeditor.model.ZipModel;
 
 public class ZipContentProvider implements ITreeContentProvider {
 	private int fMode = PreferenceConstants.VIEW_MODE_TREE;
 	private Map fModels = new HashMap();
+	private boolean fDisposeModel = true;
 
 	public ZipContentProvider() {
 	}
@@ -63,7 +65,14 @@ public class ZipContentProvider implements ITreeContentProvider {
 		if (!isForUs(file))
 			return new Object[0];
 		try {
-			return getNodeChildren(getModel(file).getRoot());
+			ZipModel model = getModel(file);
+			while (model.isInitializing()) {
+				try {
+					Thread.sleep(100);
+				} catch (Exception ignore) {
+				}
+			}
+			return getNodeChildren(model.getRoot());
 		} catch (CoreException e) {
 			ZipEditorPlugin.log(e);
 			return new Object[0];
@@ -92,9 +101,15 @@ public class ZipContentProvider implements ITreeContentProvider {
 	}
 
 	public void dispose() {
+		disposeModels();
+	}
+
+	private void disposeModels() {
 		if (fModels != null) {
 			for (Iterator it = fModels.values().iterator(); it.hasNext();) {
-				((ZipModel) it.next()).dispose();
+				ZipModel model = (ZipModel) it.next();
+				if (fDisposeModel)
+					model.dispose();
 			}
 			fModels.clear();
 		}
@@ -102,7 +117,7 @@ public class ZipContentProvider implements ITreeContentProvider {
 
 	public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
 		if (newInput == null)
-			dispose();
+			disposeModels();
 	}
 
 	private boolean isForUs(IFile file) {
@@ -110,11 +125,20 @@ public class ZipContentProvider implements ITreeContentProvider {
 			IContentDescription contentDescription = file.getContentDescription();
 			if (contentDescription == null)
 				return false;
-			return contentDescription.getContentType() != null
-					&& "ZipEditor.zipfile".equals(contentDescription.getContentType().getId()); //$NON-NLS-1$
+			if (contentDescription.getContentType() == null)
+				return false;
+			String contentTypeId = contentDescription.getContentType().getId();
+			return ZipContentDescriber.GZ_FILE.equals(contentTypeId)
+					|| ZipContentDescriber.TAR_FILE.equals(contentTypeId)
+					|| ZipContentDescriber.TGZ_FILE.equals(contentTypeId)
+					|| ZipContentDescriber.ZIP_FILE.equals(contentTypeId);
 		} catch (CoreException e) {
 			ZipEditorPlugin.log(e);
 			return false;
 		}
+	}
+
+	public void disposeModel(boolean enable) {
+		fDisposeModel = enable;
 	}
 }
