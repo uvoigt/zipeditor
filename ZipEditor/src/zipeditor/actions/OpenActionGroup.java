@@ -3,6 +3,7 @@ package zipeditor.actions;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.jface.action.GroupMarker;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
@@ -24,10 +25,18 @@ import zipeditor.model.Node;
 
 public class OpenActionGroup extends ActionGroup {
 	private OpenAction fOpenAction;
+	private boolean fDisposed;
+
+	private final static String GROUP_OPEN_RECENTLY_USED = "openRecentlyUsed"; //$NON-NLS-1$
 
 	public OpenActionGroup(ZipEditor editor) {
 		fOpenAction = new OpenAction(editor);
 		fOpenAction.setActionDefinitionId(ICommonActionConstants.OPEN);
+	}
+	
+	public void dispose() {
+		fDisposed = true;
+		super.dispose();
 	}
 
 	public void fillContextMenu(IMenuManager menu) {
@@ -35,11 +44,23 @@ public class OpenActionGroup extends ActionGroup {
 		boolean onlyFilesSelected = !selection.isEmpty() && Utils.allNodesAreFileNodes(selection);
 		if (onlyFilesSelected) {
 			fOpenAction.setSelection(selection);
-			if (menu.find(IWorkbenchActionConstants.MB_ADDITIONS) != null)
+			if (menu.find(IWorkbenchActionConstants.MB_ADDITIONS) != null) {
 				menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fOpenAction);
-			else
+				menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new GroupMarker(GROUP_OPEN_RECENTLY_USED));
+			} else {
 				menu.add(fOpenAction);
-			fillOpenWithMenu(menu, selection);
+				menu.add(new GroupMarker(GROUP_OPEN_RECENTLY_USED));
+			}
+	        if (selection.size() == 1) {
+		        Object element = selection.getFirstElement();
+		        if (element instanceof Node) {
+		        	Node node = (Node) element;
+		            FileAdapter adapter = new FileAdapter(node);
+		        	FileOpener fileOpener = new FileOpener(getActivePage(), node);
+		        	fillOpenWithMenu(menu, adapter, fileOpener);
+		        	fillMostRecentlyUsedItems(menu, adapter, fileOpener);
+		        }
+	        }
 		}
 	}
 
@@ -63,35 +84,38 @@ public class OpenActionGroup extends ActionGroup {
 		fOpenAction.setSelection(selection);
 	}
 	
-	private void fillOpenWithMenu(IMenuManager menu, final IStructuredSelection selection) {
-        if (selection.size() != 1)
-			return;
-
-        Object element = selection.getFirstElement();
-        if (!(element instanceof Node))
-			return;
-
-        final FileAdapter adapter = new FileAdapter((Node) element);
-        boolean isRunning = DeferredMenuManager.isRunning(adapter, null);
-		if (adapter.isAdapted() && !isRunning) {
-	        MenuManager subMenu = new MenuManager(ActionMessages.getString("ZipActionGroup.0"), PlatformUI.PLUGIN_ID + ".OpenWithSubMenu");  //$NON-NLS-1$//$NON-NLS-2$
-			doAddToMenu(subMenu, adapter);
-        	menu.add(subMenu);
+	private void fillOpenWithMenu(IMenuManager menu, final FileAdapter fileAdapter, final FileOpener fileOpener) {
+        boolean isRunning = DeferredMenuManager.isRunning(fileAdapter, null);
+		if (fileAdapter.isAdapted() && !isRunning) {
+	        MenuManager subMenu = new MenuManager(ActionMessages.getString("OpenActionGroup.0"), PlatformUI.PLUGIN_ID + ".OpenWithSubMenu");  //$NON-NLS-1$//$NON-NLS-2$
+			doAddToMenu(subMenu, null, fileAdapter);
+			if (menu.find(IWorkbenchActionConstants.MB_ADDITIONS) != null)
+				menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, subMenu);
+			else
+				menu.add(subMenu);
 		} else {
-			MenuJob menuJob = new MenuJob(adapter, null) {
+			MenuJob menuJob = new MenuJob(fileAdapter, null) {
 				protected IStatus addToMenu(IProgressMonitor monitor, IMenuManager menu) {
-					doAddToMenu(menu, adapter);
+					if (!fDisposed)
+						doAddToMenu(menu, fileOpener, fileAdapter);
 					return Status.OK_STATUS;
 				}
 			};
-			DeferredMenuManager.addToMenu(menu, ActionMessages.getString("ZipActionGroup.0"), PlatformUI.PLUGIN_ID + ".OpenWithSubMenu", menuJob); //$NON-NLS-1$ //$NON-NLS-2$
+			DeferredMenuManager.addToMenu(menu, IWorkbenchActionConstants.MB_ADDITIONS, ActionMessages.getString("OpenActionGroup.0"), PlatformUI.PLUGIN_ID + ".OpenWithSubMenu", menuJob); //$NON-NLS-1$ //$NON-NLS-2$
 		}
 	}
 
-	private void doAddToMenu(IMenuManager subMenu, FileAdapter adapter) {
-        subMenu.add(new OpenWithMenu(getActivePage(), adapter));
+	private void doAddToMenu(IMenuManager subMenu, FileOpener fileOpener, FileAdapter adapter) {
+        subMenu.add(new OpenWithMenu(getActivePage(), fileOpener, adapter));
 	}
 	
+	private void fillMostRecentlyUsedItems(IMenuManager menu, FileAdapter fileAdapter, FileOpener fileOpener) {
+		if (menu.find(IWorkbenchActionConstants.MB_ADDITIONS) != null)
+			menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new MostRecentlyUsedMenu(fileOpener, fileAdapter));
+		else
+			menu.add(new MostRecentlyUsedMenu(fileOpener, fileAdapter));
+	}
+
 	private IWorkbenchPage getActivePage() {
 		if (Utils.isUIThread())
 			return PlatformUI.getWorkbench().getActiveWorkbenchWindow()

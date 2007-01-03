@@ -31,6 +31,10 @@ public class PreferenceConstants {
 	public final static int VIEW_MODE_FOLDER = 1;
 
 	public final static int VIEW_MODE_TREE = 2;
+	
+	public final static String RECENTLY_USED_EDITORS = "recentlyUsedEditors"; //$NON-NLS-1$
+	
+	public final static String RECENTLY_USED_SEPARATOR = ","; //$NON-NLS-1$
 
 	private PreferenceConstants() {
 	}
