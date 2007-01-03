@@ -122,9 +122,10 @@ public abstract class DialogAction extends ViewerAction {
 		}
 	};
 	
-	private class FileDialog extends Dialog {
+	private class FileDialog extends Dialog implements ISelectionChangedListener {
 		private TreeViewer fWorkspaceViewer;
 		private TreeViewer fFileSystemViewer;
+		private Label fStatusLabel;
 		private List fWorkspaceSelection;
 		private List fFileSystemSelection;
 		private String fText;
@@ -147,6 +148,8 @@ public abstract class DialogAction extends ViewerAction {
 			Composite control = (Composite) super.createDialogArea(parent);
 			fWorkspaceViewer = createWorkspaceArea(control);
 			fFileSystemViewer = createFileSystemArea(control);
+			fWorkspaceViewer.addSelectionChangedListener(this);
+			fFileSystemViewer.addSelectionChangedListener(this);
 			ISelectionChangedListener listener = new ISelectionChangedListener() {
 				public void selectionChanged(SelectionChangedEvent event) {
 					if (fMultiSelection)
@@ -164,6 +167,9 @@ public abstract class DialogAction extends ViewerAction {
 			
 			GridData data = (GridData) control.getLayoutData();
 			data.widthHint = convertWidthInCharsToPixels(80);
+			
+			fStatusLabel = new Label(control, SWT.LEFT | SWT.WRAP);
+			fStatusLabel.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 			
 			applyDialogFont(control);
 			setInitialSelection();
@@ -252,6 +258,17 @@ public abstract class DialogAction extends ViewerAction {
 
 		public void setSelection(String path) {
 			fInitialSelection = path;
+		}
+		
+		public void selectionChanged(SelectionChangedEvent event) {
+			updateStatusText();
+		}
+
+		private void updateStatusText() {
+			int wsSize = ((IStructuredSelection) fWorkspaceViewer.getSelection()).size();
+			int fsSize = ((IStructuredSelection) fFileSystemViewer.getSelection()).size();
+			fStatusLabel.setText(ActionMessages.getFormattedString("DialogAction.2", //$NON-NLS-1$
+					new Object[] { new Integer(wsSize), new Integer(fsSize) }));
 		}
 	};
 
