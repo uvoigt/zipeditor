@@ -78,7 +78,9 @@ public class ZipSorter extends ViewerSorter {
 	}
 
 	private int compare(long l1, long l2, boolean ascending) {
-		return (int) (ascending ? l1 - l2 : l2 - l1);
+		if (l1 == l2)
+			return 0;
+		return l1 < l2 ? ascending ? -1 : 1 : ascending ? 1 : -1;
 	}
 
 	public void update() {
