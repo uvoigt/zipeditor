@@ -4,7 +4,6 @@
  */
 package zipeditor.model;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.ZipEntry;
@@ -55,19 +54,19 @@ public class ZipNode extends Node {
 	}
 	
 	public byte[] getExtra() {
-		return zipEntry != null && zipEntry.getExtra() != null ? zipEntry.getExtra() : new byte[0];
+		return zipEntry != null && file == null && zipEntry.getExtra() != null ? zipEntry.getExtra() : new byte[0];
 	}
 	
 	public long getCrc() {
-		return zipEntry != null ? zipEntry.getCrc() : 0;
+		return zipEntry != null && file == null ? zipEntry.getCrc() : 0;
 	}
 	
 	public long getCompressedSize() {
-		return zipEntry != null ? zipEntry.getCompressedSize() : 0;
+		return zipEntry != null && file == null ? zipEntry.getCompressedSize() : 0;
 	}
 	
 	public double getRatio() {
-		return zipEntry != null ? (zipEntry.getSize() - zipEntry.getCompressedSize()) / (double) zipEntry.getSize() * 100 : 0;
+		return zipEntry != null && file == null ? (zipEntry.getSize() - zipEntry.getCompressedSize()) / (double) zipEntry.getSize() * 100 : 0;
 	}
 
 	protected InputStream doGetContent() throws IOException {
@@ -75,17 +74,20 @@ public class ZipNode extends Node {
 		if (in != null)
 			return in;
 		if (zipEntry != null)
-			return new EntryStream(zipEntry, model.getZipFile());
+			return new EntryStream(zipEntry, new ZipFile(model.getZipPath()));
 		return null;
+	}
+	
+	public void reset() {
+		super.reset();
+		if (zipEntry != null) {
+			time = zipEntry.getTime();
+			size = zipEntry.getSize();
+		}
 	}
 	
 	public Node create(ZipModel model, String name, boolean isFolder) {
 		return new ZipNode(model, name, isFolder);
 	}
 	
-	public void updateContent(File file) {
-		super.updateContent(file);
-		zipEntry = null;
-	}
-
 }
