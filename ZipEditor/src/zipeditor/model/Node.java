@@ -163,6 +163,8 @@ public class Node extends PlatformObject {
 		children.add(node);
 		model.setDirty(true);
 		model.notifyListeners();
+		node.path = null;
+		node.fullPath = null;
 	}
 	
 	public void add(File file, IProgressMonitor monitor) throws IllegalArgumentException {
@@ -204,6 +206,17 @@ public class Node extends PlatformObject {
 		}
 		model.setDirty(true);
 		model.notifyListeners();
+		node.clear();
+	}
+	
+	private void clear() {
+		if (children != null) {
+			for (Iterator it = children.iterator(); it.hasNext();) {
+				((Node) it.next()).clear();
+				it.remove();
+			}
+			children = null;
+		}
 	}
 	
 	public void reset() {
