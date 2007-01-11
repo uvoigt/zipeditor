@@ -22,7 +22,6 @@ import java.util.zip.ZipOutputStream;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.util.ListenerList;
@@ -236,27 +235,28 @@ public class ZipModel {
 	public InputStream save(int type, IProgressMonitor monitor) throws IOException {
 		File tmpFile = new File(root.getModel().getTempDir(), Integer.toString((int) System.currentTimeMillis()));
 		OutputStream out = new FileOutputStream(tmpFile);
-		switch (type) {
-		case GZ:
-			out = new GZIPOutputStream(out);
-			break;
-		case TAR:
-			out = new TarOutputStream(out);
-			break;
-		case TARGZ:
-			out = new TarOutputStream(new GZIPOutputStream(out));
-			break;
-		case ZIP:
-			out = new ZipOutputStream(out);
-			break;
-		}
-		if (out instanceof TarOutputStream)
-            ((TarOutputStream) out).setLongFileMode(TarOutputStream.LONGFILE_GNU);
 		try {
+			switch (type) {
+			case GZ:
+				out = new GZIPOutputStream(out);
+				break;
+			case TAR:
+				out = new TarOutputStream(out);
+				break;
+			case TARGZ:
+				out = new TarOutputStream(new GZIPOutputStream(out));
+				break;
+			case ZIP:
+				out = new ZipOutputStream(out);
+				break;
+			}
+			if (out instanceof TarOutputStream)
+            ((TarOutputStream) out).setLongFileMode(TarOutputStream.LONGFILE_GNU);
 			saveNodes(out, root, type, monitor);
-			out.close();
 		} catch (Exception e) {
 			ZipEditorPlugin.log(e);
+		} finally {
+			out.close();
 		}
 		return new FileInputStream(tmpFile);
 	}
