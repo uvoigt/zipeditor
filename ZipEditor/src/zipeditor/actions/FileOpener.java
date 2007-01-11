@@ -144,8 +144,15 @@ public class FileOpener {
 			return;
 		final InputStream stdIn = process.getInputStream();
 		final InputStream stdErr = process.getErrorStream();
-		int commandIndex = outCommand.indexOf("$i"); //$NON-NLS-1$
-		if (commandIndex != -1) {
+		int defaultEditorIndex = outCommand.indexOf("$i"); //$NON-NLS-1$
+		int editorIdIndex = outCommand.indexOf("$e"); //$NON-NLS-1$
+		if (defaultEditorIndex != -1 || editorIdIndex != -1) {
+			String editorId = EditorsUI.DEFAULT_TEXT_EDITOR_ID;
+			if (editorIdIndex != -1) {
+				editorId = outCommand.substring(editorIdIndex + 2).trim();
+				if (editorId.indexOf(' ') != -1)
+					editorId = editorId.substring(0, editorId.indexOf(' ')).trim();
+			}
 			final File tmpFile = File.createTempFile("internal", null, fNode.getModel().getTempDir()); //$NON-NLS-1$
 			final FileOutputStream out = new FileOutputStream(tmpFile);
 			Thread.sleep(100);
@@ -177,7 +184,7 @@ public class FileOpener {
 			out.flush();
 			if (out.getChannel().isOpen())
 				out.close();
-			fPage.openEditor(Utils.createEditorInput(Utils.getFileStore(tmpFile)), EditorsUI.DEFAULT_TEXT_EDITOR_ID);
+			fPage.openEditor(Utils.createEditorInput(Utils.getFileStore(tmpFile)), editorId);
 		} else {
 			Process outCommandProcess = Runtime.getRuntime().exec(outCommand);
 			BufferedOutputStream out = new BufferedOutputStream(outCommandProcess.getOutputStream());
