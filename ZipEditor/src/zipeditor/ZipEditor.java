@@ -196,7 +196,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 			IResource resource = delta.getResource();
 			if (resource instanceof IFile) {
 				IFile file = (IFile)resource;
-				if (file.equals(((IFileEditorInput)getEditorInput()).getFile())) {
+				if (getEditorInput() instanceof IFileEditorInput && file.equals(
+						((IFileEditorInput) getEditorInput()).getFile())) {
 					if (delta.getKind() == IResourceDelta.REMOVED ||
 							delta.getKind() == IResourceDelta.REPLACED)
 						close();
