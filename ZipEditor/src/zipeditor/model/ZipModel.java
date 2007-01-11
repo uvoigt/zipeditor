@@ -235,27 +235,28 @@ public class ZipModel {
 	public InputStream save(int type, IProgressMonitor monitor) throws IOException {
 		File tmpFile = new File(root.getModel().getTempDir(), Integer.toString((int) System.currentTimeMillis()));
 		OutputStream out = new FileOutputStream(tmpFile);
-		switch (type) {
-		case GZ:
-			out = new GZIPOutputStream(out);
-			break;
-		case TAR:
-			out = new TarOutputStream(out);
-			break;
-		case TARGZ:
-			out = new TarOutputStream(new GZIPOutputStream(out));
-			break;
-		case ZIP:
-			out = new ZipOutputStream(out);
-			break;
-		}
-		if (out instanceof TarOutputStream)
-            ((TarOutputStream) out).setLongFileMode(TarOutputStream.LONGFILE_GNU);
 		try {
-			saveNodes(out, root, type, monitor);
-			out.close();
+			switch (type) {
+			case GZ:
+				out = new GZIPOutputStream(out);
+				break;
+			case TAR:
+				out = new TarOutputStream(out);
+				break;
+			case TARGZ:
+				out = new TarOutputStream(new GZIPOutputStream(out));
+				break;
+			case ZIP:
+				out = new ZipOutputStream(out);
+				break;
+			}
+			if (out instanceof TarOutputStream)
+	            ((TarOutputStream) out).setLongFileMode(TarOutputStream.LONGFILE_GNU);
+				saveNodes(out, root, type, monitor);
 		} catch (Exception e) {
 			ZipEditorPlugin.log(e);
+		} finally {
+			out.close();
 		}
 		return new FileInputStream(tmpFile);
 	}
