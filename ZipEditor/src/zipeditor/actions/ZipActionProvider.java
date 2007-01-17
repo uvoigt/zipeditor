@@ -18,14 +18,12 @@ import org.eclipse.ui.navigator.ICommonActionExtensionSite;
 public class ZipActionProvider extends CommonActionProvider {
 	private OpenActionGroup fOpenActionGroup;
 	private ViewerAction fExtractAction;
-	private AddAction fAddAction;
 	private IAction fPropertiesAction;
 	
 	public void init(ICommonActionExtensionSite aSite) {
 		super.init(aSite);
 		fOpenActionGroup = new OpenActionGroup(null);
 		fExtractAction = new ExtractAction(aSite.getStructuredViewer());
-		fAddAction = new AddAction(aSite.getStructuredViewer());
 	}
 	
 	public void dispose() {
@@ -38,10 +36,8 @@ public class ZipActionProvider extends CommonActionProvider {
 		fOpenActionGroup.fillContextMenu(menu);
 		IStructuredSelection selection = (IStructuredSelection) getContext().getSelection();
 		menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new Separator());
-		menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fAddAction);
 		menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fExtractAction);
 		fExtractAction.setSelection(selection);
-		fAddAction.setSelection(selection);
 		menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new Separator());
 		if (fPropertiesAction == null)
 			fPropertiesAction = new PropertyDialogAction(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActivePart().getSite(), getActionSite().getViewSite().getSelectionProvider());
