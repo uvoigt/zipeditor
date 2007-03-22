@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feature
+      id="zipeditor"
+      label="%featureName"
+      version="1.0.3"
+      provider-name="%providerName">
+
+   <description url="%descriptionUrl">
+      %description
+   </description>
+
+   <copyright>
+      %copyright
+   </copyright>
+
+   <license url="%licenseURL">
+      %license
+   </license>
+
+   <url>
+      <update url="http://zipeditor.sourceforge.net/update"/>
+   </url>
+
+   <plugin
+         id="ZipEditor"
+         download-size="197"
+         install-size="197"
+         version="0.0.0"
+         unpack="false"/>
+
+</feature>
