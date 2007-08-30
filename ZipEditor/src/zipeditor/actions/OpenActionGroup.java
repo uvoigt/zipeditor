@@ -15,7 +15,6 @@ import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionGroup;
-import org.eclipse.ui.navigator.ICommonActionConstants;
 
 import zipeditor.Utils;
 import zipeditor.ZipEditor;
@@ -29,9 +28,9 @@ public class OpenActionGroup extends ActionGroup {
 
 	private final static String GROUP_OPEN_RECENTLY_USED = "openRecentlyUsed"; //$NON-NLS-1$
 
-	public OpenActionGroup(ZipEditor editor) {
+	public OpenActionGroup(ZipEditor editor, String openActionDefinitionId) {
 		fOpenAction = new OpenAction(editor);
-		fOpenAction.setActionDefinitionId(ICommonActionConstants.OPEN);
+		fOpenAction.setActionDefinitionId(openActionDefinitionId);
 	}
 	
 	public void dispose() {
@@ -70,8 +69,8 @@ public class OpenActionGroup extends ActionGroup {
 	}
 	
 	public void fillActionBars(IActionBars actionBars) {
-		if (actionBars.getGlobalActionHandler(ICommonActionConstants.OPEN) == null)
-			actionBars.setGlobalActionHandler(ICommonActionConstants.OPEN, fOpenAction);
+		if (actionBars.getGlobalActionHandler(fOpenAction.getActionDefinitionId()) == null)
+			actionBars.setGlobalActionHandler(fOpenAction.getActionDefinitionId(), fOpenAction);
 		updateActionBars();
 	}
 	

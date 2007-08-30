@@ -13,6 +13,7 @@ import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.PropertyDialogAction;
 import org.eclipse.ui.navigator.CommonActionProvider;
+import org.eclipse.ui.navigator.ICommonActionConstants;
 import org.eclipse.ui.navigator.ICommonActionExtensionSite;
 
 public class ZipActionProvider extends CommonActionProvider {
@@ -22,7 +23,7 @@ public class ZipActionProvider extends CommonActionProvider {
 	
 	public void init(ICommonActionExtensionSite aSite) {
 		super.init(aSite);
-		fOpenActionGroup = new OpenActionGroup(null);
+		fOpenActionGroup = new OpenActionGroup(null, ICommonActionConstants.OPEN);
 		fExtractAction = new ExtractAction(aSite.getStructuredViewer());
 	}
 	
