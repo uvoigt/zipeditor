@@ -7,12 +7,9 @@ package zipeditor;
 import java.text.DateFormat;
 import java.text.NumberFormat;
 
-import org.eclipse.core.runtime.Platform;
-import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.program.Program;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
@@ -41,9 +38,8 @@ public abstract class NodePropertyPage extends PropertyPage {
 		fName.setText(node.getName());
 		createLabel(control, NodeProperty.PTYPE.toString(), 1);
 		fType = createText(control, 30, 1, false);
-		Program program = Program.findProgram(node.getType());
-		IContentType contentType = Platform.getContentTypeManager().findContentTypeFor(node.getName());
-		fType.setText(contentType != null ? contentType.getName() : program != null ? program.getName() : Messages.getFormattedString("ZipNodePropertyPage.0", node.getType())); //$NON-NLS-1$
+		String typeString = ZipLabelProvider.getTypeLabel(node);
+		fType.setText(typeString);
 		createLabel(control, NodeProperty.PPATH.toString(), 1);
 		fPath = createText(control, 30, 1, false);
 		fPath.setText(node.getPath());

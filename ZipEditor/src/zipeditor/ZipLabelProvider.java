@@ -25,6 +25,18 @@ import zipeditor.model.ZipNodeProperty;
 
 public class ZipLabelProvider extends LabelProvider implements ITableLabelProvider {
 	private static final DateFormat DATE_FORMAT = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss"); //$NON-NLS-1$
+
+	public static String getTypeLabel(Node node) {
+		Program program = Program.findProgram(node.getType());
+		IContentType contentType = Platform.getContentTypeManager().findContentTypeFor(node.getName());
+		return node.isFolder() ? Messages.getString("ZipLabelProvider.1") //$NON-NLS-1$
+				: contentType != null ? contentType.getName()
+						: program != null ? program.getName()
+								: node.getType() != null && node.getType().length() > 0 ?
+										Messages.getFormattedString("ZipLabelProvider.2", node.getType()) //$NON-NLS-1$
+										: Messages.getString("ZipLabelProvider.0"); //$NON-NLS-1$
+	}
+	
 	private int[] fOrder;
 
 	public String getText(Object element) {
@@ -77,9 +89,7 @@ public class ZipLabelProvider extends LabelProvider implements ITableLabelProvid
 		case NodeProperty.NAME:
 			return getNodeText(node);
 		case NodeProperty.TYPE:
-			Program program = Program.findProgram(node.getType());
-			IContentType contentType = Platform.getContentTypeManager().findContentTypeFor(node.getName());
-			return contentType != null ? contentType.getName() : program != null ? program.getName() : Messages.getFormattedString("ZipNodePropertyPage.0", node.getType()); //$NON-NLS-1$
+			return getTypeLabel(node);
 		case NodeProperty.DATE:
 			return formatDate(node.getTime());
 		case NodeProperty.SIZE:
