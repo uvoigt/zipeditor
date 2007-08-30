@@ -5,6 +5,7 @@
 package zipeditor;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -401,24 +402,47 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		IEditorInput input = getEditorInput();
 		IPath path = null;
 		InputStream in = null;
+		File file = null;
 		if (input instanceof IFileEditorInput) {
 			IFileEditorInput fileEditorInput = (IFileEditorInput) input;
 			path = fileEditorInput.getFile().getLocation();
+			file = path.toFile();
 			try {
 				in = fileEditorInput.getFile().getContents();
 			} catch (CoreException e) {
 				throw new RuntimeException(e);
 			}
-		} else if (input instanceof IPathEditorInput && input instanceof IStorageEditorInput) {
-			path = ((IPathEditorInput) input).getPath();
-			try {
-				in = ((IStorageEditorInput) input).getStorage().getContents();
-			} catch (CoreException e) {
-				ZipEditorPlugin.log(e);
+		} else {
+			if (input instanceof IPathEditorInput) {
+				path = ((IPathEditorInput) input).getPath();
+				file = path.toFile();
+			}
+			if (input instanceof IStorageEditorInput) {
+				try {
+					if (path == null) {
+						path = ((IStorageEditorInput) input).getStorage().getFullPath();
+						file = path.toFile();
+					}
+					in = ((IStorageEditorInput) input).getStorage().getContents();
+				} catch (CoreException e) {
+					ZipEditorPlugin.log(e);
+				}
+			}
+			if (in != null && file != null && !file.exists()) {
+				try {
+					file = File.createTempFile("tmp", null); //$NON-NLS-1$
+					file.deleteOnExit();
+					Utils.readAndWrite(in, new FileOutputStream(file), true);
+					in = new FileInputStream(file);
+				} catch (IOException e) {
+					ZipEditorPlugin.log(e);
+				}
 			}
 		}
-		return new ZipModel(path.toFile(), in);
+		return new ZipModel(file, in);
 	}
+	
+	
 	
 	public boolean isDirty() {
 		return fModel != null && fModel.isDirty();
@@ -516,10 +540,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		manager.setRemoveAllWhenShown(true);
 		manager.addMenuListener(new IMenuListener() {
 			public void menuAboutToShow(IMenuManager manager) {
-				if (getMode() == PreferenceConstants.VIEW_MODE_TREE) {
-					manager.add(getAction(ACTION_NEW_FOLDER));
-					manager.add(new Separator());
-				}
+				manager.add(getAction(ACTION_NEW_FOLDER));
+				manager.add(new Separator());
 				fOpenActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
 				fOpenActionGroup.fillContextMenu(manager);
 				fZipActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
@@ -717,7 +739,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 
 	private void createActions() {
 		fZipActionGroup = new ZipActionGroup(this);
-		fOpenActionGroup = new OpenActionGroup(this);
+		fOpenActionGroup = new OpenActionGroup(this, null);
 		setAction(ACTION_NEW_FOLDER, new NewFolderAction(this));
 		setAction(ACTION_TOGGLE_MODE, new ToggleViewModeAction(this, PreferenceConstants.PREFIX_EDITOR));
 		setAction(ACTION_COLLAPSE_ALL, new CollapseAllAction(getViewer()));
