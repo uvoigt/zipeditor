@@ -71,10 +71,10 @@ public class Node extends PlatformObject {
 				path = new String();
 			} else {
 				StringBuffer sb = new StringBuffer(parent.getPath());
-				if (children != null)
+				if (isFolder()) {
 					sb.append(name);
-				if (isFolder())
 					sb.append('/');
+				}
 				path = sb.toString();
 			}
 		}
