@@ -87,20 +87,20 @@ public class ExtractOperation {
 	}
 
 	public File extract(Node node, File toDir, boolean overwrite, IProgressMonitor monitor) {
-		return internalExtract(node, toDir, true, overwrite, monitor);
+		return internalExtract(node, toDir, overwrite, monitor);
 	}
 	
-	private File internalExtract(Node node, File toDir, boolean isRoot, boolean overwrite, IProgressMonitor monitor) {
+	private File internalExtract(Node node, File toDir, boolean overwrite, IProgressMonitor monitor) {
 		if (monitor.isCanceled())
 			return null;
 		toDir = determineFolderTarget(toDir);
-		File file = new File(toDir, isRoot ? node.getFullPath() : node.getName());
+		File file = new File(toDir, node.getName());
 		if (node.isFolder()) {
 			if (!file.exists())
 				file.mkdirs();
 			Node[] children = node.getChildren();
 			for (int i = 0; i < children.length; i++) {
-				internalExtract(children[i], file, false, overwrite, monitor);
+				internalExtract(children[i], file, overwrite, monitor);
 			}
 		} else {
 			boolean writeFile = !file.exists();

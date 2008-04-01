@@ -6,7 +6,7 @@ package zipeditor;
 
 import java.io.File;
 
-import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.swt.dnd.DragSourceAdapter;
 import org.eclipse.swt.dnd.DragSourceEvent;
@@ -27,33 +27,20 @@ public class ZipEditorDragAdapter extends DragSourceAdapter {
 		if (nodes.length == 0)
 			return;
 		boolean createTempFiles = fTempPaths == null || fTempPaths.length != nodes.length;
-		Thread extractor = null;
 		if (createTempFiles) {
 			fTempPaths = new String[nodes.length];
 			final File tmpDir = nodes[0].getModel().getTempDir();
 			for (int i = 0; i < nodes.length; i++) {
-				fTempPaths[i] = new File(tmpDir, nodes[i].getFullPath()).getAbsolutePath();
+				fTempPaths[i] = new File(tmpDir, nodes[i].getName()).getAbsolutePath();
 			}
-			extractor = new Thread(new Runnable() {
-				public void run() {
-					ExtractOperation extractOperation = new ExtractOperation();
-					extractOperation.extract(nodes, tmpDir, true, new NullProgressMonitor());
-				}
-			}, "Extractor"); //$NON-NLS-1$
-			extractor.start();
+			ExtractOperation extractOperation = new ExtractOperation();
+			extractOperation.execute(nodes, tmpDir, true, true);
 		}
-		if (extractor != null) {
-			try {
-				extractor.join();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+		try {
+			Platform.getJobManager().join(ExtractOperation.ExtractFamily, null);
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
-//		try {
-//			Platform.getJobManager().join(ExtractOperation.ExtractFamily, new NullProgressMonitor());
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
 		event.data = fTempPaths;
 	}
 
