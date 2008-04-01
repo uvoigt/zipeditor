@@ -81,6 +81,7 @@ import org.eclipse.ui.IEditorSite;
 import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.IPathEditorInput;
 import org.eclipse.ui.IStorageEditorInput;
+import org.eclipse.ui.IURIEditorInput;
 import org.eclipse.ui.IViewSite;
 import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.PartInitException;
@@ -425,6 +426,15 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 					}
 					in = ((IStorageEditorInput) input).getStorage().getContents();
 				} catch (CoreException e) {
+					ZipEditorPlugin.log(e);
+				}
+			}
+			if (input instanceof IURIEditorInput) {
+				try {
+					file = new File(((IURIEditorInput) input).getURI());
+					path = new Path(file.getAbsolutePath());
+					in = (((IURIEditorInput) input).getURI().toURL()).openStream();
+				} catch (Exception e) {
 					ZipEditorPlugin.log(e);
 				}
 			}
