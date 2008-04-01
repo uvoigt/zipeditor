@@ -188,10 +188,11 @@ public class ZipModel {
 					(zipEntry != null && zipEntry.isDirectory() || tarEntry != null && tarEntry.isDirectory());
 			if (node == null)
 				node = root;
-			if (node.getChildByName(names[n], false) == null) {
-				Node newChild = zipEntry != null ? new ZipNode(this, zipEntry, names[n], isFolder) :
-						tarEntry != null ? (Node) new TarNode(this, tarEntry, names[n], isFolder)
-								: new GzipNode(this, names[n], isFolder);
+			if (n == -1 || node.getChildByName(names[n], false) == null) {
+				String name = n >= 0 ? names[n] : "/"; //$NON-NLS-1$
+				Node newChild = zipEntry != null ? new ZipNode(this, zipEntry, name, isFolder) :
+						tarEntry != null ? (Node) new TarNode(this, tarEntry, name, isFolder)
+								: new GzipNode(this, name, isFolder);
 				node.add(newChild);
 				if (zipStream instanceof ZipInputStream) {
 					try {
