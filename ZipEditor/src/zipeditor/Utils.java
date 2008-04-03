@@ -228,15 +228,18 @@ public class Utils {
 	}
 
 	public static void readAndWrite(InputStream in, OutputStream out, boolean closeOut) throws IOException {
-		byte[] buf = new byte[8000];
 		try {
-			for (int count = 0; (count = in.read(buf)) != -1; ) {
-				out.write(buf, 0, count);
+			if (in != null) {
+				byte[] buf = new byte[8000];
+				for (int count = 0; (count = in.read(buf)) != -1; ) {
+					out.write(buf, 0, count);
+				}
 			}
 			if (closeOut)
 				out.close();
 		} finally {
-			in.close();
+			if (in != null)
+				in.close();
 		}
 	}
 	
