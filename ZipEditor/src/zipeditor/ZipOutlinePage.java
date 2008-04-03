@@ -32,6 +32,7 @@ import zipeditor.actions.AddAction;
 import zipeditor.actions.CollapseAllAction;
 import zipeditor.actions.DeleteAction;
 import zipeditor.actions.ExtractAction;
+import zipeditor.actions.NewFolderAction;
 import zipeditor.actions.SelectAllAction;
 import zipeditor.actions.SortAction;
 import zipeditor.actions.ViewerAction;
@@ -65,6 +66,7 @@ public class ZipOutlinePage extends ContentOutlinePage {
 	private ViewerAction fDeleteAction;
 	private IAction fPropertiesAction;
 	private SelectAllAction fSelectAllAction;
+	private NewFolderAction fNewFolderAction;
 
 	public void createControl(Composite parent) {
 		super.createControl(parent);
@@ -93,6 +95,7 @@ public class ZipOutlinePage extends ContentOutlinePage {
 		fDeleteAction = new DeleteAction(getTreeViewer());
 		fSelectAllAction = new SelectAllAction(getTreeViewer());
 		fPropertiesAction = new PropertyDialogAction(getSite(), getTreeViewer());
+		fNewFolderAction = new NewFolderAction(getTreeViewer());
 
 		updateActions();
 	}
@@ -113,6 +116,8 @@ public class ZipOutlinePage extends ContentOutlinePage {
 	}
 	
 	private void contextMenuAboutToShow(IContributionManager manager) {
+		manager.add(fNewFolderAction);
+		manager.add(new Separator());
 		manager.add(fAddAction);
 		manager.add(fExtractAction);
 		manager.add(new Separator());
