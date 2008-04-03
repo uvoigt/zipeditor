@@ -5,14 +5,15 @@
 package zipeditor.actions;
 
 import org.eclipse.jface.dialogs.InputDialog;
+import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.jface.window.Window;
 
-import zipeditor.ZipEditor;
 import zipeditor.model.Node;
 
-public class NewFolderAction extends EditorAction {
-	public NewFolderAction(ZipEditor editor) {
-		super(ActionMessages.getString("NewFolderAction.0"), editor); //$NON-NLS-1$
+public class NewFolderAction extends ViewerAction {
+	public NewFolderAction(StructuredViewer viewer) {
+		super(ActionMessages.getString("NewFolderAction.0"), viewer); //$NON-NLS-1$
 	}
 
 	public void run() {
@@ -21,13 +22,15 @@ public class NewFolderAction extends EditorAction {
 		if (nodes.length == 1)
 			parent = nodes[0].isFolder() ? nodes[0] : nodes[0].getParent();
 		else
-			parent = fEditor.getRootNode();
+			parent = getViewerInputAsNode();
 		
-		InputDialog dialog = new InputDialog(fEditor.getSite().getShell(),
+		InputDialog dialog = new InputDialog(getViewer().getControl().getShell(),
 				ActionMessages.getString("NewFolderAction.1"), ActionMessages.getString("NewFolderAction.2"), null, null); //$NON-NLS-1$ //$NON-NLS-2$
 		if (dialog.open() != Window.OK)
 			return;
 		String newName = dialog.getValue();
-		parent.add(parent.create(parent.getModel(), newName, true));
+		Node newNode = parent.create(parent.getModel(), newName, true);
+		parent.add(newNode);
+		getViewer().setSelection(new StructuredSelection(newNode), true);
 	}
 }
