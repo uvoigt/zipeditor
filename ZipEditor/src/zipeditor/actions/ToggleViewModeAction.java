@@ -10,6 +10,7 @@ import zipeditor.ZipEditorPlugin;
 
 public class ToggleViewModeAction extends EditorAction {
 	private String fPreferenceKey;
+	private int fMode;
 
 	public ToggleViewModeAction(ZipEditor editor, String preferencePrefix) {
 		super(ActionMessages.getString("ToggleViewModeAction.0"), editor); //$NON-NLS-1$
@@ -17,14 +18,13 @@ public class ToggleViewModeAction extends EditorAction {
 		setImageDescriptor(ZipEditorPlugin.getImageDescriptor("icons/togglemode.gif")); //$NON-NLS-1$
 		fPreferenceKey = preferencePrefix + PreferenceConstants.VIEW_MODE;
 		
-		int mode = editor.getPreferenceStore().getInt(fPreferenceKey);
-		setChecked(mode == PreferenceConstants.VIEW_MODE_TREE);
+		fMode = editor.getPreferenceStore().getInt(fPreferenceKey);
+		setChecked(fMode == PreferenceConstants.VIEW_MODE_TREE);
 	}
 	
 	public void run() {
-		int mode = fEditor.getPreferenceStore().getInt(fPreferenceKey);
-		mode = mode == PreferenceConstants.VIEW_MODE_FOLDER ? PreferenceConstants.VIEW_MODE_TREE : PreferenceConstants.VIEW_MODE_FOLDER;
-		fEditor.getPreferenceStore().setValue(fPreferenceKey, mode);
-		fEditor.updateView(mode, true);
+		fMode = fMode == PreferenceConstants.VIEW_MODE_FOLDER ? PreferenceConstants.VIEW_MODE_TREE : PreferenceConstants.VIEW_MODE_FOLDER;
+		fEditor.getPreferenceStore().setValue(fPreferenceKey, fMode);
+		fEditor.updateView(fMode, true);
 	}
 }
