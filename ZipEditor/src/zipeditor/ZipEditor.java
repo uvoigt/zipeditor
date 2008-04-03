@@ -273,7 +273,9 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 			}
 			doRevert();
 		} catch (Exception e) {
-			ZipEditorPlugin.log(e);
+			ZipEditorPlugin.showErrorDialog(getSite().getShell(),
+					Messages.getFormattedString("ZipEditor.12", getEditorInput().getName()), //$NON-NLS-1$
+					e);
 		} finally {
 			if (in != null) {
 				try {
@@ -429,7 +431,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 					ZipEditorPlugin.log(e);
 				}
 			}
-			if (input instanceof IURIEditorInput) {
+			if (path == null && input instanceof IURIEditorInput) {
 				try {
 					file = new File(((IURIEditorInput) input).getURI());
 					path = new Path(file.getAbsolutePath());
@@ -750,7 +752,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 	private void createActions() {
 		fZipActionGroup = new ZipActionGroup(this);
 		fOpenActionGroup = new OpenActionGroup(this, null);
-		setAction(ACTION_NEW_FOLDER, new NewFolderAction(this));
+		setAction(ACTION_NEW_FOLDER, new NewFolderAction(getViewer()));
 		setAction(ACTION_TOGGLE_MODE, new ToggleViewModeAction(this, PreferenceConstants.PREFIX_EDITOR));
 		setAction(ACTION_COLLAPSE_ALL, new CollapseAllAction(getViewer()));
 		setAction(ACTION_SELECT_ALL, new SelectAllAction(getViewer()));

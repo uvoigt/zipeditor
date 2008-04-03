@@ -5,16 +5,22 @@
 package zipeditor;
 
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.StringTokenizer;
 
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
@@ -166,7 +172,27 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 	}
 
 	public static IStatus createErrorStatus(String message, Throwable exception) {
-		return new Status(IStatus.ERROR, ZipEditorPlugin.PLUGIN_ID, 0, message != null ? message : exception.toString(), exception);
+		return new Status(IStatus.ERROR, PLUGIN_ID, 0, message != null ? message : exception.toString(), exception);
+	}
+
+	private static IStatus[] createErrorStatuses(Throwable exception) {
+		StringWriter sw = new StringWriter();
+		if (exception != null)
+			exception.printStackTrace(new PrintWriter(sw));
+		StringTokenizer st = new StringTokenizer(sw.toString(), "\r\n"); //$NON-NLS-1$
+		IStatus[] status = new IStatus[st.countTokens()];
+		for (int i = 0; i < status.length; i++) {
+			status[i] = createErrorStatus(st.nextToken(), null);
+		}
+		return status;
+	}
+
+	public static void showErrorDialog(Shell shell, String message, Throwable exception) {
+		log(exception);
+		ErrorDialog.openError(shell, Messages.getString("ZipEditor.8"), //$NON-NLS-1$
+				message,
+				new MultiStatus(PLUGIN_ID, 0, createErrorStatuses(exception),
+				exception.getMessage(), exception));
 	}
 
 }
