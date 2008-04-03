@@ -270,12 +270,15 @@ public class ZipModel {
 			if (monitor.isCanceled())
 				break;
 			Node child = children[i];
+			String entryName = child.getPath() + child.getName();
 			if (child.isFolder()) {
 				saveNodes(out, child, type, monitor);
-				continue;
+				// continuing here does not save folders as single entries
+				//continue;
+				entryName = child.getPath();
 			}
-			ZipEntry zipEntry = type == ZIP ? new ZipEntry(child.getPath() + child.getName()) : null;
-			TarEntry tarEntry = type == TAR || type == TARGZ ? new TarEntry(child.getPath() + child.getName()): null;
+			ZipEntry zipEntry = type == ZIP ? new ZipEntry(entryName) : null;
+			TarEntry tarEntry = type == TAR || type == TARGZ ? new TarEntry(entryName): null;
 			if (zipEntry != null) {
 				zipEntry.setTime(child.getTime());
 				if (child instanceof ZipNode)
@@ -359,6 +362,8 @@ public class ZipModel {
 						Thread.sleep(2000);
 					} catch (InterruptedException e) {
 					}
+					if (monitor.isCanceled())
+						break;
 				} while (!deleteFile(tmpDir));
 				monitor.done();
 				return Status.OK_STATUS;
