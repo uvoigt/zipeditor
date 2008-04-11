@@ -86,6 +86,13 @@ public class ZipNode extends Node {
 		}
 	}
 	
+	public void update(Object entry) {
+		if (!(entry instanceof ZipEntry))
+			return;
+		ZipEntry zipEntry = (ZipEntry) entry;
+		time = zipEntry.getTime();
+	}
+	
 	public Node create(ZipModel model, String name, boolean isFolder) {
 		return new ZipNode(model, name, isFolder);
 	}

@@ -89,6 +89,30 @@ public class TarNode extends Node {
     public int getMode() {
         return mode;
     }
+    
+    public void setGroupId(int groupId) {
+		this.groupId = groupId;
+		model.setDirty(true);
+		model.notifyListeners();
+	}
+    
+    public void setGroupName(String groupName) {
+		this.groupName = groupName;
+		model.setDirty(true);
+		model.notifyListeners();
+	}
+    
+    public void setUserId(int userId) {
+		this.userId = userId;
+		model.setDirty(true);
+		model.notifyListeners();
+	}
+    
+    public void setUserName(String userName) {
+		this.userName = userName;
+		model.setDirty(true);
+		model.notifyListeners();
+	}
 
     protected InputStream doGetContent() throws IOException {
 		InputStream in = super.doGetContent();
@@ -114,6 +138,13 @@ public class TarNode extends Node {
 		size = tarEntry.getSize();
 		if (tarEntry.getModTime() != null)
 			time = tarEntry.getModTime().getTime();
+	}
+	
+	public void update(Object entry) {
+		if (!(entry instanceof TarEntry))
+			return;
+		TarEntry tarEntry = (TarEntry) entry;
+		time = tarEntry.getModTime().getTime();
 	}
 
 	public Node create(ZipModel model, String name, boolean isFolder) {
