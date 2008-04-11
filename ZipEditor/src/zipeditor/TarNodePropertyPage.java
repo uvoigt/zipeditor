@@ -9,6 +9,7 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.IWorkbenchPropertyPage;
 
+import zipeditor.model.Node;
 import zipeditor.model.TarNode;
 import zipeditor.model.TarNodeProperty;
 
@@ -21,26 +22,54 @@ public class TarNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 	protected Control createContents(Composite parent) {
 		Composite control = (Composite) createPropertiesSection(parent);
 
-		TarNode node = (TarNode) getNode();
+		MultiplePropertyAccessor accessor = new MultiplePropertyAccessor(TarNode.class);
 		createLabel(control, TarNodeProperty.PGROUP_ID.toString(), 1);
-		fGroupId = createText(control, 30, 1, false);
-		fGroupId.setText(Integer.toString(node.getGroupId()));
+		fGroupId = createText(control, 30, 1, true);
+		setFieldText(fGroupId, accessor.getAccessor("groupId")); //$NON-NLS-1$
 		createLabel(control, TarNodeProperty.PGROUP_NAME.toString(), 1);
-		fGroupName = createText(control, 30, 1, false);
-		fGroupName.setText(saveText(node.getGroupName()));
+		fGroupName = createText(control, 30, 1, true);
+		setFieldText(fGroupName, accessor.getAccessor("groupName")); //$NON-NLS-1$
 		createLabel(control, TarNodeProperty.PUSER_ID.toString(), 1);
-		fUserId = createText(control, 30, 1, false);
-		fUserId.setText(Integer.toString(node.getUserId()));
+		fUserId = createText(control, 30, 1, true);
+		setFieldText(fUserId, accessor.getAccessor("userId")); //$NON-NLS-1$
 		createLabel(control, TarNodeProperty.PUSER_NAME.toString(), 1);
-		fUserName = createText(control, 30, 1, false);
-		fUserName.setText(saveText(node.getUserName()));
+		fUserName = createText(control, 30, 1, true);
+		setFieldText(fUserName, accessor.getAccessor("userName")); //$NON-NLS-1$
 		
 		applyDialogFont(control);
 		return control;
 	}
 	
-	private String saveText(String text) {
-		return text != null ? text : new String();
+	public boolean performOk() {
+		Node[] nodes = getNodes();
+		Integer groupId = null;
+		Integer userId = null;
+		if (!nonEqualStringLabel.equals(fGroupId)) {
+			try {
+				groupId = new Integer(fGroupId.getText());
+				setErrorMessage(null);
+			} catch (Exception e) {
+				setErrorMessage(Messages.getString("TarNodePropertyPage.0")); //$NON-NLS-1$
+				return false;
+			}
+		}
+		try {
+			userId = new Integer(fUserId.getText());
+			setErrorMessage(null);
+		} catch (Exception e) {
+			setErrorMessage(Messages.getString("TarNodePropertyPage.1")); //$NON-NLS-1$
+			return false;
+		}
+		for (int i = 0; i < nodes.length; i++) {
+			if (groupId != null)
+				((TarNode) nodes[i]).setGroupId(groupId.intValue());
+			if (!nonEqualStringLabel.equals(fGroupName.getText()))
+				((TarNode) nodes[i]).setGroupName(fGroupName.getText());
+			if (userId != null)
+				((TarNode) nodes[i]).setUserId(userId.intValue());
+			if (!nonEqualStringLabel.equals(fUserName.getText()))
+				((TarNode) nodes[i]).setUserName(fUserName.getText());
+		}
+		return super.performOk();
 	}
-
 }

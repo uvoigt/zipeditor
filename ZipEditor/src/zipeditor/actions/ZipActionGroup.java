@@ -4,6 +4,7 @@
  */
 package zipeditor.actions;
 
+
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
@@ -12,10 +13,8 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.actions.ActionGroup;
-import org.eclipse.ui.dialogs.PropertyDialogAction;
 
 import zipeditor.PreferenceConstants;
-import zipeditor.Utils;
 import zipeditor.ZipEditor;
 
 public class ZipActionGroup extends ActionGroup {
@@ -55,7 +54,7 @@ public class ZipActionGroup extends ActionGroup {
 	
     private void lazilyCreateActions() {
 		if (fPropertiesAction == null)
-			fPropertiesAction = new PropertyDialogAction(fEditor.getSite(), fEditor.getViewer());
+			fPropertiesAction = new MultiPropertyDialogAction(fEditor.getSite(), fEditor.getViewer());
 		if (fAddAction == null)
 			fAddAction = new AddAction(fEditor.getViewer());
 		if (fExtractAction == null)
@@ -75,7 +74,7 @@ public class ZipActionGroup extends ActionGroup {
 		manager.add(fDeleteAction);
 		manager.add(new Separator());
 		manager.add(fSortAction);
-		if (mode == PreferenceConstants.VIEW_MODE_FOLDER) {
+		if ((mode & PreferenceConstants.VIEW_MODE_TREE) == 0) {
 			manager.add(new Separator());
 			manager.add(fPreferencesAction);
 		}
@@ -96,14 +95,11 @@ public class ZipActionGroup extends ActionGroup {
 			return;
 		IStructuredSelection selection = (IStructuredSelection) getContext().getSelection();
 		boolean empty = selection.isEmpty();
-		boolean onlyFilesSelected = Utils.allNodesAreFileNodes(selection);
-		boolean singleSelection = selection.size() == 1;
 		
 		lazilyCreateActions();
 		fDeleteAction.setEnabled(!empty);
 		fSaveAction.setEnabled(fEditor.isDirty());
 		fRevertAction.setEnabled(fEditor.isDirty());
-		if (fPropertiesAction != null)
-			fPropertiesAction.setEnabled(onlyFilesSelected && singleSelection);
+		fPropertiesAction.setEnabled(!empty);
 	}
 }
