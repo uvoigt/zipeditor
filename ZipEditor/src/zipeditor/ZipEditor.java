@@ -93,6 +93,7 @@ import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.progress.UIJob;
 import org.eclipse.ui.views.contentoutline.IContentOutlinePage;
 
+import zipeditor.actions.ActionMessages;
 import zipeditor.actions.CollapseAllAction;
 import zipeditor.actions.NewFolderAction;
 import zipeditor.actions.OpenActionGroup;
@@ -496,7 +497,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		fOpenActionGroup.fillToolBarManager(bar);
 		fZipActionGroup.fillToolBarManager(bar, mode);
 		bar.add(new Separator());
-		if (mode == PreferenceConstants.VIEW_MODE_TREE) {
+		if ((mode & PreferenceConstants.VIEW_MODE_TREE) > 0) {
 			bar.add(new Separator());
 			bar.add(getAction(ACTION_COLLAPSE_ALL));
 		}
@@ -522,15 +523,10 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 	
 	private StructuredViewer createZipViewer(Composite parent, int mode) {
 		StructuredViewer viewer = null;
-		switch (mode) {
-		default:
-			return null;
-		case PreferenceConstants.VIEW_MODE_TREE:
+		if ((mode & PreferenceConstants.VIEW_MODE_TREE) > 0) {
 			viewer = new TreeViewer(parent);
-			break;
-		case PreferenceConstants.VIEW_MODE_FOLDER:
+		} else {
 			viewer = createTableViewer(parent);
-			break;
 		}
 		
 		viewer.setContentProvider(new ZipContentProvider(mode));
@@ -753,7 +749,11 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		fZipActionGroup = new ZipActionGroup(this);
 		fOpenActionGroup = new OpenActionGroup(this, null);
 		setAction(ACTION_NEW_FOLDER, new NewFolderAction(getViewer()));
-		setAction(ACTION_TOGGLE_MODE, new ToggleViewModeAction(this, PreferenceConstants.PREFIX_EDITOR));
+		ToggleViewModeAction toggleViewModeAction = new ToggleViewModeAction(this, ActionMessages.getString("ToggleViewModeAction.0"), PreferenceConstants.PREFIX_EDITOR, PreferenceConstants.VIEW_MODE_TREE); //$NON-NLS-1$
+		toggleViewModeAction.setToolTipText(ActionMessages.getString("ToggleViewModeAction.1")); //$NON-NLS-1$
+		toggleViewModeAction.setImageDescriptor(ZipEditorPlugin.getImageDescriptor("icons/togglemode.gif")); //$NON-NLS-1$
+		setAction(ACTION_TOGGLE_MODE, toggleViewModeAction);
+
 		setAction(ACTION_COLLAPSE_ALL, new CollapseAllAction(getViewer()));
 		setAction(ACTION_SELECT_ALL, new SelectAllAction(getViewer()));
 

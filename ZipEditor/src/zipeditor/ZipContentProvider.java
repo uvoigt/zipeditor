@@ -42,22 +42,26 @@ public class ZipContentProvider implements ITreeContentProvider {
 
 	private Object[] getNodeChildren(Node node) {
 		fModels.put(null, node.getModel());
-		if (fMode == PreferenceConstants.VIEW_MODE_TREE)
+		if ((fMode & PreferenceConstants.VIEW_MODE_TREE) > 0)
 			return node.getChildren();
 		else {
 			List result = new ArrayList();
-			addChildren(result, node);
+			addChildren(result, node, 0);
 			return result.toArray();
 		}
 	}
 
-	private void addChildren(List list, Node node) {
+	private void addChildren(List list, Node node, int depth) {
 		Node[] children = node.getChildren();
 		for (int i = 0; i < children.length; i++) {
 			Node child = children[i];
-			addChildren(list, child);
-			if (!child.isFolder())
-				list.add(child);
+			addChildren(list, child, depth + 1);
+			boolean foldersVisible = (fMode & PreferenceConstants.VIEW_MODE_FOLDERS_VISIBLE) > 0;
+			if (foldersVisible || !child.isFolder()) {
+				boolean allInOneLayer = (fMode & PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER) > 0;
+				if (depth == 0 || foldersVisible && allInOneLayer)
+					list.add(child);
+			}
 		}
 	}
 
