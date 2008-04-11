@@ -9,6 +9,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 
@@ -30,6 +31,8 @@ public class Node extends PlatformObject {
 	
 	private String path;
 	private String fullPath;
+	
+	private Hashtable property;
 	
 	private final static int FOLDER = 0x01;
 	private final static int MODIFIED = 0x02;
@@ -111,6 +114,13 @@ public class Node extends PlatformObject {
 	public long getTime() {
 		return time;
 	}
+	
+	public void setTime(long time) {
+		this.time = time;
+		state |= MODIFIED;
+		model.setDirty(true);
+		model.notifyListeners();
+	}
 
 	public long getSize() {
 		return size;
@@ -141,6 +151,18 @@ public class Node extends PlatformObject {
 				return result;
 		}
 		return null;
+	}
+	
+	public Object getProperty(Object key) {
+		if (property == null)
+			return null;
+		return property.get(key);
+	}
+	
+	public void setProperty(Object key, Object value) {
+		if (property == null)
+			property = new Hashtable();
+		property.put(key, value);
 	}
 
 	public InputStream getContent() {
@@ -196,6 +218,10 @@ public class Node extends PlatformObject {
 		model.setDirty(true);
 		model.notifyListeners();
 	}
+	
+	public void update(Object entry) {
+		// does nothing not knowing the type of entry
+	}
 
 	public void remove(Node node) {
 		if (children == null)
@@ -235,7 +261,10 @@ public class Node extends PlatformObject {
 	}
 
 	public Object getAdapter(Class adapter) {
-		return IWorkbenchAdapter.class == adapter ?
-				new NodeWorkbenchAdapter(this) : super.getAdapter(adapter);
+		if (Node.class == adapter)
+			return this;
+		if (IWorkbenchAdapter.class == adapter)
+			return new NodeWorkbenchAdapter(this);
+		return super.getAdapter(adapter);
 	}
 }
