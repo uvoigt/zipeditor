@@ -6,7 +6,9 @@ package zipeditor;
 
 import java.text.DateFormat;
 import java.text.NumberFormat;
+import java.text.ParseException;
 
+import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -15,12 +17,11 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
-import org.eclipse.ui.dialogs.PropertyPage;
 
 import zipeditor.model.Node;
 import zipeditor.model.NodeProperty;
 
-public abstract class NodePropertyPage extends PropertyPage {
+public abstract class NodePropertyPage extends MultiElementPropertyPage {
 	private Text fName;
 	private Text fPath;
 	private Text fType;
@@ -30,36 +31,57 @@ public abstract class NodePropertyPage extends PropertyPage {
 	protected Control createPropertiesSection(Composite parent) {
 		Group control = new Group(parent, SWT.NONE);
 		control.setLayout(new GridLayout(2, false));
-		
-		Node node = getNode();
-	
+
+		MultiplePropertyAccessor accessor = new MultiplePropertyAccessor(Node.class);
+
 		createLabel(control, NodeProperty.PNAME.toString(), 1);
 		fName = createText(control, 30, 1, true);
-		fName.setText(node.getName());
+		setFieldText(fName, accessor.getAccessor("name")); //$NON-NLS-1$
 		createLabel(control, NodeProperty.PTYPE.toString(), 1);
 		fType = createText(control, 30, 1, false);
-		String typeString = ZipLabelProvider.getTypeLabel(node);
-		fType.setText(typeString);
+
+		setFieldText(fType, new PropertyAccessor() {
+			public Object getPropertyValue(Object object) {
+				return ZipLabelProvider.getTypeLabel((Node) object);
+			}
+		});
 		createLabel(control, NodeProperty.PPATH.toString(), 1);
 		fPath = createText(control, 30, 1, false);
-		fPath.setText(node.getPath());
+		setFieldText(fPath, accessor.getAccessor("path")); //$NON-NLS-1$
 		
 		createLabel(control, NodeProperty.PDATE.toString(), 1);
-		fDate = createText(control, 30, 1, false);
-		fDate.setText(formatDate(node.getTime()));
+		fDate = createText(control, 30, 1, true);
+		setFieldText(fDate, new PropertyAccessor() {
+			public Object getPropertyValue(Object object) {
+				return formatDate(((Node) object).getTime());
+			}
+		});
 		createLabel(control, NodeProperty.PSIZE.toString(), 1);
 		fSize = createText(control, 30, 1, false);
-		fSize.setText(formatSize(node.getSize()));
+		setFieldText(fSize, new PropertyAccessor() {
+			public Object getPropertyValue(Object object) {
+				return formatSize(((Node) object).getSize());
+			}
+		});
 
 		return control;
 	}
 	
-	protected Node getNode() {
-		return (Node) getElement().getAdapter(Node.class);
+	protected Node[] getNodes() {
+		IAdaptable[] elements = getElements();
+		Node[] nodes = new Node[elements.length];
+		for (int i = 0; i < nodes.length; i++) {
+			nodes[i] = (Node) elements[i].getAdapter(Node.class);
+		}
+		return nodes;
 	}
 
 	protected String formatDate(long time) {
 		return DateFormat.getDateTimeInstance().format(new Long(time));
+	}
+
+	protected long parseDate(String string) throws ParseException {
+		return DateFormat.getDateTimeInstance().parse(string).getTime();
 	}
 
 	protected String formatSize(long size) {
@@ -86,9 +108,24 @@ public abstract class NodePropertyPage extends PropertyPage {
 	}
 	
 	public boolean performOk() {
-		Node node = getNode();
+		Node[] nodes = getNodes();
 		String name = fName.getText();
-		node.setName(name.length() > 0 ? name : null);
+		Long time = null;
+		if (!nonEqualStringLabel.equals(fDate.getText())) {
+			try {
+				time = new Long(parseDate(fDate.getText()));
+				setErrorMessage(null);
+			} catch (ParseException e) {
+				setErrorMessage(Messages.getFormattedString("NodePropertyPage.0", fDate.getText())); //$NON-NLS-1$
+				return false;
+			}
+		}
+		for (int i = 0; i < nodes.length; i++) {
+			if (!nonEqualStringLabel.equals(name))
+				nodes[i].setName(name.length() > 0 ? name : null);
+			if (time != null)
+				nodes[i].setTime(time.longValue());
+		}
 		return super.performOk();
 	}
 
