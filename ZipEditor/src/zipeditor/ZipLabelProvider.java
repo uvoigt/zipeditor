@@ -26,7 +26,16 @@ import zipeditor.model.ZipNodeProperty;
 public class ZipLabelProvider extends LabelProvider implements ITableLabelProvider {
 	private static final DateFormat DATE_FORMAT = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss"); //$NON-NLS-1$
 
+	private static Object TYPE_LABEL_KEY = new Object();
+	
 	public static String getTypeLabel(Node node) {
+		String label = (String) node.getProperty(TYPE_LABEL_KEY);
+		if (label == null)
+			node.setProperty(TYPE_LABEL_KEY, label = doGetTypeLabel(node));
+		return label;
+	}
+	
+	private static String doGetTypeLabel(Node node) {
 		Program program = Program.findProgram(node.getType());
 		IContentType contentType = Platform.getContentTypeManager().findContentTypeFor(node.getName());
 		return node.isFolder() ? Messages.getString("ZipLabelProvider.1") //$NON-NLS-1$
@@ -36,7 +45,7 @@ public class ZipLabelProvider extends LabelProvider implements ITableLabelProvid
 										Messages.getFormattedString("ZipLabelProvider.2", node.getType()) //$NON-NLS-1$
 										: Messages.getString("ZipLabelProvider.0"); //$NON-NLS-1$
 	}
-	
+
 	private int[] fOrder;
 
 	public String getText(Object element) {

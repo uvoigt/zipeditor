@@ -19,12 +19,13 @@ import zipeditor.model.ZipNodeProperty;
 public class PreferencesAction extends EditorAction {
 	private class ColumnAction extends Action {
 		private int fType;
+		private Integer[] fColumnsState;
 
 		private ColumnAction(NodeProperty nodeProperty) {
 			super(nodeProperty.toString());
-			Integer[] columns = (Integer[]) PreferenceInitializer.split(
+			fColumnsState = (Integer[]) PreferenceInitializer.split(
 					fEditor.getPreferenceStore().getString(PreferenceConstants.VISIBLE_COLUMNS), PreferenceConstants.COLUMNS_SEPARATOR, Integer.class);
-			setChecked(indexOf(columns, nodeProperty.getType()) != -1);
+			setChecked(indexOf(fColumnsState, nodeProperty.getType()) != -1);
 			fType = nodeProperty.getType();
 		}
 		
@@ -36,7 +37,7 @@ public class PreferencesAction extends EditorAction {
 			return -1;
 		}
 		
-		private Integer[] update(Integer[] integers, boolean set) {
+		private void update(Integer[] integers, boolean set) {
 			int index = indexOf(integers, fType);
 			if (set) {
 				if (index == -1) {
@@ -44,21 +45,18 @@ public class PreferencesAction extends EditorAction {
 					System.arraycopy(integers, 0, integers = new Integer[size + 1], 1, size);
 					integers[0] = new Integer(fType);
 				}
-				return integers;
 			} else {
 				if (index != -1) {
 					integers[index] = null;
 				}
-				return integers; 
 			}
 		}
 		
 		public void run() {
 			fEditor.storeTableColumnPreferences();
 			IPreferenceStore store = fEditor.getPreferenceStore();
-			Integer[] columns = (Integer[]) PreferenceInitializer.split(store.getString(PreferenceConstants.VISIBLE_COLUMNS), PreferenceConstants.COLUMNS_SEPARATOR, Integer.class);
-			columns = update(columns, isChecked());
-			String newValue = PreferenceInitializer.join(columns, PreferenceConstants.COLUMNS_SEPARATOR);
+			update(fColumnsState, isChecked());
+			String newValue = PreferenceInitializer.join(fColumnsState, PreferenceConstants.COLUMNS_SEPARATOR);
 			store.setValue(PreferenceConstants.VISIBLE_COLUMNS, newValue);
 			fEditor.updateView(fEditor.getMode(), false);
 		}
@@ -88,7 +86,10 @@ public class PreferencesAction extends EditorAction {
 	private void fillMenuManager(MenuManager manager) {
 		MenuManager columns = new MenuManager(ActionMessages.getString("PreferencesAction.2")); //$NON-NLS-1$
 		manager.add(columns);
-		fillColumnsMenu(columns); 
+		fillColumnsMenu(columns);
+		MenuManager folders = new MenuManager(ActionMessages.getString("PreferencesAction.3")); //$NON-NLS-1$
+		manager.add(folders);
+		fillFoldersMenu(folders);
 	}
 
 	private void fillColumnsMenu(MenuManager manager) {
@@ -103,4 +104,11 @@ public class PreferencesAction extends EditorAction {
 		manager.add(new ColumnAction(ZipNodeProperty.PATTR));
 	}
 	
+	private void fillFoldersMenu(MenuManager manager) {
+		Action foldersVisibleAction = new ToggleViewModeAction(fEditor, ActionMessages.getString("PreferencesAction.4"), PreferenceConstants.PREFIX_EDITOR, PreferenceConstants.VIEW_MODE_FOLDERS_VISIBLE); //$NON-NLS-1$
+		ToggleViewModeAction allInOneLayerAction = new ToggleViewModeAction(fEditor, ActionMessages.getString("PreferencesAction.5"), PreferenceConstants.PREFIX_EDITOR, PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER); //$NON-NLS-1$
+		allInOneLayerAction.setEnabled(foldersVisibleAction.isChecked());
+		manager.add(foldersVisibleAction);
+		manager.add(allInOneLayerAction);
+	}
 }

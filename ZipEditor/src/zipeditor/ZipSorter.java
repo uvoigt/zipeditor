@@ -41,21 +41,16 @@ public class ZipSorter extends ViewerSorter {
 	
 	private int compareNodes(Node z1, Node z2) {
 		boolean ascending = fSortDirection == SWT.UP;
-		if (fMode == PreferenceConstants.VIEW_MODE_TREE) {
-			if (z1.isFolder() && !z2.isFolder())
-				return -1;
-			if (z2.isFolder() && !z1.isFolder())
-				return 1;
-			return compare(z1.getName(), z2.getName(), true);
-		}
+		if ((fMode & PreferenceConstants.VIEW_MODE_TREE) > 0)
+			return compareByNames(z1, z2, true);
 			
 		switch (fSortBy) {
 		default:
 			return 0;
 		case NodeProperty.NAME:
-			return compare(z1.getName(), z2.getName(), ascending);
+			return compareByNames(z1, z2, ascending);
 		case NodeProperty.TYPE:
-			return compare(z1.getType(), z2.getType(), ascending);
+			return compare(ZipLabelProvider.getTypeLabel(z1), ZipLabelProvider.getTypeLabel(z2), ascending);
 		case NodeProperty.DATE:
 			return compare(z1.getTime(), z2.getTime(), ascending);
 		case NodeProperty.SIZE:
@@ -73,6 +68,14 @@ public class ZipSorter extends ViewerSorter {
 		}
 	}
 	
+	private int compareByNames(Node z1, Node z2, boolean ascending) {
+		if (z1.isFolder() && !z2.isFolder())
+			return ascending ? -1 : 1;
+		if (z2.isFolder() && !z1.isFolder())
+			return ascending ? 1 : -1;
+		return compare(z1.getName(), z2.getName(), ascending);
+	}
+
 	private int compare(String s1, String s2, boolean ascending) {
 		return ascending ? s1.compareToIgnoreCase(s2) : s2.compareToIgnoreCase(s1);
 	}

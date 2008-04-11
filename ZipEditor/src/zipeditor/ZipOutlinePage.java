@@ -24,7 +24,6 @@ import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionFactory;
-import org.eclipse.ui.dialogs.PropertyDialogAction;
 import org.eclipse.ui.views.contentoutline.ContentOutlinePage;
 
 import zipeditor.ZipEditor.NodeComparer;
@@ -32,6 +31,7 @@ import zipeditor.actions.AddAction;
 import zipeditor.actions.CollapseAllAction;
 import zipeditor.actions.DeleteAction;
 import zipeditor.actions.ExtractAction;
+import zipeditor.actions.MultiPropertyDialogAction;
 import zipeditor.actions.NewFolderAction;
 import zipeditor.actions.SelectAllAction;
 import zipeditor.actions.SortAction;
@@ -94,14 +94,16 @@ public class ZipOutlinePage extends ContentOutlinePage {
 		fExtractAction = new ExtractAction(getTreeViewer());
 		fDeleteAction = new DeleteAction(getTreeViewer());
 		fSelectAllAction = new SelectAllAction(getTreeViewer());
-		fPropertiesAction = new PropertyDialogAction(getSite(), getTreeViewer());
+		fPropertiesAction = new MultiPropertyDialogAction(getSite(), getTreeViewer());
 		fNewFolderAction = new NewFolderAction(getTreeViewer());
 
 		updateActions();
 	}
 
 	private void updateActions() {
-		fDeleteAction.setEnabled(!getSelection().isEmpty());
+		boolean empty = getSelection().isEmpty();
+		fDeleteAction.setEnabled(!empty);
+		fPropertiesAction.setEnabled(!empty);
 		getSite().getActionBars().setGlobalActionHandler(ActionFactory.DELETE.getId(), fDeleteAction);
 		getSite().getActionBars().setGlobalActionHandler(ActionFactory.SELECT_ALL.getId(), fSelectAllAction);
 		getSite().getActionBars().setGlobalActionHandler(ActionFactory.PROPERTIES.getId(), fPropertiesAction);
