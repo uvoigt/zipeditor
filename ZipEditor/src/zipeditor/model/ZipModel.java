@@ -188,7 +188,10 @@ public class ZipModel {
 					(zipEntry != null && zipEntry.isDirectory() || tarEntry != null && tarEntry.isDirectory());
 			if (node == null)
 				node = root;
-			if (n == -1 || node.getChildByName(names[n], false) == null) {
+			Node existingNode = n == -1 ? null : node.getChildByName(names[n], false);
+			if (existingNode != null) {
+				existingNode.update(zipEntry != null ? (Object) zipEntry : tarEntry);
+			} else {
 				String name = n >= 0 ? names[n] : "/"; //$NON-NLS-1$
 				Node newChild = zipEntry != null ? new ZipNode(this, zipEntry, name, isFolder) :
 						tarEntry != null ? (Node) new TarNode(this, tarEntry, name, isFolder)
@@ -317,8 +320,7 @@ public class ZipModel {
 			if (index == -1)
 				index = name.indexOf('\\');
 			if (index != -1) {
-				if (index > 0)
-					list.add(name.substring(0, index));
+				list.add(name.substring(0, index));
 				name = name.substring(index + 1);
 			} else {
 				list.add(name);
