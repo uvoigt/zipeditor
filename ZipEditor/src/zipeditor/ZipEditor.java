@@ -26,6 +26,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
@@ -38,6 +39,7 @@ import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.action.ToolBarManager;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.util.IPropertyChangeListener;
@@ -79,7 +81,9 @@ import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorSite;
 import org.eclipse.ui.IFileEditorInput;
+import org.eclipse.ui.IMemento;
 import org.eclipse.ui.IPathEditorInput;
+import org.eclipse.ui.IPersistableEditor;
 import org.eclipse.ui.IStorageEditorInput;
 import org.eclipse.ui.IURIEditorInput;
 import org.eclipse.ui.IViewSite;
@@ -92,6 +96,11 @@ import org.eclipse.ui.part.EditorPart;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.progress.UIJob;
 import org.eclipse.ui.views.contentoutline.IContentOutlinePage;
+import org.eclipse.ui.views.framelist.BackAction;
+import org.eclipse.ui.views.framelist.ForwardAction;
+import org.eclipse.ui.views.framelist.FrameList;
+import org.eclipse.ui.views.framelist.GoIntoAction;
+import org.eclipse.ui.views.framelist.UpAction;
 
 import zipeditor.actions.ActionMessages;
 import zipeditor.actions.CollapseAllAction;
@@ -107,7 +116,8 @@ import zipeditor.model.NodeProperty;
 import zipeditor.model.ZipModel;
 import zipeditor.model.ZipNodeProperty;
 
-public class ZipEditor extends EditorPart implements IPropertyChangeListener {
+public class ZipEditor extends EditorPart implements IPropertyChangeListener,
+		IPersistableEditor {
 	static class NodeComparer implements IElementComparer {
 		public boolean equals(Object a, Object b) {
 			return a instanceof Node && b instanceof Node ? ((Node) a).getFullPath().equals(((Node) b).getFullPath()) : a
@@ -219,6 +229,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 	private IResourceChangeListener fInputFileListener;
 	private ZipModel fModel;
 	private ZipOutlinePage fOutlinePage;
+	private FrameList fFrameList;
+	private IMemento fState;
 	private ISelectionChangedListener fOutlineSelectionChangedListener;
 	private DisposeListener fTableDisposeListener = new DisposeListener() {
 		public void widgetDisposed(DisposeEvent e) {
@@ -230,6 +242,10 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 	public final static String ACTION_COLLAPSE_ALL = "CollapseAll"; //$NON-NLS-1$
 	public final static String ACTION_SELECT_ALL = "SelectAll"; //$NON-NLS-1$
 	public final static String ACTION_NEW_FOLDER = "NewFolder"; //$NON-NLS-1$
+	public final static String ACTION_BACK = "Back"; //$NON-NLS-1$
+	public final static String ACTION_FORWARD = "Forward"; //$NON-NLS-1$
+	public final static String ACTION_UP = "Up"; //$NON-NLS-1$
+	public final static String ACTION_GO_INTO = "GoInto"; //$NON-NLS-1$
 	
 	public void doSave(IProgressMonitor monitor) {
 		IEditorInput input = getEditorInput();
@@ -403,6 +419,23 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 	}
 
 	private ZipModel createModel() {
+		Object[] info = getEditorInputFileInfo(true);
+		File file = (File) info[0];
+		InputStream in = (InputStream) info[1];
+		if (in != null && file != null && !file.exists()) {
+			try {
+				file = File.createTempFile("tmp", null); //$NON-NLS-1$
+				file.deleteOnExit();
+				Utils.readAndWrite(in, new FileOutputStream(file), true);
+				in = new FileInputStream(file);
+			} catch (IOException e) {
+				ZipEditorPlugin.log(e);
+			}
+		}
+		return new ZipModel(file, in);
+	}
+	
+	private Object[] getEditorInputFileInfo(boolean getInputStream) {
 		IEditorInput input = getEditorInput();
 		IPath path = null;
 		InputStream in = null;
@@ -411,10 +444,12 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 			IFileEditorInput fileEditorInput = (IFileEditorInput) input;
 			path = fileEditorInput.getFile().getLocation();
 			file = path.toFile();
-			try {
-				in = fileEditorInput.getFile().getContents();
-			} catch (CoreException e) {
-				throw new RuntimeException(e);
+			if (getInputStream) {
+				try {
+					in = fileEditorInput.getFile().getContents();
+				} catch (CoreException e) {
+					throw new RuntimeException(e);
+				}
 			}
 		} else {
 			if (input instanceof IPathEditorInput) {
@@ -427,7 +462,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 						path = ((IStorageEditorInput) input).getStorage().getFullPath();
 						file = path.toFile();
 					}
-					in = ((IStorageEditorInput) input).getStorage().getContents();
+					if (getInputStream)
+						in = ((IStorageEditorInput) input).getStorage().getContents();
 				} catch (CoreException e) {
 					ZipEditorPlugin.log(e);
 				}
@@ -436,26 +472,15 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 				try {
 					file = new File(((IURIEditorInput) input).getURI());
 					path = new Path(file.getAbsolutePath());
-					in = (((IURIEditorInput) input).getURI().toURL()).openStream();
+					if (getInputStream)
+						in = (((IURIEditorInput) input).getURI().toURL()).openStream();
 				} catch (Exception e) {
 					ZipEditorPlugin.log(e);
 				}
 			}
-			if (in != null && file != null && !file.exists()) {
-				try {
-					file = File.createTempFile("tmp", null); //$NON-NLS-1$
-					file.deleteOnExit();
-					Utils.readAndWrite(in, new FileOutputStream(file), true);
-					in = new FileInputStream(file);
-				} catch (IOException e) {
-					ZipEditorPlugin.log(e);
-				}
-			}
 		}
-		return new ZipModel(file, in);
+		return new Object[] { file, in };
 	}
-	
-	
 	
 	public boolean isDirty() {
 		return fModel != null && fModel.isDirty();
@@ -493,6 +518,13 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 	}
 	
 	private void fillToolBar(IToolBarManager bar, int mode) {
+		if ((mode & PreferenceConstants.VIEW_MODE_TREE) == 0
+				&& (mode & PreferenceConstants.VIEW_MODE_FOLDERS_VISIBLE) > 0) {
+			bar.add(getAction(ACTION_BACK));
+			bar.add(getAction(ACTION_FORWARD));
+			bar.add(getAction(ACTION_UP));
+			bar.add(new Separator());
+		}
 		bar.add(getAction(ACTION_TOGGLE_MODE));
 		fOpenActionGroup.fillToolBarManager(bar);
 		fZipActionGroup.fillToolBarManager(bar, mode);
@@ -572,15 +604,41 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		return viewer;
 	}
 	
+	private Object updateFrameList() {
+		Node currentNode = null;
+		for (int i = 0, n = fFrameList.size(); i < n; i++) {
+			TableFrame tableFrame = (TableFrame) fFrameList.getFrame(i);
+			String path = ((Node) tableFrame.getInput()).getPath();
+			Node node = fModel.findNode(path);
+			if (node == null)
+				continue;
+			tableFrame.setInput(node);
+			if (i == fFrameList.getCurrentIndex())
+				currentNode = node;
+		}
+		return currentNode;
+	}
+	
 	private void setViewerInput(final StructuredViewer viewer) {
+		Object input = null;
 		if (fModel == null) {
 			fModel = createModel();
 			fModel.addModelListener(new ModelListener());
+			input = fModel.getRoot();
+			if (fFrameList != null) {
+				Object node = updateFrameList();
+				if (node != null)
+					input = node;
+			}
+		} else {
+			input = fModel.getRoot();
 		}
-		if (fModel.getRoot() != null) {
-			if (Utils.isUIThread())
-				viewer.setInput(fModel.getRoot());
-			else {
+		if (input != null) {
+			if (Utils.isUIThread()) {
+				viewer.setInput(input);
+				if (fFrameList != null)
+					viewer.refresh(true);
+			} else {
 				viewer.getControl().getDisplay().syncExec(new Runnable() {
 					public void run() {
 						viewer.setInput(fModel.getRoot());
@@ -622,6 +680,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 				structuredSelection.getFirstElement() : Messages.getFormattedString("ZipEditor.9", new Integer(size))); //$NON-NLS-1$
 		if (size == 1)
 			synchronizeOutlineSelection(getSelectedNodes()[0]);
+		if (fFrameList != null)
+			((TableFrame) fFrameList.getCurrentFrame()).setSelection(structuredSelection);
 	}
 
 	private void handleOutlineSelectionChanged() {
@@ -757,7 +817,45 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		setAction(ACTION_COLLAPSE_ALL, new CollapseAllAction(getViewer()));
 		setAction(ACTION_SELECT_ALL, new SelectAllAction(getViewer()));
 
+		fFrameList = createFrameList();
+		if (fFrameList != null) {
+			setAction(ACTION_BACK, new BackAction(fFrameList));
+			setAction(ACTION_FORWARD, new ForwardAction(fFrameList));
+			setAction(ACTION_UP, new UpAction(fFrameList));
+			setAction(ACTION_GO_INTO, new GoIntoAction(fFrameList));
+		}
+
 		activateActions();
+	}
+
+	private FrameList createFrameList() {
+		if (!(fZipViewer instanceof TableViewer))
+			return null;
+		TableViewerFrameSource frameSource = new TableViewerFrameSource((TableViewer) fZipViewer);
+		FrameList frameList = new FrameList(frameSource);
+		frameList.addPropertyChangeListener(new IPropertyChangeListener() {
+			public void propertyChange(PropertyChangeEvent event) {
+				String inputName = getEditorInput().getName();
+				TableFrame frame = (TableFrame) ((FrameList) event.getSource()).getCurrentFrame();
+				Node node = (Node) frame.getInput();
+				if (node != null){
+					String frameName = node.getPath();
+					frameName = inputName + (frameName.length() > 0 ? " - " + frameName : new String()); //$NON-NLS-1$
+					setPartName(frameName);
+					setTitleToolTip(frameName);
+				}
+			}
+		});
+		frameSource.connectTo(frameList);
+		if (fState != null) {
+			TableFrame currentFrame = (TableFrame) frameList.getCurrentFrame();
+			currentFrame.restoreState(fState, fModel);
+			if (fModel.getRoot() == currentFrame.getInput())
+				fZipViewer.setSelection(currentFrame.getSelection());
+			else
+				frameList.gotoFrame(currentFrame);
+		}
+		return frameList;
 	}
 	
 	private void setAction(String name, IAction action) {
@@ -806,9 +904,14 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		Node[] nodes = getSelectedNodes();
 		if (nodes == null || nodes.length == 0)
 			return;
-		if (nodes.length == 1 && nodes[0].isFolder() && fZipViewer instanceof TreeViewer) {
-			((TreeViewer) fZipViewer).setExpandedState(nodes[0], !((TreeViewer) fZipViewer).getExpandedState(nodes[0]));
-			return;
+		if (nodes.length == 1 && nodes[0].isFolder()) {
+			if (fZipViewer instanceof TreeViewer) {
+				((TreeViewer) fZipViewer).setExpandedState(nodes[0], !((TreeViewer) fZipViewer).getExpandedState(nodes[0]));
+				return;
+			} else if (fZipViewer instanceof TableViewer) {
+				((GoIntoAction) getAction(ACTION_GO_INTO)).run();
+				return;
+			}
 		}
 		Utils.openFilesFromNodes(nodes);
 	}
@@ -821,6 +924,29 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 		if (fZipViewer != null)
 			fZipViewer.getControl().setFocus();
 		activateActions();
+		checkIfFileHasBeenChangedLocaly(getEditorInput());
+	}
+
+	private void checkIfFileHasBeenChangedLocaly(IEditorInput editorInput) {
+		File file = (File) getEditorInputFileInfo(false)[0];
+		boolean fileModified = file != null && file.exists() && file.lastModified() > fModel.getZipPath().lastModified();
+		if (editorInput instanceof IFileEditorInput) {
+			fileModified = !((IFileEditorInput) editorInput).getFile().isSynchronized(IResource.DEPTH_ONE);
+		}
+		if (fileModified) { 
+			if (MessageDialog.openQuestion(getSite().getShell(),
+					Messages.getString("ZipEditor.4"), //$NON-NLS-1$
+					Messages.getString("ZipEditor.5"))) { //$NON-NLS-1$
+				if (editorInput instanceof IFileEditorInput) {
+					try {
+						((IFileEditorInput) editorInput).getFile().refreshLocal(IResource.DEPTH_ONE, new NullProgressMonitor());
+					} catch (CoreException e) {
+						ZipEditorPlugin.log(e);
+					}
+				}
+				doRevert();
+			}
+		}
 	}
 
 	private void activateActions() {
@@ -845,5 +971,14 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener {
 	public void propertyChange(PropertyChangeEvent event) {
 		if ((PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SORT_ENABLED + SortAction.SORTING_CHANGED).equals(event.getProperty()))
 			updateView(getMode(), true);
+	}
+	
+	public void saveState(IMemento memento) {
+		if (fFrameList != null)
+			((TableFrame) fFrameList.getCurrentFrame()).saveState(memento);
+	}
+	
+	public void restoreState(IMemento memento) {
+		fState = memento;
 	}
 }
