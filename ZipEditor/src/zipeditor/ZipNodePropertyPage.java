@@ -24,14 +24,14 @@ public class ZipNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 		fPackedSize = createText(control, 30, 1, false);
 		setFieldText(fPackedSize, new PropertyAccessor() {
 			public Object getPropertyValue(Object object) {
-				return formatSize(((ZipNode) object).getCompressedSize());
+				return formatLong(((ZipNode) object).getCompressedSize());
 			}
 		});
 		createLabel(control, ZipNodeProperty.PRATIO.toString(), 1);
 		fRatio = createText(control, 30, 1, false);
 		setFieldText(fRatio, new PropertyAccessor() {
 			public Object getPropertyValue(Object object) {
-				return Long.toString(Math.max(Math.round(((ZipNode) object).getRatio()), 0)) + "%"; //$NON-NLS-1$
+				return formatLong(Math.max(Math.round(((ZipNode) object).getRatio()), 0)) + "%"; //$NON-NLS-1$
 			}
 		});
 		createLabel(control, ZipNodeProperty.PCRC.toString(), 1);
@@ -57,12 +57,15 @@ public class ZipNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 	}
 
 	public boolean performOk() {
+		boolean ok = super.performOk();
+		if (!ok)
+			return false;
 		Node[] nodes = getNodes();
 		String comment = fComment.getText();
 		for (int i = 0; i < nodes.length; i++) {
 			if (!nonEqualStringLabel.equals(comment))
 				((ZipNode) nodes[i]).setComment(comment.length() > 0 ? comment : null);
 		}
-		return super.performOk();
+		return true;
 	}
 }

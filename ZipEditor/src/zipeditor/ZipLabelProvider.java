@@ -5,7 +5,7 @@
 package zipeditor;
 
 import java.text.DateFormat;
-import java.text.SimpleDateFormat;
+import java.text.NumberFormat;
 
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.content.IContentType;
@@ -24,7 +24,8 @@ import zipeditor.model.ZipNode;
 import zipeditor.model.ZipNodeProperty;
 
 public class ZipLabelProvider extends LabelProvider implements ITableLabelProvider {
-	private static final DateFormat DATE_FORMAT = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss"); //$NON-NLS-1$
+	protected static final DateFormat DATE_FORMAT = DateFormat.getDateTimeInstance();
+	protected static final NumberFormat NUMBER_FORMAT = NumberFormat.getNumberInstance();
 
 	private static Object TYPE_LABEL_KEY = new Object();
 	
@@ -102,9 +103,9 @@ public class ZipLabelProvider extends LabelProvider implements ITableLabelProvid
 		case NodeProperty.DATE:
 			return formatDate(node.getTime());
 		case NodeProperty.SIZE:
-			return Long.toString(node.getSize());
+			return formatLong(node.getSize());
 		case ZipNodeProperty.PACKED_SIZE:
-			return Long.toString(node instanceof ZipNode ? ((ZipNode) node).getCompressedSize() : 0);
+			return formatLong(node instanceof ZipNode ? ((ZipNode) node).getCompressedSize() : 0);
 		case NodeProperty.PATH:
 			return node.getPath();
 		case ZipNodeProperty.ATTR:
@@ -112,7 +113,7 @@ public class ZipLabelProvider extends LabelProvider implements ITableLabelProvid
 		case ZipNodeProperty.CRC:
 			return Long.toHexString(node instanceof ZipNode ? ((ZipNode) node).getCrc() : 0);
 		case ZipNodeProperty.RATIO:
-			return Long.toString(Math.max(Math.round(node instanceof ZipNode ? ((ZipNode) node).getRatio() : 0), 0)) + "%"; //$NON-NLS-1$
+			return formatLong(Math.max(Math.round(node instanceof ZipNode ? ((ZipNode) node).getRatio() : 0), 0)) + "%"; //$NON-NLS-1$
 		}
 	}
 
@@ -122,7 +123,11 @@ public class ZipLabelProvider extends LabelProvider implements ITableLabelProvid
 		return values;
 	}
 
-	private String formatDate(long time) {
-		return DATE_FORMAT.format(new Long(time));
+	protected static String formatDate(long time) {
+		return time != -1 ? DATE_FORMAT.format(new Long(time)) : new String();
+	}
+
+	protected static String formatLong(long value) {
+		return NUMBER_FORMAT.format(value);
 	}
 }

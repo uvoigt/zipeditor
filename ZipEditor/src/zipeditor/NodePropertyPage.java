@@ -4,8 +4,6 @@
  */
 package zipeditor;
 
-import java.text.DateFormat;
-import java.text.NumberFormat;
 import java.text.ParseException;
 
 import org.eclipse.core.runtime.IAdaptable;
@@ -60,7 +58,7 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 		fSize = createText(control, 30, 1, false);
 		setFieldText(fSize, new PropertyAccessor() {
 			public Object getPropertyValue(Object object) {
-				return formatSize(((Node) object).getSize());
+				return formatLong(((Node) object).getSize());
 			}
 		});
 
@@ -77,15 +75,15 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 	}
 
 	protected String formatDate(long time) {
-		return DateFormat.getDateTimeInstance().format(new Long(time));
+		return ZipLabelProvider.formatDate(time);
+	}
+
+	protected String formatLong(long value) {
+		return ZipLabelProvider.formatLong(value);
 	}
 
 	protected long parseDate(String string) throws ParseException {
-		return DateFormat.getDateTimeInstance().parse(string).getTime();
-	}
-
-	protected String formatSize(long size) {
-		return NumberFormat.getNumberInstance().format(size);
+		return ZipLabelProvider.DATE_FORMAT.parse(string).getTime();
 	}
 
 	protected Label createLabel(Composite parent, String text, int hspan) {
@@ -111,12 +109,14 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 		Node[] nodes = getNodes();
 		String name = fName.getText();
 		Long time = null;
-		if (!nonEqualStringLabel.equals(fDate.getText())) {
+		String dateText = fDate.getText();
+		if (dateText.trim().length() > 0 && !nonEqualStringLabel.equals(dateText)) {
 			try {
-				time = new Long(parseDate(fDate.getText()));
+				time = new Long(parseDate(dateText));
 				setErrorMessage(null);
 			} catch (ParseException e) {
-				setErrorMessage(Messages.getFormattedString("NodePropertyPage.0", fDate.getText())); //$NON-NLS-1$
+				String pattern = ZipLabelProvider.DATE_FORMAT.format(new Long(System.currentTimeMillis()));
+				setErrorMessage(Messages.getFormattedString("NodePropertyPage.0", new Object[] { dateText, pattern })); //$NON-NLS-1$
 				return false;
 			}
 		}
@@ -126,7 +126,7 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 			if (time != null)
 				nodes[i].setTime(time.longValue());
 		}
-		return super.performOk();
+		return true;
 	}
 
 }

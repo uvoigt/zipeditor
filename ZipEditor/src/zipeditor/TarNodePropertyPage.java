@@ -41,6 +41,9 @@ public class TarNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 	}
 	
 	public boolean performOk() {
+		boolean ok = super.performOk();
+		if (!ok)
+			return false;
 		Node[] nodes = getNodes();
 		Integer groupId = null;
 		Integer userId = null;
@@ -70,6 +73,6 @@ public class TarNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 			if (!nonEqualStringLabel.equals(fUserName.getText()))
 				((TarNode) nodes[i]).setUserName(fUserName.getText());
 		}
-		return super.performOk();
+		return true;
 	}
 }
