@@ -2,6 +2,7 @@ package zipeditor.actions;
 
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.MenuManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
@@ -37,7 +38,7 @@ public class PreferencesAction extends EditorAction {
 			return -1;
 		}
 		
-		private void update(Integer[] integers, boolean set) {
+		private Integer[] update(Integer[] integers, boolean set) {
 			int index = indexOf(integers, fType);
 			if (set) {
 				if (index == -1) {
@@ -50,12 +51,13 @@ public class PreferencesAction extends EditorAction {
 					integers[index] = null;
 				}
 			}
+			return integers;
 		}
 		
 		public void run() {
 			fEditor.storeTableColumnPreferences();
 			IPreferenceStore store = fEditor.getPreferenceStore();
-			update(fColumnsState, isChecked());
+			fColumnsState = update(fColumnsState, isChecked());
 			String newValue = PreferenceInitializer.join(fColumnsState, PreferenceConstants.COLUMNS_SEPARATOR);
 			store.setValue(PreferenceConstants.VISIBLE_COLUMNS, newValue);
 			fEditor.updateView(fEditor.getMode(), false);
@@ -90,6 +92,8 @@ public class PreferencesAction extends EditorAction {
 		MenuManager folders = new MenuManager(ActionMessages.getString("PreferencesAction.3")); //$NON-NLS-1$
 		manager.add(folders);
 		fillFoldersMenu(folders);
+		manager.add(new Separator());
+		manager.add(new TogglePreferenceAction(ActionMessages.getString("PreferencesAction.6"), PreferenceConstants.STORE_FOLDERS_IN_ARCHIVES, fEditor.getPreferenceStore())); //$NON-NLS-1$
 	}
 
 	private void fillColumnsMenu(MenuManager manager) {
@@ -108,6 +112,7 @@ public class PreferencesAction extends EditorAction {
 		Action foldersVisibleAction = new ToggleViewModeAction(fEditor, ActionMessages.getString("PreferencesAction.4"), PreferenceConstants.PREFIX_EDITOR, PreferenceConstants.VIEW_MODE_FOLDERS_VISIBLE); //$NON-NLS-1$
 		ToggleViewModeAction allInOneLayerAction = new ToggleViewModeAction(fEditor, ActionMessages.getString("PreferencesAction.5"), PreferenceConstants.PREFIX_EDITOR, PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER); //$NON-NLS-1$
 		allInOneLayerAction.setEnabled(foldersVisibleAction.isChecked());
+		
 		manager.add(foldersVisibleAction);
 		manager.add(allInOneLayerAction);
 	}

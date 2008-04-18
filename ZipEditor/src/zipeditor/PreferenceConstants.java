@@ -38,6 +38,8 @@ public class PreferenceConstants {
 	
 	public final static String RECENTLY_USED_SEPARATOR = ","; //$NON-NLS-1$
 
+	public final static String STORE_FOLDERS_IN_ARCHIVES = "storeFoldersInArchives"; //$NON-NLS-1$
+
 	private PreferenceConstants() {
 	}
 }
