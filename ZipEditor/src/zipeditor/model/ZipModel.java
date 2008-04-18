@@ -27,6 +27,7 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 
 import zipeditor.Messages;
+import zipeditor.PreferenceConstants;
 import zipeditor.Utils;
 import zipeditor.ZipEditorPlugin;
 import zipeditor.model.IModelListener.ModelChangeEvent;
@@ -181,8 +182,10 @@ public class ZipModel {
 				String pathSeg = names[i];
 				Node parent = node != null ? node : root;
 				node = parent.getChildByName(pathSeg, false);
-				if (node == null)
+				if (node == null) {
 					parent.add(node = parent.create(this, pathSeg, true));
+					node.time = -1;
+				}
 			}
 			boolean isFolder = entryName.endsWith("/") || entryName.endsWith("\\") || //$NON-NLS-1$ //$NON-NLS-2$
 					(zipEntry != null && zipEntry.isDirectory() || tarEntry != null && tarEntry.isDirectory());
@@ -255,8 +258,9 @@ public class ZipModel {
 				break;
 			}
 			if (out instanceof TarOutputStream)
-	            ((TarOutputStream) out).setLongFileMode(TarOutputStream.LONGFILE_GNU);
-				saveNodes(out, root, type, monitor);
+				((TarOutputStream) out).setLongFileMode(TarOutputStream.LONGFILE_GNU);
+			boolean storeFolders = ZipEditorPlugin.getDefault().getPreferenceStore().getBoolean(PreferenceConstants.STORE_FOLDERS_IN_ARCHIVES);
+			saveNodes(out, root, type, storeFolders, monitor);
 		} catch (Exception e) {
 			ZipEditorPlugin.log(e);
 		} finally {
@@ -265,7 +269,7 @@ public class ZipModel {
 		return new FileInputStream(tmpFile);
 	}
 
-	private void saveNodes(OutputStream out, Node node, int type, IProgressMonitor monitor) throws IOException {
+	private void saveNodes(OutputStream out, Node node, int type, boolean storeFolders, IProgressMonitor monitor) throws IOException {
 		if (out == null)
 			return;
 		Node[] children = node.getChildren();
@@ -275,9 +279,9 @@ public class ZipModel {
 			Node child = children[i];
 			String entryName = child.getPath() + child.getName();
 			if (child.isFolder()) {
-				saveNodes(out, child, type, monitor);
-				// continuing here does not save folders as single entries
-				//continue;
+				saveNodes(out, child, type, storeFolders, monitor);
+				if (!storeFolders)
+					continue;
 				entryName = child.getPath();
 			}
 			ZipEntry zipEntry = type == ZIP ? new ZipEntry(entryName) : null;
@@ -434,4 +438,12 @@ public class ZipModel {
 		return zipPath;
 	}
 
+	public Node findNode(String path) {
+		String[] names = splitName(path);
+		Node node = root;
+		for (int i = 0; i < names.length && node != null; i++) {
+			node = node.getChildByName(names[i], false);
+		}
+		return node;
+	}
 }
