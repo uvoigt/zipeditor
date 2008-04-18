@@ -19,12 +19,22 @@ public class ToggleViewModeAction extends EditorAction {
 		fModeConstant = modeConstant;
 		
 		fMode = editor.getPreferenceStore().getInt(fPreferenceKey);
+		checkDependencies();
 		setChecked((fMode & fModeConstant) > 0);
 	}
 
 	public void run() {
 		fMode = (fMode & (fModeConstant ^ -1)) | (isChecked() ? fModeConstant : 0);
+		checkDependencies();
 		fEditor.getPreferenceStore().setValue(fPreferenceKey, fMode);
 		fEditor.updateView(fMode, true);
+	}
+
+	private void checkDependencies() {
+		boolean foldersVisible = (fMode & PreferenceConstants.VIEW_MODE_FOLDERS_VISIBLE) > 0;
+		boolean allInOneLayer = (fMode & PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER) > 0;
+		if (!foldersVisible && !allInOneLayer)
+			fMode |= PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER;
+		
 	}
 }

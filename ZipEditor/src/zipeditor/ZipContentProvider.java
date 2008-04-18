@@ -59,7 +59,7 @@ public class ZipContentProvider implements ITreeContentProvider {
 			boolean foldersVisible = (fMode & PreferenceConstants.VIEW_MODE_FOLDERS_VISIBLE) > 0;
 			if (foldersVisible || !child.isFolder()) {
 				boolean allInOneLayer = (fMode & PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER) > 0;
-				if (depth == 0 || foldersVisible && allInOneLayer)
+				if (depth == 0 || allInOneLayer)
 					list.add(child);
 			}
 		}
