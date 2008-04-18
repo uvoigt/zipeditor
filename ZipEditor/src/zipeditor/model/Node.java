@@ -63,6 +63,7 @@ public class Node extends PlatformObject {
 
 	public void setName(String name) {
 		this.name = name;
+		path = fullPath = null;
 		state |= MODIFIED;
 		model.setDirty(true);
 		model.notifyListeners();
@@ -194,6 +195,7 @@ public class Node extends PlatformObject {
 		add(node);
 		node.state |= ADDED;
 		if (node.isFolder()) {
+			node.time = file.lastModified();
 			File[] files = file.listFiles();
 			if (files != null) {
 				for (int i = 0; i < files.length; i++) {
@@ -212,7 +214,7 @@ public class Node extends PlatformObject {
 	
 	public void updateContent(File file) {
 		this.file = file;
-		time = System.currentTimeMillis();
+		time = file.lastModified();
 		size = file.length();
 		state |= MODIFIED;
 		model.setDirty(true);
