@@ -32,7 +32,9 @@ public class ZipEditorDragAdapter extends DragSourceAdapter {
 			fTempPaths = new String[nodes.length];
 			final File tmpDir = nodes[0].getModel().getTempDir();
 			for (int i = 0; i < nodes.length; i++) {
-				fTempPaths[i] = new File(tmpDir, nodes[i].getFullPath()).getAbsolutePath();
+				Node node = nodes[i];
+				String path = node.isFolder() ? node.getFullPath() : node.getName();
+				fTempPaths[i] = new File(tmpDir, path).getAbsolutePath();
 			}
 			extractor = new Thread(new Runnable() {
 				public void run() {
@@ -49,17 +51,10 @@ public class ZipEditorDragAdapter extends DragSourceAdapter {
 				e.printStackTrace();
 			}
 		}
-//		try {
-//			Platform.getJobManager().join(ExtractOperation.ExtractFamily, new NullProgressMonitor());
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
 		event.data = fTempPaths;
 	}
 
 	public void dragFinished(DragSourceEvent event) {
-//		if (!event.doit)
-//			return;
 		fTempPaths = null;
 	}
 }
