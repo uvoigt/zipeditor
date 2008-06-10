@@ -6,17 +6,17 @@ package zipeditor;
 
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
-import org.eclipse.jface.viewers.AbstractTableViewer;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITreeContentProvider;
+import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.ui.views.framelist.Frame;
 import org.eclipse.ui.views.framelist.FrameList;
 import org.eclipse.ui.views.framelist.IFrameSource;
 
 public class TableViewerFrameSource implements IFrameSource {
-	private AbstractTableViewer fViewer;
+	private TableViewer fViewer;
 
-	public TableViewerFrameSource(AbstractTableViewer viewer) {
+	public TableViewerFrameSource(TableViewer viewer) {
 		fViewer = viewer;
 	}
 
@@ -91,7 +91,7 @@ public class TableViewerFrameSource implements IFrameSource {
 		return null;
 	}
 
-	public AbstractTableViewer getViewer() {
+	public TableViewer getViewer() {
 		return fViewer;
 	}
 

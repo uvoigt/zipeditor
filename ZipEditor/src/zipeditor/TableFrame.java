@@ -7,7 +7,7 @@ package zipeditor;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.jface.viewers.AbstractTableViewer;
+import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -24,15 +24,15 @@ public class TableFrame extends Frame {
 	private static final String TAG_FRAME_INPUT = "frameInput"; //$NON-NLS-1$
 	private static final String TAG_PATH = "nodePath"; //$NON-NLS-1$
 
-	private AbstractTableViewer fViewer;
+	private TableViewer fViewer;
 	private Object fInput;
 	private ISelection fSelection;
 
-	public TableFrame(AbstractTableViewer viewer) {
+	public TableFrame(TableViewer viewer) {
 		fViewer = viewer;
 	}
 
-	public TableFrame(AbstractTableViewer viewer, Object input) {
+	public TableFrame(TableViewer viewer, Object input) {
 		this(viewer);
 		setInput(input);
 		ILabelProvider provider = (ILabelProvider) viewer.getLabelProvider();
@@ -52,7 +52,7 @@ public class TableFrame extends Frame {
 		return fSelection;
 	}
 
-	public AbstractTableViewer getViewer() {
+	public TableViewer getViewer() {
 		return fViewer;
 	}
 
