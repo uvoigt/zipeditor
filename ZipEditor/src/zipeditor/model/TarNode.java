@@ -91,24 +91,32 @@ public class TarNode extends Node {
     }
     
     public void setGroupId(int groupId) {
+    	if (groupId == this.groupId)
+    		return;
 		this.groupId = groupId;
 		model.setDirty(true);
 		model.notifyListeners();
 	}
     
     public void setGroupName(String groupName) {
+    	if (groupName == this.groupName || groupName != null && groupName.equals(this.groupName))
+    		return;
 		this.groupName = groupName;
 		model.setDirty(true);
 		model.notifyListeners();
 	}
     
     public void setUserId(int userId) {
+    	if (userId == this.userId)
+    		return;
 		this.userId = userId;
 		model.setDirty(true);
 		model.notifyListeners();
 	}
     
     public void setUserName(String userName) {
+    	if (userName == this.userName || userName != null && userName.equals(this.userName))
+    		return;
 		this.userName = userName;
 		model.setDirty(true);
 		model.notifyListeners();

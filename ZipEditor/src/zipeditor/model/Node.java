@@ -62,6 +62,10 @@ public class Node extends PlatformObject {
 	}
 
 	public void setName(String name) {
+		if (name == null)
+			throw new NullPointerException();
+		if (name.equals(this.name))
+			return;
 		this.name = name;
 		path = fullPath = null;
 		state |= MODIFIED;
@@ -117,6 +121,8 @@ public class Node extends PlatformObject {
 	}
 	
 	public void setTime(long time) {
+		if (time == this.time)
+			return;
 		this.time = time;
 		state |= MODIFIED;
 		model.setDirty(true);
