@@ -122,7 +122,7 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 		}
 		for (int i = 0; i < nodes.length; i++) {
 			if (!nonEqualStringLabel.equals(name))
-				nodes[i].setName(name.length() > 0 ? name : null);
+				nodes[i].setName(name);
 			if (time != null)
 				nodes[i].setTime(time.longValue());
 		}
