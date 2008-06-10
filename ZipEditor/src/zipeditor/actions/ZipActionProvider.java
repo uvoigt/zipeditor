@@ -11,7 +11,6 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.dialogs.PropertyDialogAction;
 import org.eclipse.ui.navigator.CommonActionProvider;
 import org.eclipse.ui.navigator.ICommonActionConstants;
 import org.eclipse.ui.navigator.ICommonActionExtensionSite;
@@ -41,7 +40,7 @@ public class ZipActionProvider extends CommonActionProvider {
 		fExtractAction.setSelection(selection);
 		menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new Separator());
 		if (fPropertiesAction == null)
-			fPropertiesAction = new PropertyDialogAction(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActivePart().getSite(), getActionSite().getViewSite().getSelectionProvider());
+			fPropertiesAction = new MultiPropertyDialogAction(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActivePart().getSite(), getActionSite().getViewSite().getSelectionProvider());
 		menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fPropertiesAction);
 	}
 
