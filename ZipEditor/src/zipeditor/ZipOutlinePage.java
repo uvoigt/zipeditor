@@ -33,6 +33,7 @@ import zipeditor.actions.DeleteAction;
 import zipeditor.actions.ExtractAction;
 import zipeditor.actions.MultiPropertyDialogAction;
 import zipeditor.actions.NewFolderAction;
+import zipeditor.actions.RenameNodeAction;
 import zipeditor.actions.SelectAllAction;
 import zipeditor.actions.SortAction;
 import zipeditor.actions.ViewerAction;
@@ -67,6 +68,7 @@ public class ZipOutlinePage extends ContentOutlinePage {
 	private IAction fPropertiesAction;
 	private SelectAllAction fSelectAllAction;
 	private NewFolderAction fNewFolderAction;
+	private RenameNodeAction fRenameNodeAction;
 
 	public void createControl(Composite parent) {
 		super.createControl(parent);
@@ -96,6 +98,7 @@ public class ZipOutlinePage extends ContentOutlinePage {
 		fSelectAllAction = new SelectAllAction(getTreeViewer());
 		fPropertiesAction = new MultiPropertyDialogAction(getSite(), getTreeViewer());
 		fNewFolderAction = new NewFolderAction(getTreeViewer());
+		fRenameNodeAction = new RenameNodeAction(getTreeViewer());
 
 		updateActions();
 	}
@@ -107,6 +110,7 @@ public class ZipOutlinePage extends ContentOutlinePage {
 		getSite().getActionBars().setGlobalActionHandler(ActionFactory.DELETE.getId(), fDeleteAction);
 		getSite().getActionBars().setGlobalActionHandler(ActionFactory.SELECT_ALL.getId(), fSelectAllAction);
 		getSite().getActionBars().setGlobalActionHandler(ActionFactory.PROPERTIES.getId(), fPropertiesAction);
+		getSite().getActionBars().setGlobalActionHandler(ActionFactory.RENAME.getId(), fRenameNodeAction);
 	}
 
 	private void initDragAndDrop(StructuredViewer viewer) {
