@@ -39,6 +39,7 @@ import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.action.ToolBarManager;
+import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -83,10 +84,10 @@ import org.eclipse.ui.IEditorSite;
 import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.IMemento;
 import org.eclipse.ui.IPathEditorInput;
-import org.eclipse.ui.IPersistableEditor;
 import org.eclipse.ui.IStorageEditorInput;
 import org.eclipse.ui.IURIEditorInput;
 import org.eclipse.ui.IViewSite;
+import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.actions.ActionContext;
@@ -106,6 +107,7 @@ import zipeditor.actions.ActionMessages;
 import zipeditor.actions.CollapseAllAction;
 import zipeditor.actions.NewFolderAction;
 import zipeditor.actions.OpenActionGroup;
+import zipeditor.actions.RenameNodeAction;
 import zipeditor.actions.SelectAllAction;
 import zipeditor.actions.SortAction;
 import zipeditor.actions.ToggleViewModeAction;
@@ -116,8 +118,8 @@ import zipeditor.model.NodeProperty;
 import zipeditor.model.ZipModel;
 import zipeditor.model.ZipNodeProperty;
 
-public class ZipEditor extends EditorPart implements IPropertyChangeListener,
-		IPersistableEditor {
+public class ZipEditor extends EditorPart implements IPropertyChangeListener
+		/*,IPersistableEditor*/ {
 	static class NodeComparer implements IElementComparer {
 		public boolean equals(Object a, Object b) {
 			return a instanceof Node && b instanceof Node ? ((Node) a).getFullPath().equals(((Node) b).getFullPath()) : a
@@ -228,9 +230,11 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 	private Map fActions = new HashMap();
 	private IResourceChangeListener fInputFileListener;
 	private ZipModel fModel;
+	private long fModelModified;
 	private ZipOutlinePage fOutlinePage;
 	private FrameList fFrameList;
 	private IMemento fState;
+	private boolean fCheckedDeletion;
 	private ISelectionChangedListener fOutlineSelectionChangedListener;
 	private DisposeListener fTableDisposeListener = new DisposeListener() {
 		public void widgetDisposed(DisposeEvent e) {
@@ -246,6 +250,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 	public final static String ACTION_FORWARD = "Forward"; //$NON-NLS-1$
 	public final static String ACTION_UP = "Up"; //$NON-NLS-1$
 	public final static String ACTION_GO_INTO = "GoInto"; //$NON-NLS-1$
+	public final static String ACTION_RENAME = "Rename"; //$NON-NLS-1$
 	
 	public void doSave(IProgressMonitor monitor) {
 		IEditorInput input = getEditorInput();
@@ -253,6 +258,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 			internalSave(((IFileEditorInput) getEditorInput()).getFile().getLocation(), monitor);
 		else if (input instanceof IPathEditorInput)
 			internalSave(((IPathEditorInput) input).getPath(), monitor);
+		else if (input instanceof IURIEditorInput)
+			internalSave(new Path(((IURIEditorInput) input).getURI().getPath()), monitor);
 		else
 			ZipEditorPlugin.log("The input " + input + " cannot be saved"); //$NON-NLS-1$ //$NON-NLS-2$
 	}
@@ -289,10 +296,16 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 				});
 			}
 			doRevert();
-		} catch (Exception e) {
-			ZipEditorPlugin.showErrorDialog(getSite().getShell(),
-					Messages.getFormattedString("ZipEditor.12", getEditorInput().getName()), //$NON-NLS-1$
-					e);
+		} catch (final Exception e) {
+			if (Utils.isUIThread()) {
+				doShowErrorDialog(e);
+			} else {
+	        	getSite().getShell().getDisplay().syncExec(new Runnable() {
+	        		public void run() {
+	    				doShowErrorDialog(e);
+	        		}
+	        	});
+			}
 		} finally {
 			if (in != null) {
 				try {
@@ -305,24 +318,22 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 		}
 	}
 
-	private IEditorInput internalSaveWorkspaceFile(IFile file, InputStream in, IProgressMonitor monitor) {
-		try {
-			if (file.exists())
-				file.setContents(in, true, true, monitor);
-			else
-				file.create(in, true, monitor);
-		} catch (CoreException e) {
-			ZipEditorPlugin.log(e);
-		}
+	private void doShowErrorDialog(Throwable e) {
+		ZipEditorPlugin.showErrorDialog(getSite().getShell(),
+				Messages.getFormattedString("ZipEditor.12", getEditorInput().getName()), //$NON-NLS-1$
+				e);
+	}
+
+	private IEditorInput internalSaveWorkspaceFile(IFile file, InputStream in, IProgressMonitor monitor) throws Exception {
+		if (file.exists())
+			file.setContents(in, true, true, monitor);
+		else
+			file.create(in, true, monitor);
 		return new FileEditorInput(file);
 	}
 
-	private IEditorInput internalSaveLocalFile(File file, InputStream in) {
-		try {
-			Utils.readAndWrite(in, new FileOutputStream(file), true);
-		} catch (Exception e) {
-			ZipEditorPlugin.log(e);
-		}
+	private IEditorInput internalSaveLocalFile(File file, InputStream in) throws Exception {
+		Utils.readAndWrite(in, new FileOutputStream(file), true);
 		IFileStore fileStore = EFS.getLocalFileSystem().getStore(new Path(file.getParentFile().getAbsolutePath()));
 		fileStore = fileStore.getChild(file.getName());
 		return new LocalFileEditorInput(fileStore);
@@ -496,13 +507,13 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 		layout.marginWidth = layout.marginHeight = 0;
 		control.setLayout(layout);
 		createContent(control, getMode());
-		handleViewerSelectionChanged(StructuredSelection.EMPTY);
 	}
 	
 	private void createContent(Composite parent, int mode) {
 		createControls(parent, mode);
-		createActions();
+		createActions(mode);
 		fillToolBar(fToolBar, mode);
+		addViewerListener(getViewer());
 	}
 	
 	private void createControls(Composite parent, int mode) {
@@ -565,31 +576,17 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 		viewer.setLabelProvider(new ZipLabelProvider());
 		viewer.setSorter(new ZipSorter(PreferenceConstants.PREFIX_EDITOR));
 		viewer.setComparer(new NodeComparer());
-		viewer.addDoubleClickListener(new IDoubleClickListener() {
-			public void doubleClick(DoubleClickEvent event) {
-				handleViewerDoubleClick();
-			}
-		});
-		viewer.addSelectionChangedListener(new ISelectionChangedListener() {
-			public void selectionChanged(SelectionChangedEvent event) {
-				handleViewerSelectionChanged(event.getSelection());
-			}
-		});
 		viewer.getControl().setLayoutData(new GridData(GridData.FILL_BOTH));
 		MenuManager manager = new MenuManager();
 		manager.setRemoveAllWhenShown(true);
 		manager.addMenuListener(new IMenuListener() {
 			public void menuAboutToShow(IMenuManager manager) {
-				manager.add(getAction(ACTION_NEW_FOLDER));
-				manager.add(new Separator());
-				fOpenActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
-				fOpenActionGroup.fillContextMenu(manager);
-				fZipActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
-				fZipActionGroup.fillContextMenu(manager);
+				handleContextMenuAboutToShow(manager);
 			}
 		});
 		Menu contextMenu = manager.createContextMenu(viewer.getControl());
 		viewer.getControl().setMenu(contextMenu);
+		getSite().registerContextMenu(manager, fZipViewer);
 		
 		viewer.getControl().addFocusListener(new FocusAdapter() {
 			public void focusGained(FocusEvent e) {
@@ -604,11 +601,24 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 		return viewer;
 	}
 	
+	private void addViewerListener(StructuredViewer viewer) {
+		viewer.addDoubleClickListener(new IDoubleClickListener() {
+			public void doubleClick(DoubleClickEvent event) {
+				handleViewerDoubleClick();
+			}
+		});
+		viewer.addSelectionChangedListener(new ISelectionChangedListener() {
+			public void selectionChanged(SelectionChangedEvent event) {
+				handleViewerSelectionChanged(event.getSelection());
+			}
+		});
+	}
+	
 	private Object updateFrameList() {
 		Node currentNode = null;
 		for (int i = 0, n = fFrameList.size(); i < n; i++) {
 			TableFrame tableFrame = (TableFrame) fFrameList.getFrame(i);
-			String path = ((Node) tableFrame.getInput()).getPath();
+			String path = tableFrame.getInput() != null ? ((Node) tableFrame.getInput()).getPath() : null;
 			Node node = fModel.findNode(path);
 			if (node == null)
 				continue;
@@ -623,6 +633,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 		Object input = null;
 		if (fModel == null) {
 			fModel = createModel();
+			fModelModified = fModel.getZipPath().lastModified();
 			fModel.addModelListener(new ModelListener());
 			input = fModel.getRoot();
 			if (fFrameList != null) {
@@ -668,6 +679,34 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 		});
 	}
 	
+	private void handleContextMenuAboutToShow(IMenuManager manager) {
+		manager.add(new Separator(IWorkbenchActionConstants.OPEN_EXT));
+		manager.add(new Separator());
+		manager.add(getAction(ACTION_NEW_FOLDER));
+		manager.add(new Separator());
+		fOpenActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
+		fOpenActionGroup.fillContextMenu(manager);
+		fZipActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
+		fZipActionGroup.fillContextMenu(manager);
+		manager.add(new Separator(IWorkbenchActionConstants.MB_ADDITIONS));
+	}
+
+	private void handleViewerDoubleClick() {
+		Node[] nodes = getSelectedNodes();
+		if (nodes == null || nodes.length == 0)
+			return;
+		if (nodes.length == 1 && nodes[0].isFolder()) {
+			if (fZipViewer instanceof TreeViewer) {
+				((TreeViewer) fZipViewer).setExpandedState(nodes[0], !((TreeViewer) fZipViewer).getExpandedState(nodes[0]));
+				return;
+			} else if (fZipViewer instanceof TableViewer) {
+				((GoIntoAction) getAction(ACTION_GO_INTO)).run();
+				return;
+			}
+		}
+		Utils.openFilesFromNodes(nodes);
+	}
+
 	private void handleViewerSelectionChanged(ISelection selection) {
 		activateActions();
 		fZipActionGroup.setContext(new ActionContext(selection));
@@ -688,7 +727,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 		IStructuredSelection selection = (IStructuredSelection) fOutlinePage.getSelection();
 		if (selection.size() != 1)
 			return;
-		fZipViewer.setSelection(selection);
+		fZipViewer.setSelection(selection, true);
 	}
 
 	private void synchronizeOutlineSelection(Node node) {
@@ -805,7 +844,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 		}
 	}
 
-	private void createActions() {
+	private void createActions(int mode) {
 		fZipActionGroup = new ZipActionGroup(this);
 		fOpenActionGroup = new OpenActionGroup(this, null);
 		setAction(ACTION_NEW_FOLDER, new NewFolderAction(getViewer()));
@@ -816,8 +855,9 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 
 		setAction(ACTION_COLLAPSE_ALL, new CollapseAllAction(getViewer()));
 		setAction(ACTION_SELECT_ALL, new SelectAllAction(getViewer()));
+		setAction(ACTION_RENAME, new RenameNodeAction(getViewer()));
 
-		fFrameList = createFrameList();
+		fFrameList = createFrameList(mode);
 		if (fFrameList != null) {
 			setAction(ACTION_BACK, new BackAction(fFrameList));
 			setAction(ACTION_FORWARD, new ForwardAction(fFrameList));
@@ -828,7 +868,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 		activateActions();
 	}
 
-	private FrameList createFrameList() {
+	private FrameList createFrameList(int mode) {
 		if (!(fZipViewer instanceof TableViewer))
 			return null;
 		TableViewerFrameSource frameSource = new TableViewerFrameSource((TableViewer) fZipViewer);
@@ -842,12 +882,12 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 					String frameName = node.getPath();
 					frameName = inputName + (frameName.length() > 0 ? " - " + frameName : new String()); //$NON-NLS-1$
 					setPartName(frameName);
-					setTitleToolTip(frameName);
 				}
 			}
 		});
 		frameSource.connectTo(frameList);
-		if (fState != null) {
+		setPartName(getEditorInput().getName());
+		if (fState != null && (mode & PreferenceConstants.VIEW_MODE_FOLDERS_VISIBLE) > 0) {
 			TableFrame currentFrame = (TableFrame) frameList.getCurrentFrame();
 			currentFrame.restoreState(fState, fModel);
 			if (fModel.getRoot() == currentFrame.getInput())
@@ -900,26 +940,10 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 		return super.getAdapter(adapter);
 	}
 
-	private void handleViewerDoubleClick() {
-		Node[] nodes = getSelectedNodes();
-		if (nodes == null || nodes.length == 0)
-			return;
-		if (nodes.length == 1 && nodes[0].isFolder()) {
-			if (fZipViewer instanceof TreeViewer) {
-				((TreeViewer) fZipViewer).setExpandedState(nodes[0], !((TreeViewer) fZipViewer).getExpandedState(nodes[0]));
-				return;
-			} else if (fZipViewer instanceof TableViewer) {
-				((GoIntoAction) getAction(ACTION_GO_INTO)).run();
-				return;
-			}
-		}
-		Utils.openFilesFromNodes(nodes);
-	}
-
 	public Node[] getSelectedNodes() {
 		return Utils.getSelectedNodes(fZipViewer.getSelection());
 	}
-
+	
 	public void setFocus() {
 		if (fZipViewer != null)
 			fZipViewer.getControl().setFocus();
@@ -929,11 +953,12 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 
 	private void checkIfFileHasBeenChangedLocaly(IEditorInput editorInput) {
 		File file = (File) getEditorInputFileInfo(false)[0];
-		boolean fileModified = file != null && file.exists() && file.lastModified() > fModel.getZipPath().lastModified();
+		boolean fileDeleted = file != null && !file.exists();
+		boolean fileModified = file != null && file.exists() && file.lastModified() > fModelModified;
 		if (editorInput instanceof IFileEditorInput) {
 			fileModified = !((IFileEditorInput) editorInput).getFile().isSynchronized(IResource.DEPTH_ONE);
 		}
-		if (fileModified) { 
+		if (fileModified) {
 			if (MessageDialog.openQuestion(getSite().getShell(),
 					Messages.getString("ZipEditor.4"), //$NON-NLS-1$
 					Messages.getString("ZipEditor.5"))) { //$NON-NLS-1$
@@ -946,11 +971,30 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener,
 				}
 				doRevert();
 			}
+		} else if (fileDeleted && !fCheckedDeletion) {
+			fCheckedDeletion = true;
+			MessageDialog dialog = new MessageDialog(getSite().getShell(),
+					Messages.getString("ZipEditor.6"), null, Messages //$NON-NLS-1$
+							.getString("ZipEditor.7"), MessageDialog.QUESTION, //$NON-NLS-1$
+					new String[] { Messages.getString("ZipEditor.13"), //$NON-NLS-1$
+							Messages.getString("ZipEditor.14"), //$NON-NLS-1$
+							IDialogConstants.CANCEL_LABEL }, 0);
+			switch (dialog.open()) {
+			case 0:
+				getSite().getPage().closeEditor(this, false);
+				break;
+			case 1:
+				doSave(new NullProgressMonitor());
+				break;
+			}
+		} else if (!fileDeleted) {
+			fCheckedDeletion = false;
 		}
 	}
 
 	private void activateActions() {
 		getEditorSite().getActionBars().setGlobalActionHandler(ActionFactory.SELECT_ALL.getId(), getAction(ACTION_SELECT_ALL));
+		getEditorSite().getActionBars().setGlobalActionHandler(ActionFactory.RENAME.getId(), getAction(ACTION_RENAME));
 		fZipActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
 		fZipActionGroup.fillActionBars(getEditorSite().getActionBars());
 		getEditorSite().getActionBars().updateActionBars();
