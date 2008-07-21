@@ -38,6 +38,7 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.ElementListSelectionDialog;
 import org.eclipse.ui.editors.text.EditorsUI;
+import org.eclipse.ui.ide.FileStoreEditorInput;
 import org.eclipse.ui.part.FileEditorInput;
 
 import zipeditor.model.Node;
@@ -126,7 +127,11 @@ public class Utils {
 		IFile workspaceFile = getWorkspaceFile(fileStore);
 		if (workspaceFile != null)
 			return new FileEditorInput(workspaceFile);
-		return new LocalFileEditorInput(fileStore);
+		try {
+			return new FileStoreEditorInput(fileStore);
+		} catch (Throwable ignore) { // not available
+			return new LocalFileEditorInput(fileStore);
+		}
 	}
 	
 	public static String getEditorId(IFileStore file) {
