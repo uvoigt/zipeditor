@@ -22,7 +22,8 @@ public class ZipNode extends Node {
 		}
 		public void close() throws IOException {
 			in.close();
-			zipFile.close();
+			if (zipFile != null)
+				zipFile.close();
 		}
 	};
 
@@ -76,7 +77,8 @@ public class ZipNode extends Node {
 		if (in != null)
 			return in;
 		if (zipEntry != null)
-			return new EntryStream(zipEntry, new ZipFile(model.getZipPath()));
+			return new EntryStream(zipEntry, model.getZipPath() != null ?
+					new ZipFile(model.getZipPath()) : null);
 		return null;
 	}
 	
