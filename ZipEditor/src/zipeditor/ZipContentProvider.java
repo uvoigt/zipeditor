@@ -86,7 +86,8 @@ public class ZipContentProvider implements ITreeContentProvider {
 	private ZipModel getModel(IFile file) throws CoreException {
 		ZipModel model = (ZipModel) fModels.get(file);
 		if (model == null)
-			fModels.put(file, model = new ZipModel(file.getLocation().toFile(), file.getContents()));
+			fModels.put(file, model = new ZipModel(file.getLocation().toFile(),
+					file.getContents(), file.isReadOnly()));
 		return model;
 	}
 
