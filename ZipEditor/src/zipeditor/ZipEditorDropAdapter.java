@@ -5,6 +5,7 @@
 package zipeditor;
 
 import org.eclipse.jface.viewers.StructuredViewer;
+import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.swt.dnd.DND;
 import org.eclipse.swt.dnd.DropTargetEvent;
 import org.eclipse.swt.dnd.FileTransfer;
@@ -37,14 +38,18 @@ public class ZipEditorDropAdapter extends PluginDropAdapter {
 	public boolean performDrop(Object data) {
 		if (!(data instanceof String[]))
 			return false;
-		Node node = (Node) getCurrentTarget();
-		if (node == null && getViewer().getInput() instanceof Node)
-			node = (Node) getViewer().getInput();
-		if (!node.isFolder())
-			node = node.getParent();
+		Node selectedNode = (Node) getCurrentTarget();
+		Node parentNode = selectedNode;
+		if (parentNode == null && getViewer().getInput() instanceof Node)
+			parentNode = (Node) getViewer().getInput();
+		if (!parentNode.isFolder())
+			parentNode = parentNode.getParent();
+		if (getViewer() instanceof TreeViewer && getCurrentLocation() == LOCATION_BEFORE
+				&& parentNode != getViewer().getInput())
+			parentNode = parentNode.getParent();
 		String[] names = (String[]) data;
 		AddOperation operation = new AddOperation();
-		operation.execute(names, node, (StructuredViewer) getViewer());
+		operation.execute(names, parentNode, selectedNode, (StructuredViewer) getViewer());
 		return true;
 	}
 

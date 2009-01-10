@@ -24,7 +24,7 @@ public class AddAction extends DialogAction {
 		Node[] selectedNodes = getSelectedNodes();
 		Node targetNode = selectedNodes.length > 0 ? selectedNodes[0] : getViewerInputAsNode();
 		AddOperation operation = new AddOperation();
-		operation.execute(paths, targetNode, getViewer());
+		operation.execute(paths, targetNode, null, getViewer());
 	}
 
 }

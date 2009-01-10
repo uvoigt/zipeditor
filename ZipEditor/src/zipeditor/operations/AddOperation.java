@@ -23,13 +23,15 @@ public class AddOperation {
 	private class AddFilesJob extends Job {
 		private String[] fFilesNames;
 		private Node fParentNode;
+		private Node fBeforeSibling;
 		private boolean fAtLeastOneAdded;
 		private UIJob fRefreshJob;
 
-		public AddFilesJob(String[] filesNames, Node parentNode, UIJob refreshJob) {
+		public AddFilesJob(String[] filesNames, Node parentNode, Node beforeSibling, UIJob refreshJob) {
 			super(Messages.getString("AddOperation.1")); //$NON-NLS-1$
 			fFilesNames = filesNames;
 			fParentNode = parentNode;
+			fBeforeSibling = beforeSibling;
 			fRefreshJob = refreshJob;
 		}
 
@@ -46,9 +48,9 @@ public class AddOperation {
 					if (subMonitor.isCanceled())
 						break;
 					try {
-						fParentNode.add(new File(fFilesNames[i]), subMonitor);
+						fParentNode.add(new File(fFilesNames[i]), fBeforeSibling, subMonitor);
 						oneAdded = true;
-					} catch (IllegalArgumentException e) {
+					} catch (Exception e) {
 						return ZipEditorPlugin.createErrorStatus(Messages.getString("AddOperation.0"), e); //$NON-NLS-1$
 					}
 					subMonitor.worked(1);
@@ -84,11 +86,11 @@ public class AddOperation {
 		}
 	};
 	
-	public void execute(String[] fileNames, Node parentNode, StructuredViewer viewer) {
+	public void execute(String[] fileNames, Node parentNode, Node beforeSibling, StructuredViewer viewer) {
 		
 		while (parentNode != null && !parentNode.isFolder())
 			parentNode = parentNode.getParent();
-		AddFilesJob addFilesJob = new AddFilesJob(fileNames, parentNode, new RefreshJob(viewer));
+		AddFilesJob addFilesJob = new AddFilesJob(fileNames, parentNode, beforeSibling, new RefreshJob(viewer));
 		addFilesJob.schedule();
 	}
 
