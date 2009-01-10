@@ -4,6 +4,7 @@
  */
 package zipeditor.model;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -27,6 +28,7 @@ public class Node extends PlatformObject {
 	protected long time;
 	protected long size;
 	protected File file;
+	private byte[] content;
 	protected ZipModel model;
 	
 	private String path;
@@ -182,23 +184,37 @@ public class Node extends PlatformObject {
 	}
 	
 	protected InputStream doGetContent() throws IOException {
-		return file != null ? new FileInputStream(file) : null;
+		if (file != null)
+			return new FileInputStream(file);
+		if (content != null)
+			return new ByteArrayInputStream(content);
+		return null;
 	}
-
-	public void add(Node node) throws IllegalArgumentException {
+	
+	protected void setContent(byte[] buf) {
+		this.content = buf;
+	}
+	
+	private void internalAdd(Node node, int atIndex) {
 		node.parent = this;
 		if (children == null)
 			children = new ArrayList();
-		children.add(node);
+		if (atIndex < 0)
+			atIndex = children.size();
+		children.add(atIndex, node);
 		model.setDirty(true);
 		model.notifyListeners();
 		node.path = null;
 		node.fullPath = null;
 	}
+
+	public void add(Node node, Node beforeSibling) {
+		internalAdd(node, children != null && beforeSibling != null ? children.indexOf(beforeSibling) : -1);
+	}
 	
-	public void add(File file, IProgressMonitor monitor) throws IllegalArgumentException {
+	public void add(File file, Node beforeSibling, IProgressMonitor monitor) {
 		Node node = create(model, file.getName(), file.isDirectory());
-		add(node);
+		add(node, beforeSibling);
 		node.state |= ADDED;
 		if (node.isFolder()) {
 			node.time = file.lastModified();
@@ -208,7 +224,7 @@ public class Node extends PlatformObject {
 					if (monitor.isCanceled())
 						break;
 					monitor.subTask(files[i].getName());
-					node.add(files[i], monitor);
+					node.add(files[i], null, monitor);
 				}
 			}
 			node.state |= MODIFIED;
