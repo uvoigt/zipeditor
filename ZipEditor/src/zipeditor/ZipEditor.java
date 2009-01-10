@@ -433,6 +433,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 		Object[] info = getEditorInputFileInfo(true);
 		File file = (File) info[0];
 		InputStream in = (InputStream) info[1];
+		boolean isReadOnly = ((Boolean) info[2]).booleanValue();
 		if (in != null && file != null && !file.exists()) {
 			try {
 				file = File.createTempFile("tmp", null); //$NON-NLS-1$
@@ -443,7 +444,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 				ZipEditorPlugin.log(e);
 			}
 		}
-		return new ZipModel(file, in);
+		return new ZipModel(file, in, isReadOnly);
 	}
 	
 	private Object[] getEditorInputFileInfo(boolean getInputStream) {
@@ -451,30 +452,34 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 		IPath path = null;
 		InputStream in = null;
 		File file = null;
+		Boolean readonly = Boolean.TRUE;
 		if (input instanceof IFileEditorInput) {
-			IFileEditorInput fileEditorInput = (IFileEditorInput) input;
-			path = fileEditorInput.getFile().getLocation();
+			path = ((IFileEditorInput) input).getFile().getLocation();
 			file = path.toFile();
 			if (getInputStream) {
 				try {
-					in = fileEditorInput.getFile().getContents();
+					in = ((IFileEditorInput) input).getFile().getContents();
 				} catch (CoreException e) {
 					throw new RuntimeException(e);
 				}
 			}
+			readonly = new Boolean(((IFileEditorInput) input).getFile().isReadOnly());
 		} else {
 			if (input instanceof IPathEditorInput) {
 				path = ((IPathEditorInput) input).getPath();
 				file = path.toFile();
+				readonly = new Boolean(!file.canWrite());
 			}
 			if (input instanceof IStorageEditorInput) {
 				try {
 					if (path == null) {
 						path = ((IStorageEditorInput) input).getStorage().getFullPath();
-						file = path.toFile();
+						if (path != null)
+							file = path.toFile();
 					}
 					if (getInputStream)
 						in = ((IStorageEditorInput) input).getStorage().getContents();
+					readonly = new Boolean(((IStorageEditorInput) input).getStorage().isReadOnly());
 				} catch (CoreException e) {
 					ZipEditorPlugin.log(e);
 				}
@@ -490,11 +495,11 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 				}
 			}
 		}
-		return new Object[] { file, in };
+		return new Object[] { file, in, readonly };
 	}
 	
 	public boolean isDirty() {
-		return fModel != null && fModel.isDirty();
+		return fModel != null && fModel.isDirty() && !fModel.isReadonly();
 	}
 
 	public boolean isSaveAsAllowed() {
@@ -633,7 +638,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 		Object input = null;
 		if (fModel == null) {
 			fModel = createModel();
-			fModelModified = fModel.getZipPath().lastModified();
+			if (fModel.getZipPath() != null)
+				fModelModified = fModel.getZipPath().lastModified();
 			fModel.addModelListener(new ModelListener());
 			input = fModel.getRoot();
 			if (fFrameList != null) {

@@ -5,6 +5,7 @@
 package zipeditor.model;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -101,12 +102,14 @@ public class ZipModel {
 	private int state;
 	private int type;
 	private File tempDir;
+	private boolean readonly;
 	private ListenerList listenerList = new ListenerList();
 	
-	public ZipModel(File path, final InputStream inputStream) {
+	public ZipModel(File path, final InputStream inputStream, boolean readonly) {
 		zipPath = path;
+		this.readonly = readonly;
 		state |= INITIALIZING;
-		if (path.length() >= 10000000) {
+		if (path != null && path.length() >= 10000000) {
 			Thread initThread = new Thread(Messages.getFormattedString("ZipModel.0", path.getName())) { //$NON-NLS-1$
 				public void run() {
 					initialize(inputStream);
@@ -183,7 +186,7 @@ public class ZipModel {
 				Node parent = node != null ? node : root;
 				node = parent.getChildByName(pathSeg, false);
 				if (node == null) {
-					parent.add(node = parent.create(this, pathSeg, true));
+					parent.add(node = parent.create(this, pathSeg, true), null);
 					node.time = -1;
 				}
 			}
@@ -199,7 +202,26 @@ public class ZipModel {
 				Node newChild = zipEntry != null ? new ZipNode(this, zipEntry, name, isFolder) :
 						tarEntry != null ? (Node) new TarNode(this, tarEntry, name, isFolder)
 								: new GzipNode(this, name, isFolder);
-				node.add(newChild);
+				node.add(newChild, null);
+				long entrySize = zipEntry != null ? zipEntry.getSize() : tarEntry != null ? tarEntry.getSize() : 0;
+				if (zipPath == null || isGzipStream) {
+					byte[] buf = new byte[8000];
+					ByteArrayOutputStream out = null;
+					try {
+						for (int count = 0; (count = zipStream.read(buf)) != -1; ) {
+							if (out == null)
+								out = new ByteArrayOutputStream();
+							out.write(buf, 0, count);
+							if (isGzipStream)
+								entrySize += count;
+						}
+					} catch (Exception e) {
+						ZipEditorPlugin.log(e);
+					}
+					if (out != null)
+						newChild.setContent(out.toByteArray());
+				}
+				newChild.setSize(entrySize);
 				if (zipStream instanceof ZipInputStream) {
 					try {
 						((ZipInputStream) zipStream).closeEntry();
@@ -207,17 +229,6 @@ public class ZipModel {
 						ZipEditorPlugin.log(e);
 					}
 				}
-				long entrySize = zipEntry != null ? zipEntry.getSize() : tarEntry != null ? tarEntry.getSize() : 0;
-				if (isGzipStream) {
-					byte[] nulBuf = new byte[8000];
-					try {
-						for (int count = 0; (count = zipStream.read(nulBuf)) != -1; )
-							entrySize += count;
-					} catch (Exception ignore) {
-					}
-					
-				}
-				newChild.setSize(entrySize);
 			}
 			state &= -1 ^ INIT_STARTED;
 		}
@@ -433,11 +444,15 @@ public class ZipModel {
 			state &= -1 ^ DIRTY;
 		}
 	}
+	
+	public boolean isReadonly() {
+		return readonly;
+	}
 
 	public File getZipPath() {
 		return zipPath;
 	}
-
+	
 	public Node findNode(String path) {
 		String[] names = splitName(path);
 		Node node = root;

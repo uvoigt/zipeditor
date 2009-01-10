@@ -118,7 +118,8 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 	private void indicateModification(Map fileToNode, File file, Node node) {
 		if (MessageDialog.openQuestion(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
 				Messages.getString("ZipEditor.1"), Messages.getFormattedString("ZipEditor.0", //$NON-NLS-1$ //$NON-NLS-2$
-						new Object[] { file.getName(), node.getModel().getZipPath().getName() }))) {
+						new Object[] { file.getName(), node.getModel().getZipPath() != null
+								? node.getModel().getZipPath().getName() : "" }))) { //$NON-NLS-1$
 			node.updateContent(file);
 		} else {
 			node.reset();
