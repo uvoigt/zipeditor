@@ -203,7 +203,7 @@ public class ZipModel {
 						tarEntry != null ? (Node) new TarNode(this, tarEntry, name, isFolder)
 								: new GzipNode(this, name, isFolder);
 				node.add(newChild, null);
-				long entrySize = zipEntry != null ? zipEntry.getSize() : tarEntry != null ? tarEntry.getSize() : 0;
+				long entrySize = 0;
 				if (zipPath == null || isGzipStream) {
 					byte[] buf = new byte[8000];
 					ByteArrayOutputStream out = null;
@@ -221,7 +221,6 @@ public class ZipModel {
 					if (out != null)
 						newChild.setContent(out.toByteArray());
 				}
-				newChild.setSize(entrySize);
 				if (zipStream instanceof ZipInputStream) {
 					try {
 						((ZipInputStream) zipStream).closeEntry();
@@ -229,6 +228,8 @@ public class ZipModel {
 						ZipEditorPlugin.log(e);
 					}
 				}
+				newChild.setSize(zipEntry != null ? zipEntry.getSize()
+						: tarEntry != null ? tarEntry.getSize() : entrySize);
 			}
 			state &= -1 ^ INIT_STARTED;
 		}
