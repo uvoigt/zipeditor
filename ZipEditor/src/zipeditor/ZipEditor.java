@@ -488,6 +488,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 				try {
 					file = new File(((IURIEditorInput) input).getURI());
 					path = new Path(file.getAbsolutePath());
+					readonly = new Boolean(!file.canWrite());
 					if (getInputStream)
 						in = (((IURIEditorInput) input).getURI().toURL()).openStream();
 				} catch (Exception e) {
@@ -981,13 +982,14 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 			fCheckedDeletion = true;
 			MessageDialog dialog = new MessageDialog(getSite().getShell(),
 					Messages.getString("ZipEditor.6"), null, Messages //$NON-NLS-1$
-							.getString("ZipEditor.7"), MessageDialog.QUESTION, //$NON-NLS-1$
+							.getFormattedString("ZipEditor.7", editorInput //$NON-NLS-1$
+									.getName()), MessageDialog.QUESTION,
 					new String[] { Messages.getString("ZipEditor.13"), //$NON-NLS-1$
 							Messages.getString("ZipEditor.14"), //$NON-NLS-1$
 							IDialogConstants.CANCEL_LABEL }, 0);
 			switch (dialog.open()) {
 			case 0:
-				getSite().getPage().closeEditor(this, false);
+				close();
 				break;
 			case 1:
 				doSave(new NullProgressMonitor());
