@@ -52,6 +52,11 @@ public abstract class MultiElementPropertyPage extends PropertyPage {
 		fElements = elements;
 	}
 	
+	public void setElement(IAdaptable element) {
+		if (element != null)
+			fElements = new IAdaptable[] { element };
+	}
+	
 	public IAdaptable[] getElements() {
 		return fElements;
 	}
