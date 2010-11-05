@@ -45,6 +45,17 @@ public class ZipModel {
 	public final static int INITIALIZING = 0x04;
 	public final static int DIRTY = 0x08;
 
+	/** @see: {@link org.apache.tools.tar.TarEntry#parseTarHeader(byte[])} */
+	private static final int TAR_MAGIC_OFFSET = TarConstants.NAMELEN //
+			+ TarConstants.MODELEN //
+			+ TarConstants.UIDLEN //
+			+ TarConstants.GIDLEN //
+			+ TarConstants.SIZELEN //
+			+ TarConstants.MODTIMELEN //
+			+ TarConstants.CHKSUMLEN //
+			+ 1 // linkFlag
+			+ TarConstants.NAMELEN; // linkName
+
 	public static int typeFromName(String string) {
 		if (string != null) {
 			String lowerCase = string.toLowerCase();
@@ -75,9 +86,11 @@ public class ZipModel {
 			contents.reset();
 			try {
 				GZIPInputStream gzip = new GZIPInputStream(contents);
-				TarInputStream tar = new TarInputStream(gzip);
-				TarEntry tarEntry = tar.getNextEntry();
-				if (tarEntry != null && tar.entrySize >= 0 && tarEntry.getCheckSum() != 0) {
+				byte[] tarEntryHeader = new byte[TAR_MAGIC_OFFSET + TarConstants.MAGICLEN];
+				gzip.read(tarEntryHeader);
+				String magic = String.valueOf(TarUtils.parseName(tarEntryHeader, TAR_MAGIC_OFFSET,
+						TarConstants.MAGICLEN));
+				if (TarConstants.TMAGIC.equals(magic) || TarConstants.GNU_TMAGIC.equals(magic)) {
 					contents.reset();
 					return TARGZ;
 				} else {
