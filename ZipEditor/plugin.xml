@@ -49,7 +49,7 @@
       </content-type>
       <file-association
             content-type="ZipEditor.zipfile"
-            file-extensions="jar, zip"/>
+            file-extensions="jar, zip, war, ear"/>
       <file-association
             content-type="ZipEditor.gzipfile"
             file-extensions="gz"/>
