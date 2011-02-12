@@ -43,6 +43,7 @@ import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.preference.IPreferenceStore;
+import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.ColumnPixelData;
@@ -84,6 +85,7 @@ import org.eclipse.ui.IEditorSite;
 import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.IMemento;
 import org.eclipse.ui.IPathEditorInput;
+import org.eclipse.ui.IPersistableElement;
 import org.eclipse.ui.IStorageEditorInput;
 import org.eclipse.ui.IURIEditorInput;
 import org.eclipse.ui.IViewSite;
@@ -222,6 +224,38 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 			return true;
 		}
 	};
+	
+	private class DelegateEditorInput implements IEditorInput {
+	    private IEditorInput delegate;
+
+		private DelegateEditorInput(IEditorInput delegate) {
+	    	this.delegate = delegate;
+		}
+
+		public boolean exists() {
+	        return delegate.exists();
+	    }
+
+	    public ImageDescriptor getImageDescriptor() {
+	        return delegate.getImageDescriptor();
+	    }
+
+	    public String getName() {
+	    	return delegate.getName();
+	    }
+
+	    public IPersistableElement getPersistable() {
+	        return delegate.getPersistable();
+	    }
+
+	    public String getToolTipText() {
+	    	return delegate.getToolTipText();
+	    }
+
+	    public Object getAdapter(Class adapter) {
+	        return null;
+	    }
+	}
 
 	private StructuredViewer fZipViewer;
 	private IToolBarManager fToolBar;
@@ -585,9 +619,12 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 		viewer.getControl().setLayoutData(new GridData(GridData.FILL_BOTH));
 		MenuManager manager = new MenuManager();
 		manager.setRemoveAllWhenShown(true);
+		final IEditorInput originalInput = getEditorInput();
 		manager.addMenuListener(new IMenuListener() {
 			public void menuAboutToShow(IMenuManager manager) {
 				handleContextMenuAboutToShow(manager);
+				// no better idea to prevent other items being added to the menu
+				setInput(new DelegateEditorInput(originalInput));
 			}
 		});
 		Menu contextMenu = manager.createContextMenu(viewer.getControl());
