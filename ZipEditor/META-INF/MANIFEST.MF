@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %Bundle-Name.0
 Bundle-SymbolicName: ZipEditor;singleton:=true
-Bundle-Version: 1.0.9
+Bundle-Version: 1.1.0
 Bundle-Activator: zipeditor.ZipEditorPlugin
 Bundle-Localization: plugin
 Require-Bundle: org.eclipse.core.runtime,
@@ -17,3 +17,7 @@ Eclipse-LazyStart: true
 Bundle-Vendor: %Bundle-Vendor.0
 Export-Package: zipeditor,
  zipeditor.model
+Bundle-ClassPath: lib/sevenzipjbinding.jar,
+ lib/sevenzipjbinding-AllWindows.jar,
+ lib/,
+ .

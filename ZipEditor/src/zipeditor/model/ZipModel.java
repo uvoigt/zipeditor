@@ -4,21 +4,30 @@
  */
 package zipeditor.model;
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+
+import net.sf.sevenzipjbinding.ArchiveFormat;
+import net.sf.sevenzipjbinding.IInStream;
+import net.sf.sevenzipjbinding.ISevenZipInArchive;
+import net.sf.sevenzipjbinding.SevenZip;
+import net.sf.sevenzipjbinding.SevenZipException;
+import net.sf.sevenzipjbinding.impl.RandomAccessFileInStream;
+import net.sf.sevenzipjbinding.simple.ISimpleInArchive;
+import net.sf.sevenzipjbinding.simple.ISimpleInArchiveItem;
 
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -34,6 +43,110 @@ import zipeditor.ZipEditorPlugin;
 import zipeditor.model.IModelListener.ModelChangeEvent;
 
 public class ZipModel {
+	protected class SevenZipCreator {
+		private RandomAccessFile raf;
+		private ISevenZipInArchive archive;
+		private ArchiveFormat format;
+		private ISimpleInArchive simpleInterface;
+		protected Object entry;
+		private int itemCount;
+		private int cursor;
+
+		public SevenZipCreator() {
+			openArchive(0);
+		}
+		boolean isOpen() {
+			try {
+				return raf.getFD().valid();
+			} catch (IOException e) {
+				return false;
+			}
+		}
+		ISimpleInArchiveItem openArchive(int index) {
+			try {
+				raf = new RandomAccessFile(zipPath, "rw"); //$NON-NLS-1$
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			IInStream stream = new RandomAccessFileInStream(raf);
+			archive = detectSevenZip(stream);
+			if (archive == null) {
+				try {
+					raf.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				return null;
+			}
+			format = archive.getArchiveFormat();
+			simpleInterface = archive.getSimpleInterface();
+			if (ZipEditorPlugin.DEBUG)
+				System.out.println("Detected type (" + zipPath.getName() + "): " + format); //$NON-NLS-1$ //$NON-NLS-2$
+			try {
+				itemCount = simpleInterface.getNumberOfItems();
+//				archive.close();
+				return simpleInterface.getArchiveItem(index);
+			} catch (SevenZipException e1) {
+				e1.printStackTrace();
+				return null;
+			}
+		}
+		private ISevenZipInArchive detectSevenZip(IInStream in) {
+			try {
+				return SevenZip.openInArchive(null, in);
+			} catch (SevenZipException e) {
+				System.err.println(e);
+				return null;
+			}
+		}
+		void nextEntry() throws IOException {
+			try {
+				entry = itemCount > cursor ? simpleInterface.getArchiveItem(cursor++) : null;
+			} catch (SevenZipException e) {
+				throw new IOException(e);
+			}
+		}
+		String getEntryName() {
+			try {
+				return ((ISimpleInArchiveItem) entry).getPath();
+			} catch (SevenZipException e) {
+				ZipEditorPlugin.log(e);
+				return null;
+			}
+		}
+		long entrySize() {
+			try {
+				return ((ISimpleInArchiveItem) entry).getSize() != null ? ((ISimpleInArchiveItem) entry).getSize().longValue() : 0;
+			} catch (SevenZipException e) {
+				ZipEditorPlugin.log(e);
+				return 0;
+			}
+		}
+		boolean isDirectory() {
+			try {
+				return ((ISimpleInArchiveItem) entry).isFolder();
+			} catch (SevenZipException e) {
+				ZipEditorPlugin.log(e);
+				return false;
+			}
+		}
+		Node createNode(String name, boolean isFolder) {
+			return new SevenZipNode(ZipModel.this, (ISimpleInArchiveItem) entry,
+					this, name, isFolder);
+		}
+		void close() throws IOException {
+			try {
+				archive.close();
+			} catch (SevenZipException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			raf.close();
+		}
+	}
+
 	public final static int ZIP = 1;
 	public final static int TAR = 2;
 	public final static int GZ = 3;
@@ -44,17 +157,6 @@ public class ZipModel {
 	public final static int INIT_FINISHED = 0x02;
 	public final static int INITIALIZING = 0x04;
 	public final static int DIRTY = 0x08;
-
-	/** @see: {@link org.apache.tools.tar.TarEntry#parseTarHeader(byte[])} */
-	private static final int TAR_MAGIC_OFFSET = TarConstants.NAMELEN //
-			+ TarConstants.MODELEN //
-			+ TarConstants.UIDLEN //
-			+ TarConstants.GIDLEN //
-			+ TarConstants.SIZELEN //
-			+ TarConstants.MODTIMELEN //
-			+ TarConstants.CHKSUMLEN //
-			+ 1 // linkFlag
-			+ TarConstants.NAMELEN; // linkName
 
 	public static int typeFromName(String string) {
 		if (string != null) {
@@ -69,48 +171,22 @@ public class ZipModel {
 		return ZIP;
 	}
 
-	public static int detectType(InputStream contents) {
-		if (!contents.markSupported())
-			contents = new BufferedInputStream(contents);
+	public static ArchiveFormat detectType(InputStream contents) {
 		try {
-			contents.mark(1000000); // an entry which exceeds this limit cannot be detected
-			int count = contents.read();
-			contents.reset();
-			if (count == -1)
-				return EMPTY;
-			ZipInputStream zip = new ZipInputStream(contents);
-			if (zip.getNextEntry() != null) {
-				contents.reset();
-				return ZIP;
-			}
-			contents.reset();
-			try {
-				GZIPInputStream gzip = new GZIPInputStream(contents);
-				byte[] tarEntryHeader = new byte[TAR_MAGIC_OFFSET + TarConstants.MAGICLEN];
-				gzip.read(tarEntryHeader);
-				String magic = String.valueOf(TarUtils.parseName(tarEntryHeader, TAR_MAGIC_OFFSET,
-						TarConstants.MAGICLEN));
-				if (TarConstants.TMAGIC.equals(magic) || TarConstants.GNU_TMAGIC.equals(magic)) {
-					contents.reset();
-					return TARGZ;
-				} else {
-					contents.reset();
-					return GZ;
-				}
-			} catch (IOException e) {
-				if ("Not in GZIP format".equals(e.getMessage())) { //$NON-NLS-1$
-					contents.reset();
-					return TAR;
-				}
-				contents.reset();
-				return -1;
-			}
-		} catch (Exception ignore) {
-			return -1;
+			File tempFile = File.createTempFile("zip", ".tmp"); //$NON-NLS-1$ //$NON-NLS-2$
+			Utils.readAndWrite(contents, new FileOutputStream(tempFile), true, false);
+			ZipModel model = new ZipModel(tempFile, contents, true);
+			SevenZipCreator creator = model.new SevenZipCreator();
+			creator.close();
+			tempFile.delete();
+			return creator.format;
+		} catch (IOException e) {
+			e.printStackTrace();
+			return null;
 		}
 	}
 
-	private Node root;
+	protected Node root;
 	private File zipPath;
 	private int state;
 	private int type;
@@ -136,20 +212,15 @@ public class ZipModel {
 	
 	private void initialize(InputStream inputStream) {
 		long time = System.currentTimeMillis();
-		InputStream zipStream = inputStream;
+		SevenZipCreator creator = null;
 		try {
-			zipStream = detectStream(inputStream);
-		} catch (Exception ignore) {
-		}
-		try {
-			root = zipStream instanceof ZipInputStream ? new ZipNode(this, new String(), true) :
-				zipStream instanceof TarInputStream ? (Node) new TarNode(this, new String(), true)
-						: new GzipNode(this, new String(), true);
-			readStream(zipStream);
+			root = new SevenZipNode(this, new String(), true);
+			creator = new SevenZipCreator();
+			readStream(inputStream, creator);
 		} finally {
-			if (zipStream != null) {
+			if (creator != null) {
 				try {
-					zipStream.close();
+					creator.close();
 				} catch (IOException e) {
 					ZipEditorPlugin.log(e);
 				}
@@ -163,34 +234,29 @@ public class ZipModel {
 		}
 	}
 	
-	private void readStream(InputStream zipStream) {
-		ZipEntry zipEntry = null;
-		TarEntry tarEntry = null;
+	private void readStream(InputStream zipStream, SevenZipCreator creator) {
 		state |= INIT_STARTED;
-		boolean isGzipStream = zipStream instanceof GZIPInputStream;
 		while (true) {
 			if (!isInitializing()) {
 				state |= DIRTY;
 				break;
 			}
 			try {
-				if (zipStream instanceof ZipInputStream)
-					zipEntry = ((ZipInputStream) zipStream).getNextEntry();
-				else if (zipStream instanceof TarInputStream)
-					tarEntry = ((TarInputStream) zipStream).getNextEntry();
+				creator.nextEntry();
 			} catch (Exception e) {
 				ZipEditorPlugin.log(e);
 				break;
 			}
-			if ((!isGzipStream && zipEntry == null && tarEntry == null)
-					|| (isGzipStream && root.children != null)) {
+			if ((creator.entry == null)
+					/*|| (root.children != null)*/) {
 				state &= -1 ^ DIRTY;
 				break;
 			}
-			String entryName = zipEntry != null ? zipEntry.getName()
-					: tarEntry != null ? tarEntry.getName() : zipPath.getName()
-							.endsWith(".gz") ? zipPath.getName().substring(0, //$NON-NLS-1$
-							zipPath.getName().length() - 3) : zipPath.getName();
+			String entryName = creator.getEntryName();
+			if (entryName == null)
+				entryName = zipPath.getName().endsWith(".gz") ? zipPath.getName().substring(0, //$NON-NLS-1$
+								zipPath.getName().length() - 3)
+						: zipPath.getName();
 			String[] names = splitName(entryName);
 			Node node = null;
 			int n = names.length - 1;
@@ -204,20 +270,17 @@ public class ZipModel {
 				}
 			}
 			boolean isFolder = entryName.endsWith("/") || entryName.endsWith("\\") || //$NON-NLS-1$ //$NON-NLS-2$
-					(zipEntry != null && zipEntry.isDirectory() || tarEntry != null && tarEntry.isDirectory());
+					creator.isDirectory();
 			if (node == null)
 				node = root;
 			Node existingNode = n == -1 ? null : node.getChildByName(names[n], false);
 			if (existingNode != null) {
-				existingNode.update(zipEntry != null ? (Object) zipEntry : tarEntry);
+				existingNode.update(creator.entry);
 			} else {
 				String name = n >= 0 ? names[n] : "/"; //$NON-NLS-1$
-				Node newChild = zipEntry != null ? new ZipNode(this, zipEntry, name, isFolder) :
-						tarEntry != null ? (Node) new TarNode(this, tarEntry, name, isFolder)
-								: new GzipNode(this, name, isFolder);
+				Node newChild = creator.createNode(name, isFolder); 
 				node.add(newChild, null);
-				long entrySize = 0;
-				if (zipPath == null || isGzipStream) {
+				if (zipPath == null) {
 					byte[] buf = new byte[8000];
 					ByteArrayOutputStream out = null;
 					try {
@@ -225,8 +288,6 @@ public class ZipModel {
 							if (out == null)
 								out = new ByteArrayOutputStream();
 							out.write(buf, 0, count);
-							if (isGzipStream)
-								entrySize += count;
 						}
 					} catch (Exception e) {
 						ZipEditorPlugin.log(e);
@@ -241,29 +302,12 @@ public class ZipModel {
 						ZipEditorPlugin.log(e);
 					}
 				}
-				newChild.setSize(zipEntry != null ? zipEntry.getSize()
-						: tarEntry != null ? tarEntry.getSize() : entrySize);
+				newChild.setSize(creator.entrySize());
 			}
 			state &= -1 ^ INIT_STARTED;
 		}
 	}
-
-	private InputStream detectStream(InputStream contents) throws IOException {
-		BufferedInputStream in = new BufferedInputStream(contents);
-		switch (type = detectType(in)) {
-		default:
-			return in;
-		case ZIP:
-			return new ZipInputStream(in);
-		case TAR:
-			return new TarInputStream(in);
-		case GZ:
-			return new GZIPInputStream(in);
-		case TARGZ:
-			return new TarInputStream(new GZIPInputStream(in));
-		}
-	}
-
+	
 	public InputStream save(int type, IProgressMonitor monitor) throws IOException {
 		File tmpFile = new File(root.getModel().getTempDir(), Integer.toString((int) System.currentTimeMillis()));
 		OutputStream out = new FileOutputStream(tmpFile);
@@ -342,7 +386,7 @@ public class ZipModel {
 		}
 	}
 
-	private String[] splitName(String name) {
+	protected String[] splitName(String name) {
 		List list = new ArrayList();
 		while (name != null && name.length() > 0) {
 			int index = name.indexOf('/');
