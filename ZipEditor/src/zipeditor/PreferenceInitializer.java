@@ -25,11 +25,10 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 		store.setDefault(PreferenceConstants.PREFIX_OUTLINE + PreferenceConstants.SORT_ENABLED, true);
 		store.setDefault(PreferenceConstants.PREFIX_NAVIGATOR + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_TREE);
 		store.setDefault(PreferenceConstants.PREFIX_NAVIGATOR + PreferenceConstants.SORT_ENABLED, true);
-		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_FOLDERS_VISIBLE);
+		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER);
 		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SORT_ENABLED, true);
 		store.setDefault(PreferenceConstants.SORT_BY, NodeProperty.NAME);
 		store.setDefault(PreferenceConstants.SORT_DIRECTION, SWT.UP);
-		store.setDefault(PreferenceConstants.STORE_FOLDERS_IN_ARCHIVES, true);
 		store.setDefault(PreferenceConstants.VISIBLE_COLUMNS, join(new Object[] {
 				new Integer(NodeProperty.NAME),
 				new Integer(NodeProperty.TYPE),
