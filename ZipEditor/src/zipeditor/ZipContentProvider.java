@@ -133,10 +133,7 @@ public class ZipContentProvider implements ITreeContentProvider {
 			if (contentDescription.getContentType() == null)
 				return false;
 			String contentTypeId = contentDescription.getContentType().getId();
-			return ZipContentDescriber.GZ_FILE.equals(contentTypeId)
-					|| ZipContentDescriber.TAR_FILE.equals(contentTypeId)
-					|| ZipContentDescriber.TGZ_FILE.equals(contentTypeId)
-					|| ZipContentDescriber.ZIP_FILE.equals(contentTypeId);
+			return ZipContentDescriber.isForUs(contentTypeId);
 		} catch (CoreException e) {
 			ZipEditorPlugin.log(e);
 			return false;
