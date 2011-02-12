@@ -94,7 +94,7 @@ public class ExtractOperation {
 		if (monitor.isCanceled())
 			return null;
 		toDir = determineFolderTarget(toDir);
-		File file = new File(toDir, node.getName());
+		File file = node.isFolder() ? toDir : new File(toDir, node.getFullPath());
 		if (node.isFolder()) {
 			if (!file.exists())
 				file.mkdirs();
