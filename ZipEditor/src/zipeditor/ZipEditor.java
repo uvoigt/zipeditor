@@ -213,8 +213,9 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 			IResource resource = delta.getResource();
 			if (resource instanceof IFile) {
 				IFile file = (IFile)resource;
-				if (getEditorInput() instanceof IFileEditorInput && file.equals(
-						((IFileEditorInput) getEditorInput()).getFile())) {
+				IEditorInput input = doGetEditorInput();
+				if (input instanceof IFileEditorInput && file.equals(
+						((IFileEditorInput) input).getFile())) {
 					if (delta.getKind() == IResourceDelta.REMOVED ||
 							delta.getKind() == IResourceDelta.REPLACED)
 						close();
@@ -287,9 +288,9 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 	public final static String ACTION_RENAME = "Rename"; //$NON-NLS-1$
 	
 	public void doSave(IProgressMonitor monitor) {
-		IEditorInput input = getEditorInput();
+		IEditorInput input = doGetEditorInput();
 		if (input instanceof IFileEditorInput)
-			internalSave(((IFileEditorInput) getEditorInput()).getFile().getLocation(), monitor);
+			internalSave(((IFileEditorInput) input).getFile().getLocation(), monitor);
 		else if (input instanceof IPathEditorInput)
 			internalSave(((IPathEditorInput) input).getPath(), monitor);
 		else if (input instanceof IURIEditorInput)
@@ -375,7 +376,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 
 	public void doSaveAs() {
 		SaveAsDialog dialog = new SaveAsDialog(getSite().getShell());
-		IFile original = (getEditorInput() instanceof IFileEditorInput) ? ((IFileEditorInput) getEditorInput()).getFile() : null;
+		IEditorInput input = doGetEditorInput();
+		IFile original = (input instanceof IFileEditorInput) ? ((IFileEditorInput) input).getFile() : null;
 		if (original != null)
 			dialog.setOriginalFile(original);
 
@@ -482,7 +484,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 	}
 	
 	private Object[] getEditorInputFileInfo(boolean getInputStream) {
-		IEditorInput input = getEditorInput();
+		IEditorInput input = doGetEditorInput();
 		IPath path = null;
 		InputStream in = null;
 		File file = null;
@@ -522,7 +524,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 				try {
 					file = new File(((IURIEditorInput) input).getURI());
 					path = new Path(file.getAbsolutePath());
-					readonly = new Boolean(!file.canWrite());
+					// file exists cause it can be read but is set readonly
+					readonly = new Boolean(!file.canWrite() && file.canRead());
 					if (getInputStream)
 						in = (((IURIEditorInput) input).getURI().toURL()).openStream();
 				} catch (Exception e) {
@@ -531,6 +534,11 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 			}
 		}
 		return new Object[] { file, in, readonly };
+	}
+	
+	private IEditorInput doGetEditorInput() {
+		IEditorInput input = getEditorInput();
+		return input instanceof DelegateEditorInput ? ((DelegateEditorInput) input).delegate : input;
 	}
 	
 	public boolean isDirty() {
@@ -992,11 +1000,13 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 		if (fZipViewer != null)
 			fZipViewer.getControl().setFocus();
 		activateActions();
-		checkIfFileHasBeenChangedLocaly(getEditorInput());
+		checkIfFileHasBeenChangedLocaly(doGetEditorInput());
 	}
 
 	private void checkIfFileHasBeenChangedLocaly(IEditorInput editorInput) {
-		File file = (File) getEditorInputFileInfo(false)[0];
+		Object[] info = getEditorInputFileInfo(false);
+		File file = (File) info[0];
+		boolean readOnly = ((Boolean) info[2]).booleanValue();
 		boolean fileDeleted = file != null && !file.exists();
 		boolean fileModified = file != null && file.exists() && file.lastModified() > fModelModified;
 		if (editorInput instanceof IFileEditorInput) {
@@ -1015,7 +1025,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 				}
 				doRevert();
 			}
-		} else if (fileDeleted && !fCheckedDeletion) {
+		} else if (fileDeleted && !readOnly && !fCheckedDeletion) {
 			fCheckedDeletion = true;
 			MessageDialog dialog = new MessageDialog(getSite().getShell(),
 					Messages.getString("ZipEditor.6"), null, Messages //$NON-NLS-1$
