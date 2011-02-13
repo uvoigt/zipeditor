@@ -58,9 +58,9 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 		fSize = createText(control, 30, 1, false);
 		setFieldText(fSize, new PropertyAccessor() {
 			public Object getPropertyValue(Object object) {
-				return formatLong(((Node) object).getSize());
+				return new Long(((Node) object).getSize());
 			}
-		});
+		}, true);
 
 		return control;
 	}
@@ -76,10 +76,6 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 
 	protected String formatDate(long time) {
 		return ZipLabelProvider.formatDate(time);
-	}
-
-	protected String formatLong(long value) {
-		return ZipLabelProvider.formatLong(value);
 	}
 
 	protected long parseDate(String string) throws ParseException {

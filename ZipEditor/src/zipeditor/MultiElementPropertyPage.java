@@ -62,9 +62,17 @@ public abstract class MultiElementPropertyPage extends PropertyPage {
 	}
 
 	protected void setFieldText(Text field, PropertyAccessor accessor) {
+		setFieldText(field, accessor, false);
+	}
+
+	protected void setFieldText(Text field, PropertyAccessor accessor, boolean summate) {
 		Object[] values = new Object[fElements.length];
+		Number sum = null;
 		for (int i = 0; i < fElements.length; i++) {
 			values[i] = accessor.getPropertyValue(fElements[i]);
+			if (summate && values[i] instanceof Number) {
+				sum = new Long(((Number) values[i]).longValue() + (sum != null ? sum.longValue() : 0));
+			}
 		}
 		final Object unequalValue = new Object();
 		Object singularValue = values.length > 0 ? values[0] : null;
@@ -75,10 +83,16 @@ public abstract class MultiElementPropertyPage extends PropertyPage {
 			singularValue = unequalValue;
 			break;
 		}
-		if (singularValue == unequalValue) {
+		if (sum != null) {
+			field.setText(formatLong(sum.longValue()));
+		} else if (singularValue == unequalValue) {
 			field.setText(nonEqualStringLabel);
 		} else if (singularValue != null) {
 			field.setText(singularValue.toString());
 		}
+	}
+
+	protected String formatLong(long value) {
+		return ZipLabelProvider.formatLong(value);
 	}
 }
