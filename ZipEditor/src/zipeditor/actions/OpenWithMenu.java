@@ -12,7 +12,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.List;
 import java.util.Set;
+import java.util.StringTokenizer;
+import java.util.TreeSet;
 
 import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.runtime.IAdaptable;
@@ -24,6 +27,9 @@ import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.dialogs.IDialogConstants;
+import org.eclipse.jface.fieldassist.IContentProposal;
+import org.eclipse.jface.fieldassist.IContentProposalProvider;
+import org.eclipse.jface.fieldassist.TextContentAdapter;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.viewers.ArrayContentProvider;
@@ -62,6 +68,8 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.dialogs.SelectionDialog;
 import org.eclipse.ui.dialogs.SelectionStatusDialog;
 import org.eclipse.ui.editors.text.EditorsUI;
+import org.eclipse.ui.fieldassist.ContentAssistCommandAdapter;
+import org.eclipse.ui.texteditor.ITextEditorActionDefinitionIds;
 
 import zipeditor.PreferenceConstants;
 import zipeditor.PreferenceInitializer;
@@ -73,6 +81,32 @@ import zipeditor.model.Node;
 public class OpenWithMenu extends ContributionItem {
 	private class ExecutableSelectionDialog extends SelectionStatusDialog {
 		private class EditDialog extends SelectionDialog {
+			// be compatible with release before 3.6
+			private class ContentProposal implements IContentProposal {
+				private String content;
+				private String label;
+				private String description;
+				private int cursorPosition;
+				public ContentProposal(String content, String label, String description) {
+					this.content = content;
+					this.label = label;
+					this.description = description;
+					cursorPosition = content.length();
+				}
+				public String getContent() {
+					return content;
+				}
+				public int getCursorPosition() {
+					return cursorPosition;
+				}
+				public String getLabel() {
+					return label;
+				}
+				public String getDescription() {
+					return description;
+				}
+			}
+
 			private Editor fEditor;
 			private Text fLabel;
 			private Text fPath;
@@ -94,7 +128,14 @@ public class OpenWithMenu extends ContributionItem {
 				label = new Label(control, SWT.LEFT);
 				label.setText(ActionMessages.getString("OpenWithMenu.15")); //$NON-NLS-1$
 				fPath = createText(control, fEditor.getPath());
-				fPath.setToolTipText(ActionMessages.getString("OpenWithMenu.17")); //$NON-NLS-1$
+				new ContentAssistCommandAdapter(fPath, new TextContentAdapter(),
+						new IContentProposalProvider() {
+							public IContentProposal[] getProposals(String contents,
+									int position) {
+								return doGetProposals(contents, position);
+							}
+						}, ITextEditorActionDefinitionIds.CONTENT_ASSIST_PROPOSALS,
+						new char[0], true);
 				fBrowse = new Button(control, SWT.PUSH);
 				fBrowse.setText(ActionMessages.getString("OpenWithMenu.19")); //$NON-NLS-1$
 				fBrowse.addSelectionListener(new SelectionAdapter() {
@@ -141,6 +182,36 @@ public class OpenWithMenu extends ContributionItem {
 				if (fLabel.getText().length() == 0)
 					fLabel.setText(label);
 				fPath.setText(selectedFile);
+			}
+
+			private IContentProposal[] doGetProposals(String contents, int position) {
+				String all = ActionMessages.getString("OpenWithMenu.17"); //$NON-NLS-1$
+				StringTokenizer st = new StringTokenizer(all, "\n"); //$NON-NLS-1$
+				List proposals = new ArrayList();
+				while (st.hasMoreElements()) {
+					String entry = st.nextToken();
+					StringTokenizer tst = new StringTokenizer(entry, " "); //$NON-NLS-1$
+					String value = tst.nextToken();
+					int wordoffset = contents.lastIndexOf(' ', position - 1) + 1;
+					if (wordoffset > position)
+						wordoffset = position;
+					String word = contents.substring(wordoffset, position);
+					if (position >= 3 && contents.substring(position - 3).startsWith("$e")) { //$NON-NLS-1$
+						Set set = new TreeSet(new Comparator() {
+							public int compare(Object arg0, Object arg1) {
+								return ((IEditorDescriptor) arg0).getLabel().compareTo(((IEditorDescriptor) arg1).getLabel());
+							}
+						});
+						set.addAll(Arrays.asList(getEditorsFromRegistry()));
+						IEditorDescriptor[] editors = (IEditorDescriptor[]) set.toArray(new IEditorDescriptor[set.size()]);
+						for (int i = 0; i < editors.length; i++) {
+							proposals.add(new ContentProposal(editors[i].getId(), editors[i].getLabel(), null));
+						}
+						break;
+					} else if (value.startsWith(word))
+						proposals.add(new ContentProposal(value.substring(word.length()), value, entry));
+				}
+				return (IContentProposal[]) proposals.toArray(new IContentProposal[proposals.size()]);
 			}
 		};
 		
@@ -307,16 +378,20 @@ public class OpenWithMenu extends ContributionItem {
 
 		private Object getInternalEditors() {
 			if (fInternalEditors == null) {
-				fInternalEditors = new HashSet();
-				IEditorRegistry editorRegistry = PlatformUI.getWorkbench().getEditorRegistry();
-				try {
-					fInternalEditors.addAll(Arrays.asList(createInternalEditors(
-							(IEditorDescriptor[]) editorRegistry.getClass().getMethod("getSortedEditorsFromPlugins", null).invoke(editorRegistry, null)))); //$NON-NLS-1$
-				} catch (Exception e) {
-					ZipEditorPlugin.log(e);
-				}
+				fInternalEditors = new HashSet(Arrays.asList(createInternalEditors(getEditorsFromRegistry())));
 			}
 			return fInternalEditors;
+		}
+
+		private IEditorDescriptor[] getEditorsFromRegistry() {
+			try {
+				IEditorRegistry editorRegistry = PlatformUI.getWorkbench().getEditorRegistry();
+				return (IEditorDescriptor[]) editorRegistry.getClass().getMethod(
+						"getSortedEditorsFromPlugins", null).invoke(editorRegistry, null); //$NON-NLS-1$
+			} catch (Exception e) {
+				ZipEditorPlugin.log(e);
+				return new IEditorDescriptor[0];
+			}
 		}
 		
 		private TableViewer createTableViewer(Composite parent) {
