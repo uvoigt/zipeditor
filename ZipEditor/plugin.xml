@@ -64,6 +64,7 @@
          point="org.eclipse.ui.editors">
       <editor
             class="zipeditor.ZipEditor"
+            contributorClass="zipeditor.ZipEditorActionBarContributor"
             default="true"
             icon="icons/zipicon.gif"
             id="zipeditor.ZipEditor"

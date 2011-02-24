@@ -118,9 +118,10 @@ import zipeditor.model.IModelListener;
 import zipeditor.model.Node;
 import zipeditor.model.NodeProperty;
 import zipeditor.model.ZipModel;
+import zipeditor.model.ZipModel.IErrorReporter;
 import zipeditor.model.ZipNodeProperty;
 
-public class ZipEditor extends EditorPart implements IPropertyChangeListener
+public class ZipEditor extends EditorPart implements IPropertyChangeListener, IErrorReporter
 		/*,IPersistableEditor*/ {
 	static class NodeComparer implements IElementComparer {
 		public boolean equals(Object a, Object b) {
@@ -257,7 +258,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 	        return null;
 	    }
 	}
-
+	
 	private StructuredViewer fZipViewer;
 	private IToolBarManager fToolBar;
 	private ZipActionGroup fZipActionGroup;
@@ -480,7 +481,12 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 				ZipEditorPlugin.log(e);
 			}
 		}
-		return new ZipModel(file, in, isReadOnly);
+		return new ZipModel(file, in, isReadOnly, this);
+	}
+	
+	public void reportError(IStatus message) {
+		ZipEditorActionBarContributor contributor = (ZipEditorActionBarContributor) getEditorSite().getActionBarContributor();
+		contributor.reportError(this, message);
 	}
 	
 	private Object[] getEditorInputFileInfo(boolean getInputStream) {
@@ -627,7 +633,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener
 		viewer.getControl().setLayoutData(new GridData(GridData.FILL_BOTH));
 		MenuManager manager = new MenuManager();
 		manager.setRemoveAllWhenShown(true);
-		final IEditorInput originalInput = getEditorInput();
+		final IEditorInput originalInput = doGetEditorInput();
 		manager.addMenuListener(new IMenuListener() {
 			public void menuAboutToShow(IMenuManager manager) {
 				handleContextMenuAboutToShow(manager);

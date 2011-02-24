@@ -127,7 +127,7 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 		}
 	}
 
-	public static void log(Object message) {
+	public static IStatus log(Object message) {
 		IStatus status = null;
 		Object debugMessage = message;
 		if (message instanceof IStatus) {
@@ -145,6 +145,7 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 			else
 				System.out.println(debugMessage);
 		}
+		return status;
 	}
 	
 	public static ImageDescriptor getImageDescriptor(String path) {
@@ -188,12 +189,17 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 		return status;
 	}
 
-	public static void showErrorDialog(Shell shell, String message, Throwable exception) {
-		log(exception);
+	public static void showErrorDialog(Shell shell, String message, Throwable exception, boolean logError) {
+		if (logError)
+			log(exception);
 		ErrorDialog.openError(shell, Messages.getString("ZipEditor.8"), //$NON-NLS-1$
 				message,
 				new MultiStatus(PLUGIN_ID, 0, createErrorStatuses(exception),
-				exception.getMessage(), exception));
+						Messages.getString("ZipEditorPlugin.0"), exception)); //$NON-NLS-1$
+	}
+
+	public static void showErrorDialog(Shell shell, String message, Throwable exception) {
+		showErrorDialog(shell, message, exception, true);
 	}
 
 }

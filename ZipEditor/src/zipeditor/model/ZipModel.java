@@ -34,6 +34,10 @@ import zipeditor.ZipEditorPlugin;
 import zipeditor.model.IModelListener.ModelChangeEvent;
 
 public class ZipModel {
+	public interface IErrorReporter {
+		void reportError(IStatus message);
+	}
+
 	public final static int ZIP = 1;
 	public final static int TAR = 2;
 	public final static int GZ = 3;
@@ -117,10 +121,16 @@ public class ZipModel {
 	private File tempDir;
 	private boolean readonly;
 	private ListenerList listenerList = new ListenerList();
+	private IErrorReporter errorReporter;
 	
 	public ZipModel(File path, final InputStream inputStream, boolean readonly) {
+		this(path, inputStream, readonly, null);
+	}
+
+	public ZipModel(File path, final InputStream inputStream, boolean readonly, IErrorReporter errorReporter) {
 		zipPath = path;
 		this.readonly = readonly;
+		this.errorReporter = errorReporter;
 		state |= INITIALIZING;
 		if (path != null && path.length() >= 10000000) {
 			Thread initThread = new Thread(Messages.getFormattedString("ZipModel.0", path.getName())) { //$NON-NLS-1$
@@ -134,6 +144,12 @@ public class ZipModel {
 		}
 	}
 	
+	public void logError(Object message) {
+		IStatus status = ZipEditorPlugin.log(message);
+		if (errorReporter != null)
+			errorReporter.reportError(status);
+	}
+
 	private void initialize(InputStream inputStream) {
 		long time = System.currentTimeMillis();
 		InputStream zipStream = inputStream;
@@ -151,7 +167,7 @@ public class ZipModel {
 				try {
 					zipStream.close();
 				} catch (IOException e) {
-					ZipEditorPlugin.log(e);
+					logError(e);
 				}
 			}
 			state &= -1 ^ INITIALIZING;
@@ -179,7 +195,7 @@ public class ZipModel {
 				else if (zipStream instanceof TarInputStream)
 					tarEntry = ((TarInputStream) zipStream).getNextEntry();
 			} catch (Exception e) {
-				ZipEditorPlugin.log(e);
+				logError(e);
 				break;
 			}
 			if ((!isGzipStream && zipEntry == null && tarEntry == null)
@@ -229,7 +245,7 @@ public class ZipModel {
 								entrySize += count;
 						}
 					} catch (Exception e) {
-						ZipEditorPlugin.log(e);
+						logError(e);
 					}
 					if (out != null)
 						newChild.setContent(out.toByteArray());
@@ -238,7 +254,7 @@ public class ZipModel {
 					try {
 						((ZipInputStream) zipStream).closeEntry();
 					} catch (Exception e) {
-						ZipEditorPlugin.log(e);
+						logError(e);
 					}
 				}
 				newChild.setSize(zipEntry != null ? zipEntry.getSize()
@@ -287,7 +303,7 @@ public class ZipModel {
 			boolean storeFolders = ZipEditorPlugin.getDefault().getPreferenceStore().getBoolean(PreferenceConstants.STORE_FOLDERS_IN_ARCHIVES);
 			saveNodes(out, root, type, storeFolders, monitor);
 		} catch (Exception e) {
-			ZipEditorPlugin.log(e);
+			logError(e);
 		} finally {
 			out.close();
 		}

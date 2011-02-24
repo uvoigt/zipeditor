@@ -18,8 +18,6 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.PlatformObject;
 import org.eclipse.ui.model.IWorkbenchAdapter;
 
-import zipeditor.ZipEditorPlugin;
-
 public class Node extends PlatformObject {
 	protected Node parent;
 	protected List children;
@@ -178,7 +176,7 @@ public class Node extends PlatformObject {
 		try {
 			return doGetContent();
 		} catch (Exception e) {
-			ZipEditorPlugin.log(e);
+			model.logError(e);
 			return null;
 		}
 	}
