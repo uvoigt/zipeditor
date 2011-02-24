@@ -240,11 +240,11 @@ public class Utils {
 					out.write(buf, 0, count);
 				}
 			}
-			if (closeOut)
-				out.close();
 		} finally {
 			if (in != null)
 				in.close();
+			if (closeOut)
+				out.close();
 		}
 	}
 	
