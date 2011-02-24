@@ -33,7 +33,10 @@ public class ZipEditorDragAdapter extends DragSourceAdapter {
 			final File tmpDir = nodes[0].getModel().getTempDir();
 			for (int i = 0; i < nodes.length; i++) {
 				Node node = nodes[i];
-				fTempPaths[i] = new File(tmpDir, node.getFullPath()).getAbsolutePath();
+				File file = new File(tmpDir, node.getFullPath());
+				fTempPaths[i] = file.getAbsolutePath();
+				if (node.isFolder())
+					file.mkdirs();
 			}
 			extractor = new Thread(new Runnable() {
 				public void run() {
