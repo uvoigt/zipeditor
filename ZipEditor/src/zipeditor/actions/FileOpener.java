@@ -156,29 +156,25 @@ public class FileOpener {
 			final File tmpFile = File.createTempFile("internal", null, fNode.getModel().getTempDir()); //$NON-NLS-1$
 			final FileOutputStream out = new FileOutputStream(tmpFile);
 			Thread.sleep(100);
-			if (stdErr.available() > 0) {
-				new Thread(new Runnable() {
-					public void run() {
-						try {
-							Utils.readAndWrite(stdErr, out, false);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
+			new Thread(new Runnable() {
+				public void run() {
+					try {
+						Utils.readAndWrite(stdErr, out, false);
+					} catch (IOException e) {
+						e.printStackTrace();
 					}
-				}, "ErrReader").start(); //$NON-NLS-1$
-			}
+				}
+			}, "ErrReader").start(); //$NON-NLS-1$
 			Thread.sleep(100);
-			if (stdIn.available() > 0) {
-				new Thread(new Runnable() {
-					public void run() {
-						try {
-							Utils.readAndWrite(stdIn, out, false);
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
+			new Thread(new Runnable() {
+				public void run() {
+					try {
+						Utils.readAndWrite(stdIn, out, false);
+					} catch (IOException e) {
+						e.printStackTrace();
 					}
-				}, "InReader").start(); //$NON-NLS-1$
-			}
+				}
+			}, "InReader").start(); //$NON-NLS-1$
 			process.waitFor();
 			Thread.sleep(100);
 			out.flush();
