@@ -297,7 +297,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		else if (input instanceof IURIEditorInput)
 			internalSave(new Path(((IURIEditorInput) input).getURI().getPath()), monitor);
 		else
-			ZipEditorPlugin.log("The input " + input + " cannot be saved"); //$NON-NLS-1$ //$NON-NLS-2$
+			fModel.logError("The input " + input + " cannot be saved"); //$NON-NLS-1$ //$NON-NLS-2$
 	}
 	
 	private void internalSave(IPath locationPath, IProgressMonitor monitor) {
@@ -398,7 +398,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		try {
 			getSite().getWorkbenchWindow().run(true, true, op);
 		} catch (Exception e) {
-			ZipEditorPlugin.log(e);
+			fModel.logError(e);
 		}
 	}
 
@@ -638,7 +638,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			public void menuAboutToShow(IMenuManager manager) {
 				handleContextMenuAboutToShow(manager);
 				// no better idea to prevent other items being added to the menu
-				setInput(new DelegateEditorInput(originalInput));
+				if (!(getEditorInput() instanceof DelegateEditorInput))
+					setInput(new DelegateEditorInput(originalInput));
 			}
 		});
 		Menu contextMenu = manager.createContextMenu(viewer.getControl());
@@ -1026,7 +1027,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 					try {
 						((IFileEditorInput) editorInput).getFile().refreshLocal(IResource.DEPTH_ONE, new NullProgressMonitor());
 					} catch (CoreException e) {
-						ZipEditorPlugin.log(e);
+						fModel.logError(e);
 					}
 				}
 				doRevert();
