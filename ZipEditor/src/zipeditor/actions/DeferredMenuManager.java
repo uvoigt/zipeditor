@@ -47,10 +47,14 @@ public class DeferredMenuManager extends MenuManager {
 	
 	private final static QualifiedName ID_PROPERTY_NAME = new QualifiedName(DeferredMenuManager.class.getName(), "type"); //$NON-NLS-1$
 	private final static QualifiedName MENU_PROPERTY_NAME = new QualifiedName(DeferredMenuManager.class.getName(), "menu"); //$NON-NLS-1$
+	private static int useCount;
 
 	private Action fPendingAction = new Action(ActionMessages.getString("DeferredMenuManager.1")) {}; //$NON-NLS-1$
+	private int fCreateCount;
+
 	public DeferredMenuManager(IContributionManager parent, String text, String id) {
 		super(text, id);
+		fCreateCount = useCount;
 		setParent(parent);
 		fPendingAction.setId(getPendingId());
 		super.add(fPendingAction);
@@ -101,11 +105,23 @@ public class DeferredMenuManager extends MenuManager {
 			job.setProperty(MENU_PROPERTY_NAME, subMenu);
 			job.fMenuManager = subMenu;
 			job.schedule();
+		} else {
+			useCount++;
 		}
 		if (parentId != null && parentMenu.find(parentId) != null)
 			parentMenu.appendToGroup(parentId, subMenu);
 		else
 			parentMenu.add(subMenu);
+	}
+	
+	public boolean isVisible() {
+		if (useCount == fCreateCount)
+			return super.isVisible();
+		// this adds the pending action again because this item
+		// has been removed in the update implementation of the super class
+		if (getItems().length == 0)
+			super.add(fPendingAction);
+		return true;
 	}
 	
 	public static boolean isRunning(Object jobFamily, Object propertyValue) {
