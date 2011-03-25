@@ -67,12 +67,12 @@ public class Node extends PlatformObject {
 		if (name.equals(this.name))
 			return;
 		this.name = name;
-		path = fullPath = null;
+		resetPathCache();
 		state |= MODIFIED;
 		model.setDirty(true);
 		model.notifyListeners();
 	}
-
+	
 	public String getPath() {
 		if (path == null) {
 			if (parent == null) {
@@ -202,8 +202,7 @@ public class Node extends PlatformObject {
 		children.add(atIndex, node);
 		model.setDirty(true);
 		model.notifyListeners();
-		node.path = null;
-		node.fullPath = null;
+		node.resetPathCache();
 	}
 
 	public void add(Node node, Node beforeSibling) {
@@ -241,6 +240,9 @@ public class Node extends PlatformObject {
 		model.notifyListeners();
 	}
 	
+	/**
+	 * @param entry the entry that updates the node 
+	 */
 	public void update(Object entry) {
 		// does nothing not knowing the type of entry
 	}
@@ -248,10 +250,7 @@ public class Node extends PlatformObject {
 	public void remove(Node node) {
 		if (children == null)
 			return;
-		for (Iterator it = children.iterator(); it.hasNext(); ) {
-			if (it.next().equals(node))
-				it.remove();
-		}
+		children.remove(node);
 		model.setDirty(true);
 		model.notifyListeners();
 		node.clear();
@@ -272,6 +271,14 @@ public class Node extends PlatformObject {
 		file = null;
 		state &= -1 ^ MODIFIED;
 		model.notifyListeners();
+	}
+
+	private void resetPathCache() {
+		path = fullPath = null;
+		if (children != null) {
+			for (int i = 0; i < children.size(); i++)
+				((Node) children.get(i)).resetPathCache();
+		}
 	}
 
 	public Node create(ZipModel model, String name, boolean isFolder) {
