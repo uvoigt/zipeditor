@@ -38,7 +38,7 @@ public class ExtractOperation {
 		
 		protected IStatus run(IProgressMonitor monitor) {
 			monitor.beginTask(Messages.getString("ExtractOperation.1"), Utils.computeTotalNumber(fNodes, monitor)); //$NON-NLS-1$
-			extract(fNodes, fTargetDir, fOverwrite, monitor);
+			extract(fNodes, fTargetDir, fOverwrite, false, monitor);
 			if (fRefreshJob != null)
 				fRefreshJob.schedule();
 			return Status.OK_STATUS;
@@ -69,7 +69,7 @@ public class ExtractOperation {
 	
 	public File execute(Node[] nodes, File toDir, boolean inBackground, boolean overwrite) {
 		return inBackground ? extractInBackground(nodes, toDir) :
-			extract(nodes, toDir, overwrite, new NullProgressMonitor());
+			extract(nodes, toDir, overwrite, false, new NullProgressMonitor());
 	}
 	
 	public void setRefreshJob(Job refreshJob) {
@@ -87,22 +87,24 @@ public class ExtractOperation {
 	}
 
 	public File extract(Node node, File toDir, boolean overwrite, IProgressMonitor monitor) {
-		return internalExtract(node, toDir, overwrite, monitor);
+		return internalExtract(node, toDir, overwrite, true, monitor);
 	}
-	
-	private File internalExtract(Node node, File toDir, boolean overwrite, IProgressMonitor monitor) {
+
+	private File internalExtract(Node node, File toDir, boolean overwrite, boolean fullNodePath, IProgressMonitor monitor) {
 		if (monitor.isCanceled())
 			return null;
 		toDir = determineFolderTarget(toDir);
-		File file = node.isFolder() ? toDir : new File(toDir, node.getFullPath());
+		File file = null;
 		if (node.isFolder()) {
+			file = fullNodePath ? toDir : new File(toDir, node.getName());
 			if (!file.exists())
 				file.mkdirs();
 			Node[] children = node.getChildren();
 			for (int i = 0; i < children.length; i++) {
-				internalExtract(children[i], file, overwrite, monitor);
+				internalExtract(children[i], file, overwrite, fullNodePath, monitor);
 			}
 		} else {
+			file = new File(toDir, fullNodePath ? node.getFullPath() : node.getName());
 			boolean writeFile = !file.exists();
 			if (!writeFile && !overwrite && (fUserStatus & ASK) > 0 && !isTempFolder(toDir, node.getModel())) {
 				switch (showWarning(file)) {
@@ -133,7 +135,7 @@ public class ExtractOperation {
 					if (ZipEditorPlugin.DEBUG)
 						System.out.println("Extracted " + node + " in " + (System.currentTimeMillis() - time) + "ms"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 				} catch (Exception e) {
-					ZipEditorPlugin.log(e);
+					node.getModel().logError(e);
 				}
 			}
 			monitor.worked(1);
@@ -171,12 +173,12 @@ public class ExtractOperation {
 		return toDir.getAbsolutePath().startsWith(tmp.getAbsolutePath());
 	}
 
-	public File extract(Node[] nodes, File toDir, boolean overwrite, IProgressMonitor monitor) {
+	public File extract(Node[] nodes, File toDir, boolean overwrite, boolean fullNodePath, IProgressMonitor monitor) {
 		if (nodes == null || nodes.length == 0)
 			return toDir;
 		File targetDir = determineFolderTarget(toDir != null ? toDir : nodes[0].getModel().getTempDir());
 		for (int i = 0; i < nodes.length; i++) {
-			extract(nodes[i], targetDir, overwrite, monitor);
+			internalExtract(nodes[i], targetDir, overwrite, fullNodePath, monitor);
 		}
 		return toDir;
 	}

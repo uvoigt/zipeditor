@@ -41,7 +41,7 @@ public class ZipEditorDragAdapter extends DragSourceAdapter {
 			extractor = new Thread(new Runnable() {
 				public void run() {
 					ExtractOperation extractOperation = new ExtractOperation();
-					extractOperation.extract(nodes, tmpDir, true, new NullProgressMonitor());
+					extractOperation.extract(nodes, tmpDir, true, true, new NullProgressMonitor());
 				}
 			}, "Extractor"); //$NON-NLS-1$
 			extractor.start();
