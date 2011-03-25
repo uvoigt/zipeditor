@@ -76,6 +76,8 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
@@ -639,10 +641,16 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 				handleContextMenuAboutToShow(manager);
 				// no better idea to prevent other items being added to the menu
 				if (!(getEditorInput() instanceof DelegateEditorInput))
-					setInput(new DelegateEditorInput(originalInput));
+					ZipEditor.super.setInput(new DelegateEditorInput(originalInput));
 			}
 		});
 		Menu contextMenu = manager.createContextMenu(viewer.getControl());
+		contextMenu.addListener(SWT.Hide, new Listener() {
+			public void handleEvent(Event event) {
+				if (getEditorInput() instanceof DelegateEditorInput)
+					ZipEditor.super.setInput(originalInput);
+			}
+		});
 		viewer.getControl().setMenu(contextMenu);
 		getSite().registerContextMenu(manager, fZipViewer);
 		
