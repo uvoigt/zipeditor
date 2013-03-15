@@ -18,6 +18,8 @@ public class ZipContentDescriber implements IContentDescriber {
 	public final static String GZ_FILE = ZipEditorPlugin.PLUGIN_ID + ".gzipfile"; //$NON-NLS-1$
 	public final static String TAR_FILE = ZipEditorPlugin.PLUGIN_ID + ".tarfile"; //$NON-NLS-1$
 	public final static String TGZ_FILE = ZipEditorPlugin.PLUGIN_ID + ".targzfile"; //$NON-NLS-1$
+	public final static String BZ2_FILE = ZipEditorPlugin.PLUGIN_ID + ".bz2file"; //$NON-NLS-1$
+	public final static String TBZ_FILE = ZipEditorPlugin.PLUGIN_ID + ".tarbz2file"; //$NON-NLS-1$
 	
 	private final static String EMPTY = "empty"; //$NON-NLS-1$
 	
@@ -35,6 +37,8 @@ public class ZipContentDescriber implements IContentDescriber {
 			return VALID;
 		if (type == TGZ_FILE && GZ_FILE.equals(contentTypeId))
 			return VALID;
+		if (type == TBZ_FILE && BZ2_FILE.equals(contentTypeId))
+			return VALID;
 
 		return INVALID;
 	}
@@ -51,6 +55,10 @@ public class ZipContentDescriber implements IContentDescriber {
 			return GZ_FILE;
 		case ZipModel.TARGZ:
 			return TGZ_FILE;
+		case ZipModel.BZ2:
+			return BZ2_FILE;
+		case ZipModel.TARBZ2:
+			return TBZ_FILE;
 		case ZipModel.EMPTY:
 			return EMPTY; 
 		}

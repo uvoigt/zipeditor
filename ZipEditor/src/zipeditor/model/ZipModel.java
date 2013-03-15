@@ -20,6 +20,13 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
+import org.apache.tools.bzip2.CBZip2InputStream;
+import org.apache.tools.bzip2.CBZip2OutputStream;
+import org.apache.tools.tar.TarConstants;
+import org.apache.tools.tar.TarEntry;
+import org.apache.tools.tar.TarInputStream;
+import org.apache.tools.tar.TarOutputStream;
+import org.apache.tools.tar.TarUtils;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -42,6 +49,8 @@ public class ZipModel {
 	public final static int TAR = 2;
 	public final static int GZ = 3;
 	public final static int TARGZ = 4;
+	public final static int BZ2 = 5;
+	public final static int TARBZ2 = 6;
 	public final static int EMPTY = 99;
 
 	public final static int INIT_STARTED = 0x01;
@@ -69,6 +78,10 @@ public class ZipModel {
 				return GZ;
 			if (lowerCase.endsWith(".tar")) //$NON-NLS-1$
 				return TAR;
+			if (lowerCase.endsWith(".tbz") || lowerCase.endsWith(".tar.bz2")) //$NON-NLS-1$ //$NON-NLS-2$
+				return TARBZ2;
+			if (lowerCase.endsWith(".bz2")) //$NON-NLS-1$
+				return BZ2;
 		}
 		return ZIP;
 	}
@@ -89,29 +102,49 @@ public class ZipModel {
 			}
 			contents.reset();
 			try {
+				contents.skip(2);
+				CBZip2InputStream bzip = new CBZip2InputStream(contents);
+				if (isTarArchive(bzip)) {
+					contents.reset();
+					return TARBZ2;
+				} else {
+					contents.reset();
+					return BZ2;
+				}
+			} catch (IOException ioe) {
+				// thrown in constructor, no bzip2
+			}
+			contents.reset();
+			try {
 				GZIPInputStream gzip = new GZIPInputStream(contents);
-				byte[] tarEntryHeader = new byte[TAR_MAGIC_OFFSET + TarConstants.MAGICLEN];
-				gzip.read(tarEntryHeader);
-				String magic = String.valueOf(TarUtils.parseName(tarEntryHeader, TAR_MAGIC_OFFSET,
-						TarConstants.MAGICLEN));
-				if (TarConstants.TMAGIC.equals(magic) || TarConstants.GNU_TMAGIC.equals(magic)) {
+				if (isTarArchive(gzip)) {
 					contents.reset();
 					return TARGZ;
 				} else {
 					contents.reset();
 					return GZ;
 				}
-			} catch (IOException e) {
-				if ("Not in GZIP format".equals(e.getMessage())) { //$NON-NLS-1$
-					contents.reset();
-					return TAR;
-				}
-				contents.reset();
-				return -1;
+			} catch (IOException ioe) {
+				// thrown in constructor, no gzip
 			}
-		} catch (Exception ignore) {
-			return -1;
+			contents.reset();
+			
+			// Es gibt gueltige Tar-Archive ohne TAR-Header, die von
+			// isTarArchive nicht erkannt werden, magic ist dann leer, deshalb
+			// bleibt TAR hier default
+			//
+			return TAR;
+
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
 		}
+	}
+
+	private static boolean isTarArchive(InputStream bzip) throws IOException {
+		byte[] tarEntryHeader = new byte[TAR_MAGIC_OFFSET + TarConstants.MAGICLEN];
+		bzip.read(tarEntryHeader);
+		String magic = String.valueOf(TarUtils.parseName(tarEntryHeader, TAR_MAGIC_OFFSET, TarConstants.MAGICLEN));
+		return TarConstants.TMAGIC.equals(magic) || TarConstants.GNU_TMAGIC.equals(magic);
 	}
 
 	private Node root;
@@ -155,13 +188,10 @@ public class ZipModel {
 		InputStream zipStream = inputStream;
 		try {
 			zipStream = detectStream(inputStream);
-		} catch (Exception ignore) {
-		}
-		try {
-			root = zipStream instanceof ZipInputStream ? new ZipNode(this, new String(), true) :
-				zipStream instanceof TarInputStream ? (Node) new TarNode(this, new String(), true)
-						: new GzipNode(this, new String(), true);
+			root = getRoot(zipStream);
 			readStream(zipStream);
+		} catch (IOException e) {
+			// ignore
 		} finally {
 			if (zipStream != null) {
 				try {
@@ -178,12 +208,25 @@ public class ZipModel {
 				System.out.println(zipPath + " initialized in " + (System.currentTimeMillis() - time) + "ms"); //$NON-NLS-1$ //$NON-NLS-2$
 		}
 	}
-	
+
+	private Node getRoot(InputStream zipStream) throws IOException {
+		if (zipStream instanceof ZipInputStream) {
+			return new ZipNode(this, "", true); //$NON-NLS-1$
+		}
+		if (zipStream instanceof TarInputStream) {
+			return new TarNode(this, "", true); //$NON-NLS-1$
+		}
+		if (zipStream instanceof CBZip2InputStream) {
+			return new Bzip2Node(this, "", true); //$NON-NLS-1$
+		}
+		return new GzipNode(this, "", true); //$NON-NLS-1$
+	}
+
 	private void readStream(InputStream zipStream) {
 		ZipEntry zipEntry = null;
 		TarEntry tarEntry = null;
 		state |= INIT_STARTED;
-		boolean isGzipStream = zipStream instanceof GZIPInputStream;
+		boolean isNoEntry = zipStream instanceof GZIPInputStream || zipStream instanceof CBZip2InputStream;
 		while (true) {
 			if (!isInitializing()) {
 				state |= DIRTY;
@@ -198,15 +241,15 @@ public class ZipModel {
 				logError(e);
 				break;
 			}
-			if ((!isGzipStream && zipEntry == null && tarEntry == null)
-					|| (isGzipStream && root.children != null)) {
+			if ((!isNoEntry && zipEntry == null && tarEntry == null) || (isNoEntry && root.children != null)) {
 				state &= -1 ^ DIRTY;
 				break;
 			}
-			String entryName = zipEntry != null ? zipEntry.getName()
-					: tarEntry != null ? tarEntry.getName() : zipPath.getName()
-							.endsWith(".gz") ? zipPath.getName().substring(0, //$NON-NLS-1$
-							zipPath.getName().length() - 3) : zipPath.getName();
+			String entryName = zipEntry != null ? zipEntry.getName() : tarEntry != null ? tarEntry.getName() : zipPath
+					.getName().endsWith(".gz") ? zipPath.getName().substring(0, //$NON-NLS-1$
+					zipPath.getName().length() - 3)
+					: zipPath.getName().endsWith(".bz2") ? zipPath.getName().substring(0, //$NON-NLS-1$
+							zipPath.getName().length() - 4) : zipPath.getName();
 			String[] names = splitName(entryName);
 			Node node = null;
 			int n = names.length - 1;
@@ -233,7 +276,7 @@ public class ZipModel {
 								: new GzipNode(this, name, isFolder);
 				node.add(newChild, null);
 				long entrySize = 0;
-				if (zipPath == null || isGzipStream) {
+				if (zipPath == null || isNoEntry) {
 					byte[] buf = new byte[8000];
 					ByteArrayOutputStream out = null;
 					try {
@@ -241,7 +284,7 @@ public class ZipModel {
 							if (out == null)
 								out = new ByteArrayOutputStream();
 							out.write(buf, 0, count);
-							if (isGzipStream)
+							if (isNoEntry)
 								entrySize += count;
 						}
 					} catch (Exception e) {
@@ -277,6 +320,12 @@ public class ZipModel {
 			return new GZIPInputStream(in);
 		case TARGZ:
 			return new TarInputStream(new GZIPInputStream(in));
+		case BZ2:
+			in.skip(2);
+			return new CBZip2InputStream(in);
+		case TARBZ2:
+			in.skip(2);
+			return new TarInputStream(new CBZip2InputStream(in));
 		}
 	}
 
@@ -296,6 +345,14 @@ public class ZipModel {
 				break;
 			case ZIP:
 				out = new ZipOutputStream(out);
+				break;
+			case TARBZ2:
+				out.write(new byte[] { 'B', 'Z' });
+				out = new TarOutputStream(new CBZip2OutputStream(out));
+				break;
+			case BZ2:
+				out.write(new byte[] { 'B', 'Z' });
+				out = new CBZip2OutputStream(out);
 				break;
 			}
 			if (out instanceof TarOutputStream)
@@ -326,7 +383,7 @@ public class ZipModel {
 				entryName = child.getPath();
 			}
 			ZipEntry zipEntry = type == ZIP ? new ZipEntry(entryName) : null;
-			TarEntry tarEntry = type == TAR || type == TARGZ ? new TarEntry(entryName): null;
+			TarEntry tarEntry = type == TAR || type == TARGZ || type == TARBZ2 ? new TarEntry(entryName) : null;
 			if (zipEntry != null) {
 				zipEntry.setTime(child.getTime());
 				if (child instanceof ZipNode)

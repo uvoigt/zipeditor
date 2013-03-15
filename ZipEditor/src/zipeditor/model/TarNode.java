@@ -13,6 +13,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.GZIPInputStream;
 
+import org.apache.tools.bzip2.CBZip2InputStream;
+import org.apache.tools.tar.TarEntry;
+import org.apache.tools.tar.TarInputStream;
+
 public class TarNode extends Node {
 	private class EntryStream extends InputStream {
 		private InputStream in;
@@ -138,6 +142,10 @@ public class TarNode extends Node {
 			return new TarInputStream(new FileInputStream(model.getZipPath()));
 		case ZipModel.TARGZ:
 			return new TarInputStream(new GZIPInputStream(new FileInputStream(model.getZipPath())));
+		case ZipModel.TARBZ2:
+				InputStream in = new FileInputStream(model.getZipPath());
+				in.skip(2);
+				return new TarInputStream(new CBZip2InputStream(in));
 		}
 	}
 	

@@ -47,6 +47,26 @@
                default="GZ"
                name="ZipEditor.archiveType"/>
       </content-type>
+      <content-type
+            base-type="archive"
+            describer="zipeditor.model.ZipContentDescriber"
+            id="bz2file"
+            name="%content-type.name.5"
+            priority="normal">
+         <property
+               default="BZ2"
+               name="ZipEditor.archiveType"/>
+      </content-type>
+      <content-type
+            base-type="archive"
+            describer="zipeditor.model.ZipContentDescriber"
+            id="tarbz2file"
+            name="%content-type.name.6"
+            priority="normal">
+         <property
+               default="TBZ"
+               name="ZipEditor.archiveType"/>
+      </content-type>
       <file-association
             content-type="ZipEditor.zipfile"
             file-extensions="jar, zip, war, ear"/>
@@ -59,6 +79,12 @@
       <file-association
             content-type="ZipEditor.targzfile"
             file-extensions="tar.gz, tgz"/>
+      <file-association
+            content-type="ZipEditor.tarbz2file"
+            file-extensions="tar.bz2, tbz"/>
+      <file-association
+            content-type="ZipEditor.bz2file"
+            file-extensions="bz2"/>
    </extension>
    <extension
          point="org.eclipse.ui.editors">
@@ -73,6 +99,8 @@
          <contentTypeBinding contentTypeId="ZipEditor.gzipfile"/>
          <contentTypeBinding contentTypeId="ZipEditor.tarfile"/>
          <contentTypeBinding contentTypeId="ZipEditor.targzfile"/>
+         <contentTypeBinding contentTypeId="ZipEditor.bz2file"/>
+         <contentTypeBinding contentTypeId="ZipEditor.tarbz2file"/>
       </editor>
    </extension>
    <extension
