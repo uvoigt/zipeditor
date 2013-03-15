@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: %Bundle-Name.0
+Bundle-SymbolicName: ZipEditor-test;singleton:=true
+Bundle-Version: 1.1.0.qualifier
+Bundle-Localization: plugin
+Require-Bundle: org.eclipse.core.runtime,
+ org.eclipse.core.resources,
+ org.eclipse.core.filesystem,
+ ZipEditor,
+ org.junit4
+Eclipse-LazyStart: false
+Bundle-Vendor: %Bundle-Vendor.0
