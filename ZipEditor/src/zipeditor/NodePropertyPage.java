@@ -20,6 +20,30 @@ import zipeditor.model.Node;
 import zipeditor.model.NodeProperty;
 
 public abstract class NodePropertyPage extends MultiElementPropertyPage {
+	protected abstract class NodePropertyAccessor implements PropertyAccessor {
+		public Object getPropertyValue(Object object) {
+			Node node = (Node) object;
+			if (node.isFolder()) {
+				Node[] children = node.getChildren();
+				Object aggregate = getSinglePropertyValue(node);
+				for (int i = 0; i < children.length; i++) {
+					aggregate = aggregatePropertyValues(getPropertyValue(children[i]), aggregate);
+				}
+				return aggregate;
+			} else {
+				return getSinglePropertyValue(node);
+			}
+		}
+		
+		protected Object aggregatePropertyValues(Object value1, Object value2) {
+			if (value1 instanceof Number && value2 instanceof Number)
+				return new Long(((Number) value1).longValue() + ((Number) value2).longValue());
+			return value1;
+		}
+
+		protected abstract Object getSinglePropertyValue(Node node);
+	}
+
 	private Text fName;
 	private Text fPath;
 	private Text fType;
@@ -56,9 +80,9 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 		});
 		createLabel(control, NodeProperty.PSIZE.toString(), 1);
 		fSize = createText(control, 30, 1, false);
-		setFieldText(fSize, new PropertyAccessor() {
-			public Object getPropertyValue(Object object) {
-				return new Long(((Node) object).getSize());
+		setFieldText(fSize, new NodePropertyAccessor() {
+			public Object getSinglePropertyValue(Node node) {
+				return new Long(node.getSize());
 			}
 		}, true);
 

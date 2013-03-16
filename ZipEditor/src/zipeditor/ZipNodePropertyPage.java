@@ -22,9 +22,9 @@ public class ZipNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 
 		createLabel(control, ZipNodeProperty.PPACKED_SIZE.toString(), 1);
 		fPackedSize = createText(control, 30, 1, false);
-		setFieldText(fPackedSize, new PropertyAccessor() {
-			public Object getPropertyValue(Object object) {
-				return new Long(((ZipNode) object).getCompressedSize());
+		setFieldText(fPackedSize, new NodePropertyAccessor() {
+			public Object getSinglePropertyValue(Node node) {
+				return new Long(((ZipNode) node).getCompressedSize());
 			}
 		}, true);
 		createLabel(control, ZipNodeProperty.PRATIO.toString(), 1);
