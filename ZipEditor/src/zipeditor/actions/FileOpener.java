@@ -89,8 +89,8 @@ public class FileOpener {
 		}
 	};
 
-	private IWorkbenchPage fPage;
-	private Node fNode;
+	private final IWorkbenchPage fPage;
+	private final Node fNode;
 	
 	public FileOpener(IWorkbenchPage page, Node node) {
 		fPage = page;
@@ -139,6 +139,13 @@ public class FileOpener {
 			outCommand = commandString.substring(pipeIndex + 1);
 			commandString = commandString.substring(0, pipeIndex);
 		}
+        int extIndex = commandString.indexOf("$x"); //$NON-NLS-1$
+        String ext = null;
+		if (extIndex != -1) {
+			int endIndex = (ext = commandString.substring(extIndex + 2).trim()).indexOf(' ');
+			ext = ext.substring(0, endIndex == -1 ? ext.length() : endIndex);
+			commandString = commandString.substring(0, extIndex) + commandString.substring(commandString.indexOf(ext) + ext.length());
+		}
 		Process process = Runtime.getRuntime().exec(commandString);
 		if (outCommand == null)
 			return;
@@ -153,7 +160,7 @@ public class FileOpener {
 				if (editorId.indexOf(' ') != -1)
 					editorId = editorId.substring(0, editorId.indexOf(' ')).trim();
 			}
-			final File tmpFile = File.createTempFile("internal", null, fNode.getModel().getTempDir()); //$NON-NLS-1$
+			final File tmpFile = File.createTempFile("internal", ext, fNode.getModel().getTempDir()); //$NON-NLS-1$
 			final FileOutputStream out = new FileOutputStream(tmpFile);
 			Thread.sleep(100);
 			new Thread(new Runnable() {
