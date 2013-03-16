@@ -27,7 +27,11 @@ public class MostRecentlyUsedMenu extends ContributionItem {
 		fFileOpener = fileOpener;
 		fFileAdapter = fileAdapter;
 	}
-	
+
+	public boolean isDynamic() {
+		return true;
+	}
+
 	public void fill(Menu menu, int index) {
 		createMostRecentlyUsedItems(menu, index);
 	}
