@@ -11,6 +11,7 @@ import java.util.Map;
 
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.jface.action.ControlContribution;
+import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IStatusLineManager;
 import org.eclipse.jface.action.StatusLineLayoutData;
 import org.eclipse.jface.resource.JFaceColors;
@@ -29,7 +30,12 @@ import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.actions.ActionFactory;
+import org.eclipse.ui.actions.RetargetAction;
 import org.eclipse.ui.part.EditorActionBarContributor;
+
+import zipeditor.actions.ReverseSelectionAction;
+import zipeditor.actions.SelectPatternAction;
 
 public class ZipEditorActionBarContributor extends EditorActionBarContributor {
 	private class ErrorStatus extends ControlContribution {
@@ -75,11 +81,35 @@ public class ZipEditorActionBarContributor extends EditorActionBarContributor {
 	private Label errorLabel;
 	private Map errors = new HashMap();
 	private IEditorPart activeEditor;
+	private RetargetAction selectPattern;
+	private RetargetAction reverseSelection;
 
 	public void contributeToStatusLine(IStatusLineManager statusLineManager) {
 		statusLineManager.add(new ErrorStatus());
 	}
+
+	public void contributeToMenu(IMenuManager menuManager) {
+		initActions();
+		IMenuManager menu = menuManager.findMenuUsingPath("edit"); //$NON-NLS-1$
+		if (menu != null) {
+			menu.insertAfter(ActionFactory.SELECT_ALL.getId(), selectPattern);
+			menu.insertAfter(SelectPatternAction.ID, reverseSelection);
+		}
+	}
 	
+	private void initActions() {
+		if (selectPattern == null) {
+			selectPattern = new RetargetAction(SelectPatternAction.ID, Messages.getString("ZipEditorActionBarContributor.1")); //$NON-NLS-1$
+			selectPattern.setActionDefinitionId(SelectPatternAction.ID);
+			getPage().addPartListener(selectPattern);
+		}
+		if (reverseSelection == null) {
+			reverseSelection = new RetargetAction(ReverseSelectionAction.ID, Messages.getString("ZipEditorActionBarContributor.2")); //$NON-NLS-1$
+			reverseSelection.setActionDefinitionId(ReverseSelectionAction.ID);
+			getPage().addPartListener(reverseSelection);
+		}
+	}
+
 	private void showErrorDetails() {
 		if (getErrors().size() == 0)
 			return;
@@ -125,6 +155,7 @@ public class ZipEditorActionBarContributor extends EditorActionBarContributor {
 	public void dispose() {
 		activeEditor = null;
 		errors.clear();
+		getPage().removePartListener(selectPattern);
 	}
 
 	public void reportError(IEditorPart editor, IStatus message) {

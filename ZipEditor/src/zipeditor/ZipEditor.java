@@ -112,7 +112,9 @@ import zipeditor.actions.CollapseAllAction;
 import zipeditor.actions.NewFolderAction;
 import zipeditor.actions.OpenActionGroup;
 import zipeditor.actions.RenameNodeAction;
+import zipeditor.actions.ReverseSelectionAction;
 import zipeditor.actions.SelectAllAction;
+import zipeditor.actions.SelectPatternAction;
 import zipeditor.actions.SortAction;
 import zipeditor.actions.ToggleViewModeAction;
 import zipeditor.actions.ZipActionGroup;
@@ -283,6 +285,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	public final static String ACTION_TOGGLE_MODE = "ToggleViewMode"; //$NON-NLS-1$
 	public final static String ACTION_COLLAPSE_ALL = "CollapseAll"; //$NON-NLS-1$
 	public final static String ACTION_SELECT_ALL = "SelectAll"; //$NON-NLS-1$
+	public final static String ACTION_SELECT_PATTERN = "SelectPattern"; //$NON-NLS-1$
+	public final static String ACTION_REVERSE_SELECTION = "ReverseSelection"; //$NON-NLS-1$
 	public final static String ACTION_NEW_FOLDER = "NewFolder"; //$NON-NLS-1$
 	public final static String ACTION_BACK = "Back"; //$NON-NLS-1$
 	public final static String ACTION_FORWARD = "Forward"; //$NON-NLS-1$
@@ -922,6 +926,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 
 		setAction(ACTION_COLLAPSE_ALL, new CollapseAllAction(getViewer()));
 		setAction(ACTION_SELECT_ALL, new SelectAllAction(getViewer()));
+		setAction(ACTION_SELECT_PATTERN, new SelectPatternAction(getViewer()));
+		setAction(ACTION_REVERSE_SELECTION, new ReverseSelectionAction(getViewer()));
 		setAction(ACTION_RENAME, new RenameNodeAction(getViewer()));
 
 		fFrameList = createFrameList(mode);
@@ -1064,6 +1070,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 
 	private void activateActions() {
 		getEditorSite().getActionBars().setGlobalActionHandler(ActionFactory.SELECT_ALL.getId(), getAction(ACTION_SELECT_ALL));
+		getEditorSite().getActionBars().setGlobalActionHandler(SelectPatternAction.ID, getAction(ACTION_SELECT_PATTERN));
+		getEditorSite().getActionBars().setGlobalActionHandler(ReverseSelectionAction.ID, getAction(ACTION_REVERSE_SELECTION));
 		getEditorSite().getActionBars().setGlobalActionHandler(ActionFactory.RENAME.getId(), getAction(ACTION_RENAME));
 		fZipActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
 		fZipActionGroup.fillActionBars(getEditorSite().getActionBars());

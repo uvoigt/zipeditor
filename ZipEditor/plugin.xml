@@ -177,5 +177,33 @@
             name="%page.name.1"
             objectClass="zipeditor.model.TarNode"/>
    </extension>
+   <extension
+         point="org.eclipse.ui.commands">
+      <command
+            categoryId="org.eclipse.ui.category.edit"
+            id="zipeditor.command.selectPattern"
+            name="%command.name">
+      </command>
+      <command
+            categoryId="org.eclipse.ui.category.edit"
+            id="zipeditor.command.reverseSelection"
+            name="%command.name.0">
+      </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.bindings">
+      <key
+            commandId="zipeditor.command.selectPattern"
+            contextId="org.eclipse.ui.contexts.dialogAndWindow"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            sequence="M1+M2++">
+      </key>
+      <key
+            commandId="zipeditor.command.reverseSelection"
+            contextId="org.eclipse.ui.contexts.dialogAndWindow"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            sequence="M1+M2+*">
+      </key>
+   </extension>
 
 </plugin>
