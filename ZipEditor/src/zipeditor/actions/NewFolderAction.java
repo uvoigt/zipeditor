@@ -29,8 +29,7 @@ public class NewFolderAction extends ViewerAction {
 		if (dialog.open() != Window.OK)
 			return;
 		String newName = dialog.getValue();
-		Node newNode = parent.create(parent.getModel(), newName, true);
-		parent.add(newNode, null);
+		Node newNode = parent.getModel().createFolderNode(parent, newName);
 		getViewer().setSelection(new StructuredSelection(newNode), true);
 	}
 }

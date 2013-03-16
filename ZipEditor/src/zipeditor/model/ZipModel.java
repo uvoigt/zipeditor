@@ -271,9 +271,10 @@ public class ZipModel {
 				existingNode.update(zipEntry != null ? (Object) zipEntry : tarEntry);
 			} else {
 				String name = n >= 0 ? names[n] : "/"; //$NON-NLS-1$
-				Node newChild = zipEntry != null ? new ZipNode(this, zipEntry, name, isFolder) :
-						tarEntry != null ? (Node) new TarNode(this, tarEntry, name, isFolder)
-								: new GzipNode(this, name, isFolder);
+				Node newChild = zipEntry != null ? new ZipNode(this, zipEntry, name, isFolder)
+						: tarEntry != null ? (Node) new TarNode(this, tarEntry, name, isFolder)
+								: zipStream instanceof CBZip2InputStream ? (Node) new Bzip2Node(
+										this, name, isFolder) : new GzipNode(this, name, isFolder);
 				node.add(newChild, null);
 				long entrySize = 0;
 				if (zipPath == null || isNoEntry) {
@@ -413,6 +414,20 @@ public class ZipModel {
 				((TarOutputStream) out).closeEntry();
 			monitor.worked(1);
 		}
+	}
+
+	public Node createFolderNode(Node parent, String name) {
+		Node newNode = null;
+		String[] names = splitName(name);
+		for (int i = 0; i < names.length; i++) {
+			newNode = parent.getChildByName(names[i], false);
+			if (newNode == null) {
+				newNode = parent.create(this, names[i], true);
+				parent.add(newNode, null);
+			}
+			parent = newNode;
+		}
+		return newNode;
 	}
 
 	private String[] splitName(String name) {
