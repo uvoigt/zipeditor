@@ -37,7 +37,7 @@ public class ExtractAction extends DialogAction {
 
 	private String fSelectedFolder;
 	public ExtractAction(StructuredViewer viewer) {
-		super(ActionMessages.getString("ExtractAction.0"), viewer); //$NON-NLS-1$
+		super(ActionMessages.getString("ExtractAction.0"), viewer, false); //$NON-NLS-1$
 		setToolTipText(ActionMessages.getString("ExtractAction.1")); //$NON-NLS-1$
 		setImageDescriptor(ZipEditorPlugin.getImageDescriptor("icons/extract.gif")); //$NON-NLS-1$
 	}

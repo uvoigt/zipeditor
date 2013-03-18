@@ -8,13 +8,18 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITreeContentProvider;
@@ -27,16 +32,27 @@ import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.viewers.ViewerSorter;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.FocusListener;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.Tree;
+import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.model.WorkbenchContentProvider;
 import org.eclipse.ui.model.WorkbenchLabelProvider;
+import org.eclipse.ui.progress.UIJob;
 import org.eclipse.ui.views.navigator.ResourceSorter;
 
 import zipeditor.ZipEditorPlugin;
@@ -56,7 +72,7 @@ public abstract class DialogAction extends ViewerAction {
 			}
 			return new Object[0];
 		}
-		
+
 		public boolean hasChildren(Object element) {
 			return getChildren(element).length > 0;
 		}
@@ -100,18 +116,8 @@ public abstract class DialogAction extends ViewerAction {
 	};
 	
 	private class FileSorter extends ViewerSorter {
-		public int compare(Viewer viewer, Object e1, Object e2) {
-			if (e1 instanceof File && e2 instanceof File) {
-				File f1 = (File) e1;
-				File f2 = (File) e2;
-				if (f1.isDirectory())
-					return -1;
-				if (f2.isDirectory())
-					return 1;
-				e1 = f1.getName();
-				e2 = f2.getName();
-			}
-			return super.compare(viewer, e1, e2);
+		public int category(Object element) {
+			return ((File) element).isDirectory() ? -1 : 1;
 		}
 	};
 	
@@ -123,6 +129,119 @@ public abstract class DialogAction extends ViewerAction {
 	};
 	
 	private class FileDialog extends Dialog implements ISelectionChangedListener {
+		private class FilterArea extends Composite implements FocusListener, ModifyListener {
+			private class RefreshJob extends UIJob {
+				public RefreshJob(Display display) {
+					super(display, "Refresh"); //$NON-NLS-1$
+				}
+
+				public IStatus runInUIThread(IProgressMonitor monitor) {
+					if (!fText.isDisposed()) {
+						setPattern(fText.getText());
+						selectMatches();
+					}
+					return Status.OK_STATUS;
+				}
+			}
+
+			private TreeViewer fViewer;
+			private Color fGrayColor;
+			private final String fEmptyText = ActionMessages.getString("DialogAction.3"); //$NON-NLS-1$
+			private final Text fText;
+            private StringMatcher[] fMatchers;
+			private final RefreshJob fRefreshJob = new RefreshJob(getDisplay());
+
+			public FilterArea(Composite parent, String labelText) {
+				super(parent, SWT.NONE);
+				setLayout(new GridLayout(2, false));
+				setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+				Label label = new Label(this, SWT.LEFT);
+				label.setText(labelText);
+				fText = new Text(this, SWT.LEFT | SWT.BORDER);
+				fText.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+				fText.setText(fEmptyText);
+				fText.setForeground(getGrayColor());
+				fText.addFocusListener(this);
+				fText.addModifyListener(this);
+			}
+
+			private void setPattern(String patternString) {
+				if (patternString == null || patternString.trim().length() == 0 || fEmptyText.equals(patternString)) {
+					fMatchers = null;
+				}
+				else {
+					String[] strings = patternString.split(","); //$NON-NLS-1$
+					fMatchers = new StringMatcher[strings.length];
+					for (int i = 0; i < strings.length; i++) {
+						fMatchers[i] = new StringMatcher(strings[i].trim(), true, false);
+					}
+				}
+			}
+
+			private Color getGrayColor() {
+				if (fGrayColor == null)
+					fGrayColor = new Color(getDisplay(), 160, 160, 160);
+				return fGrayColor;
+			}
+			
+			public void dispose() {
+				fGrayColor.dispose();
+				super.dispose();
+			}
+
+			public void focusLost(FocusEvent e) {
+				if (fText.getText().length() == 0 || fEmptyText.equals(fText.getText())) {
+					fText.setForeground(getGrayColor());
+					fText.setText(fEmptyText);
+				}
+				modifyText(null);
+			}
+			
+			public void focusGained(FocusEvent e) {
+				if (fEmptyText.equals(fText.getText())) {
+					fText.setForeground(getForeground());
+					fText.setText(""); //$NON-NLS-1$
+				}
+			}
+			
+			public void modifyText(ModifyEvent e) {
+				fRefreshJob.cancel();
+				fRefreshJob.schedule(500);
+			}
+		
+			private void selectMatches() {
+				if (fMatchers != null) {
+					Tree tree = fViewer.getTree();
+					List selection = new ArrayList();
+					findElements(tree.getItems(), selection);
+					fViewer.setSelection(new StructuredSelection(selection), true);
+				} else {
+					fViewer.setSelection(StructuredSelection.EMPTY);
+				}
+			}
+
+			private Object findElements(TreeItem items[], List selection) {
+				ILabelProvider labelProvider = (ILabelProvider) fViewer.getLabelProvider();
+				for (int i = 0; i < items.length; i++) {
+					Object element = items[i].getData();
+					if (!(element instanceof IContainer) && (!(element instanceof File) || !((File) element).isDirectory())) {
+						for (int j = 0; j < fMatchers.length; j++) {
+							if (fMatchers[j].match(labelProvider.getText(element)))
+								selection.add(element);
+						}
+					}
+					findElements(items[i].getItems(), selection);
+				}
+
+				return null;
+			}
+
+			protected void setViewer(TreeViewer viewer) {
+				fViewer = viewer;
+				fViewer.setUseHashlookup(true);
+			}
+		}
+
 		private TreeViewer fWorkspaceViewer;
 		private TreeViewer fFileSystemViewer;
 		private Label fStatusLabel;
@@ -188,34 +307,44 @@ public abstract class DialogAction extends ViewerAction {
 		}
 
 		private TreeViewer createWorkspaceArea(Composite parent) {
-			Label label = new Label(parent, SWT.LEFT);
-			label.setText(ActionMessages.getString("DialogAction.0")); //$NON-NLS-1$
-			label.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-			TreeViewer viewer = new TreeViewer(parent, SWT.BORDER | (fMultiSelection ? SWT.MULTI : SWT.SINGLE));
+			Composite composite = new Composite(parent, SWT.NONE);
+			composite.setLayout(new GridLayout(1, true));
+			composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+			FilterArea filterArea = null;
+			if (fUseFilter)
+				filterArea = new FilterArea(composite, ActionMessages.getString("DialogAction.0")); //$NON-NLS-1$
+			TreeViewer viewer = new TreeViewer(composite, SWT.BORDER | (fMultiSelection ? SWT.MULTI : SWT.SINGLE));
+			if (filterArea != null)
+				filterArea.setViewer(viewer);
 			viewer.setContentProvider(new WorkbenchContentProvider());
 			viewer.setLabelProvider(new WorkbenchLabelProvider());
 			viewer.setSorter(new ResourceSorter(ResourceSorter.NAME));
 			if (!fShowFiles)
 				viewer.addFilter(new FileFilter());
 			viewer.setInput(ResourcesPlugin.getWorkspace().getRoot());
-			GridData data = new GridData(GridData.FILL_HORIZONTAL);
+			GridData data = new GridData(GridData.FILL_BOTH);
 			data.heightHint = convertHeightInCharsToPixels(10);
 			viewer.getControl().setLayoutData(data);
 			return viewer;
 		}
 
 		private TreeViewer createFileSystemArea(Composite parent) {
-			Label label = new Label(parent, SWT.LEFT);
-			label.setText(ActionMessages.getString("DialogAction.1")); //$NON-NLS-1$
-			label.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-			TreeViewer viewer = new TreeViewer(parent, SWT.BORDER | (fMultiSelection ? SWT.MULTI : SWT.SINGLE));
+			Composite composite = new Composite(parent, SWT.NONE);
+			composite.setLayout(new GridLayout(1, true));
+			composite.setLayoutData(new GridData(GridData.FILL_BOTH));
+			FilterArea filterArea = null;
+			if (fUseFilter)
+				filterArea = new FilterArea(composite, ActionMessages.getString("DialogAction.1")); //$NON-NLS-1$
+			TreeViewer viewer = new TreeViewer(composite, SWT.BORDER | (fMultiSelection ? SWT.MULTI : SWT.SINGLE));
+			if (filterArea != null)
+				filterArea.setViewer(viewer);
 			viewer.setContentProvider(new FileSystemContentProvider());
 			viewer.setLabelProvider(new FileSystemLabelProvider());
 			viewer.setSorter(new FileSorter());
 			if (!fShowFiles)
 				viewer.addFilter(new FileFilter());
 			viewer.setInput(File.listRoots());
-			GridData data = new GridData(GridData.FILL_HORIZONTAL);
+			GridData data = new GridData(GridData.FILL_BOTH);
 			data.heightHint = convertHeightInCharsToPixels(10);
 			viewer.getControl().setLayoutData(data);
 			return viewer;
@@ -270,10 +399,13 @@ public abstract class DialogAction extends ViewerAction {
 			fStatusLabel.setText(ActionMessages.getFormattedString("DialogAction.2", //$NON-NLS-1$
 					new Object[] { new Integer(wsSize), new Integer(fsSize) }));
 		}
-	};
+	}
 
-	protected DialogAction(String text, StructuredViewer viewer) {
+	private boolean fUseFilter;
+
+	protected DialogAction(String text, StructuredViewer viewer, boolean useFilter) {
 		super(text, viewer);
+		fUseFilter = useFilter;
 	}
 
 	protected String[] openDialog(String text, String path, boolean multiSelection, boolean showFiles) {

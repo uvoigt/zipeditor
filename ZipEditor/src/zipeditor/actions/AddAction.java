@@ -12,7 +12,7 @@ import zipeditor.operations.AddOperation;
 
 public class AddAction extends DialogAction {
 	public AddAction(StructuredViewer viewer) {
-		super(ActionMessages.getString("AddAction.0"), viewer); //$NON-NLS-1$
+		super(ActionMessages.getString("AddAction.0"), viewer, true); //$NON-NLS-1$
 		setToolTipText(ActionMessages.getString("AddAction.1")); //$NON-NLS-1$
 		setImageDescriptor(ZipEditorPlugin.getImageDescriptor("icons/add.gif")); //$NON-NLS-1$
 	}
