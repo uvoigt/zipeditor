@@ -153,6 +153,7 @@ public class ZipModel {
 	private int type;
 	private File tempDir;
 	private boolean readonly;
+	private Boolean storeFolders;
 	private ListenerList listenerList = new ListenerList();
 	private IErrorReporter errorReporter;
 	
@@ -264,6 +265,8 @@ public class ZipModel {
 			}
 			boolean isFolder = entryName.endsWith("/") || entryName.endsWith("\\") || //$NON-NLS-1$ //$NON-NLS-2$
 					(zipEntry != null && zipEntry.isDirectory() || tarEntry != null && tarEntry.isDirectory());
+			if (isFolder && storeFolders == null)
+				storeFolders = Boolean.TRUE;
 			if (node == null)
 				node = root;
 			Node existingNode = n == -1 ? null : node.getChildByName(names[n], false);
@@ -358,8 +361,7 @@ public class ZipModel {
 			}
 			if (out instanceof TarOutputStream)
 				((TarOutputStream) out).setLongFileMode(TarOutputStream.LONGFILE_GNU);
-			boolean storeFolders = ZipEditorPlugin.getDefault().getPreferenceStore().getBoolean(PreferenceConstants.STORE_FOLDERS_IN_ARCHIVES);
-			saveNodes(out, root, type, storeFolders, monitor);
+			saveNodes(out, root, type, isStoreFolders(), monitor);
 		} catch (Exception e) {
 			logError(e);
 		} finally {
@@ -468,6 +470,8 @@ public class ZipModel {
 		deleteTempDir(tempDir);
 		tempDir = null;
 		ZipEditorPlugin.getDefault().removeFileMonitors(this);
+		if (ZipEditorPlugin.DEBUG)
+			System.out.println(zipPath + " disposed"); //$NON-NLS-1$
 	}
 	
 	private void deleteTempDir(final File tmpDir) {
@@ -562,5 +566,14 @@ public class ZipModel {
 			node = node.getChildByName(names[i], false);
 		}
 		return node;
+	}
+
+	public boolean isStoreFolders() {
+		return storeFolders != null ? storeFolders.booleanValue() : ZipEditorPlugin.getDefault()
+				.getPreferenceStore().getBoolean(PreferenceConstants.STORE_FOLDERS_IN_ARCHIVES);
+	}
+
+	public void setStoreFolders(boolean store) {
+		storeFolders = store ? Boolean.TRUE : Boolean.FALSE;
 	}
 }

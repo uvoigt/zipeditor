@@ -93,7 +93,7 @@ public class PreferencesAction extends EditorAction {
 		manager.add(folders);
 		fillFoldersMenu(folders);
 		manager.add(new Separator());
-		manager.add(new TogglePreferenceAction(ActionMessages.getString("PreferencesAction.6"), PreferenceConstants.STORE_FOLDERS_IN_ARCHIVES, fEditor.getPreferenceStore())); //$NON-NLS-1$
+		manager.add(new ToggleStoreFoldersAction(fEditor));
 	}
 
 	private void fillColumnsMenu(MenuManager manager) {
