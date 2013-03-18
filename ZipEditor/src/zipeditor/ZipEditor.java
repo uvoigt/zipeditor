@@ -917,7 +917,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 
 	private void createActions(int mode) {
 		fZipActionGroup = new ZipActionGroup(this);
-		fOpenActionGroup = new OpenActionGroup(this, null);
+		fOpenActionGroup = new OpenActionGroup(getViewer(), false);
 		setAction(ACTION_NEW_FOLDER, new NewFolderAction(getViewer()));
 		ToggleViewModeAction toggleViewModeAction = new ToggleViewModeAction(this, ActionMessages.getString("ToggleViewModeAction.0"), PreferenceConstants.PREFIX_EDITOR, PreferenceConstants.VIEW_MODE_TREE); //$NON-NLS-1$
 		toggleViewModeAction.setToolTipText(ActionMessages.getString("ToggleViewModeAction.1")); //$NON-NLS-1$

@@ -9,15 +9,16 @@ import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionGroup;
+import org.eclipse.ui.navigator.ICommonActionConstants;
 
 import zipeditor.Utils;
-import zipeditor.ZipEditor;
 import zipeditor.actions.DeferredMenuManager.MenuJob;
 import zipeditor.model.FileAdapter;
 import zipeditor.model.Node;
@@ -28,9 +29,10 @@ public class OpenActionGroup extends ActionGroup {
 
 	private final static String GROUP_OPEN_RECENTLY_USED = "openRecentlyUsed"; //$NON-NLS-1$
 
-	public OpenActionGroup(ZipEditor editor, String openActionDefinitionId) {
-		fOpenAction = new OpenAction(editor);
-		fOpenAction.setActionDefinitionId(openActionDefinitionId);
+	public OpenActionGroup(StructuredViewer viewer, boolean useOpenActionHandler) {
+		fOpenAction = new OpenAction(viewer);
+		if (useOpenActionHandler)
+			fOpenAction.setActionDefinitionId(ICommonActionConstants.OPEN);
 	}
 	
 	public void dispose() {
@@ -42,7 +44,6 @@ public class OpenActionGroup extends ActionGroup {
 		IStructuredSelection selection = (IStructuredSelection) getContext().getSelection();
 		boolean onlyFilesSelected = !selection.isEmpty() && Utils.allNodesAreFileNodes(selection);
 		if (onlyFilesSelected) {
-			fOpenAction.setSelection(selection);
 			if (menu.find(IWorkbenchActionConstants.MB_ADDITIONS) != null) {
 				menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fOpenAction);
 				menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new GroupMarker(GROUP_OPEN_RECENTLY_USED));
@@ -72,15 +73,6 @@ public class OpenActionGroup extends ActionGroup {
 		if (actionBars.getGlobalActionHandler(fOpenAction.getActionDefinitionId()) == null)
 			actionBars.setGlobalActionHandler(fOpenAction.getActionDefinitionId(), fOpenAction);
 		updateActionBars();
-	}
-	
-	public void updateActionBars() {
-		IStructuredSelection selection = (IStructuredSelection) getContext().getSelection();
-		boolean onlyFilesSelected = Utils.allNodesAreFileNodes(selection);
-		boolean empty = selection.isEmpty();
-
-		fOpenAction.setEnabled(!empty && onlyFilesSelected);
-		fOpenAction.setSelection(selection);
 	}
 	
 	private void fillOpenWithMenu(IMenuManager menu, final FileAdapter fileAdapter, final FileOpener fileOpener) {

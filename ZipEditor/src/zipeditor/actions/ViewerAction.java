@@ -14,7 +14,6 @@ import zipeditor.model.Node;
 
 public abstract class ViewerAction extends Action {
 	private StructuredViewer fViewer;
-	private ISelection fSelection;
 
 	public ViewerAction(String text, StructuredViewer viewer) {
 		super(text);
@@ -43,11 +42,6 @@ public abstract class ViewerAction extends Action {
 	}
 
 	protected ISelection getSelection() {
-		return fSelection != null ? fSelection : fViewer.getSelection();
+		return fViewer.getSelection();
 	}
-
-	public void setSelection(ISelection selection) {
-		fSelection = selection;
-	}
-
 }
