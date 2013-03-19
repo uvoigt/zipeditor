@@ -12,6 +12,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.StringTokenizer;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.runtime.IAdapterManager;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Platform;
@@ -21,12 +23,15 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.IActionFilter;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 
+import zipeditor.actions.ZipAdapterFactory;
 import zipeditor.model.Node;
 import zipeditor.model.ZipModel;
+import zipeditor.model.ZipModelSpace;
 
 /**
  * The activator class controls the plug-in life cycle
@@ -45,6 +50,8 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 	
 	private Map fModelToFileNode = new HashMap();
 
+	private final ZipModelSpace fModelSpace = new ZipModelSpace();
+
 	/**
 	 * The constructor
 	 */
@@ -58,6 +65,10 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 	 */
 	public void start(BundleContext context) throws Exception {
 		super.start(context);
+		
+		IAdapterManager manager = Platform.getAdapterManager();
+		manager.registerAdapters(new ZipAdapterFactory(), IFile.class);
+		manager.registerAdapters(new ZipAdapterFactory(), IActionFilter.class);
 	}
 
 	/*
@@ -125,6 +136,10 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 			node.reset();
 			fileToNode.remove(file);
 		}
+	}
+
+	public static ZipModelSpace getSpace() {
+		return getDefault().fModelSpace;
 	}
 
 	public static IStatus log(Object message) {
@@ -201,5 +216,4 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 	public static void showErrorDialog(Shell shell, String message, Throwable exception) {
 		showErrorDialog(shell, message, exception, true);
 	}
-
 }

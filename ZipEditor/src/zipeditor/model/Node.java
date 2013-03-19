@@ -70,7 +70,7 @@ public class Node extends PlatformObject {
 		resetPathCache();
 		state |= MODIFIED;
 		model.setDirty(true);
-		model.notifyListeners();
+		model.notifyListeners(this);
 	}
 	
 	public String getPath() {
@@ -126,7 +126,7 @@ public class Node extends PlatformObject {
 		this.time = time;
 		state |= MODIFIED;
 		model.setDirty(true);
-		model.notifyListeners();
+		model.notifyListeners(this);
 	}
 
 	public long getSize() {
@@ -201,7 +201,7 @@ public class Node extends PlatformObject {
 			atIndex = children.size();
 		children.add(atIndex, node);
 		model.setDirty(true);
-		model.notifyListeners();
+		model.notifyListeners(this);
 		node.resetPathCache();
 	}
 
@@ -237,7 +237,7 @@ public class Node extends PlatformObject {
 		size = file.length();
 		state |= MODIFIED;
 		model.setDirty(true);
-		model.notifyListeners();
+		model.notifyListeners(this);
 	}
 	
 	/**
@@ -252,7 +252,7 @@ public class Node extends PlatformObject {
 			return;
 		children.remove(node);
 		model.setDirty(true);
-		model.notifyListeners();
+		model.notifyListeners(this);
 		node.clear();
 	}
 	
@@ -270,7 +270,7 @@ public class Node extends PlatformObject {
 		model.deleteFile(file);
 		file = null;
 		state &= -1 ^ MODIFIED;
-		model.notifyListeners();
+		model.notifyListeners(this);
 	}
 
 	private void resetPathCache() {
@@ -278,6 +278,15 @@ public class Node extends PlatformObject {
 		if (children != null) {
 			for (int i = 0; i < children.size(); i++)
 				((Node) children.get(i)).resetPathCache();
+		}
+	}
+
+	protected void resetState(boolean recursively) {
+		state &= ~ADDED & ~MODIFIED;
+		if (recursively && children != null) {
+			for (int i = 0; i < children.size(); i++) {
+				((Node) children.get(i)).resetState(recursively);
+			}
 		}
 	}
 

@@ -57,6 +57,7 @@ public class ZipModel {
 	public final static int INIT_FINISHED = 0x02;
 	public final static int INITIALIZING = 0x04;
 	public final static int DIRTY = 0x08;
+	public final static int DISPOSE = 0x10;
 
 	/** @see: {@link org.apache.tools.tar.TarEntry#parseTarHeader(byte[])} */
 	private static final int TAR_MAGIC_OFFSET = TarConstants.NAMELEN //
@@ -152,16 +153,17 @@ public class ZipModel {
 	private int state;
 	private int type;
 	private File tempDir;
-	private boolean readonly;
+	private final boolean readonly;
 	private Boolean storeFolders;
-	private ListenerList listenerList = new ListenerList();
-	private IErrorReporter errorReporter;
+	private final ListenerList listenerList = new ListenerList();
+	private final IErrorReporter errorReporter;
 	
 	public ZipModel(File path, final InputStream inputStream, boolean readonly) {
 		this(path, inputStream, readonly, null);
 	}
 
 	public ZipModel(File path, final InputStream inputStream, boolean readonly, IErrorReporter errorReporter) {
+		ZipEditorPlugin.getSpace().addModel(path, this);
 		zipPath = path;
 		this.readonly = readonly;
 		this.errorReporter = errorReporter;
@@ -185,6 +187,17 @@ public class ZipModel {
 	}
 
 	private void initialize(InputStream inputStream) {
+		if (inputStream != null && zipPath != null && !zipPath.exists()) {
+			try {
+				zipPath = File.createTempFile("tmp", null); //$NON-NLS-1$
+				zipPath.deleteOnExit();
+				Utils.readAndWrite(inputStream, new FileOutputStream(zipPath), true);
+				inputStream = new FileInputStream(zipPath);
+			} catch (IOException e) {
+				ZipEditorPlugin.log(e);
+			}
+		}
+
 		long time = System.currentTimeMillis();
 		InputStream zipStream = inputStream;
 		try {
@@ -203,7 +216,7 @@ public class ZipModel {
 			}
 			state &= -1 ^ INITIALIZING;
 			state |= INIT_FINISHED;
-			notifyListeners();
+			notifyListeners(null);
 			state &= -1 ^ INIT_FINISHED;
 			if (ZipEditorPlugin.DEBUG)
 				System.out.println(zipPath + " initialized in " + (System.currentTimeMillis() - time) + "ms"); //$NON-NLS-1$ //$NON-NLS-2$
@@ -457,21 +470,28 @@ public class ZipModel {
 		listenerList.remove(listener);
 	}
 	
-	protected void notifyListeners() {
+	protected void notifyListeners(Node node) {
 		Object[] listeners = listenerList.getListeners();
-		ModelChangeEvent event = new ModelChangeEvent(this);
+		ModelChangeEvent event = new ModelChangeEvent(this, node);
 		for (int i = 0; i < listeners.length; i++) {
+			if (ZipEditorPlugin.DEBUG)
+				System.out.println("Notifying: " + listeners[i]); //$NON-NLS-1$
 			((IModelListener) listeners[i]).modelChanged(event);
 		}
 	}
 
 	public void dispose() {
+		if ((state & DISPOSE) > 0)
+			return;
 		state &= -1 ^ INITIALIZING;
 		deleteTempDir(tempDir);
 		tempDir = null;
 		ZipEditorPlugin.getDefault().removeFileMonitors(this);
+		state |= DISPOSE;
+		notifyListeners(null);
+		state ^= DISPOSE;
 		if (ZipEditorPlugin.DEBUG)
-			System.out.println(zipPath + " disposed"); //$NON-NLS-1$
+			System.out.println("Closed " + zipPath); //$NON-NLS-1$
 	}
 	
 	private void deleteTempDir(final File tmpDir) {
@@ -548,9 +568,10 @@ public class ZipModel {
 				state |= DIRTY;
 		} else {
 			state &= -1 ^ DIRTY;
+			root.resetState(true);
 		}
 	}
-	
+
 	public boolean isReadonly() {
 		return readonly;
 	}

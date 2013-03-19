@@ -99,7 +99,7 @@ public class TarNode extends Node {
     		return;
 		this.groupId = groupId;
 		model.setDirty(true);
-		model.notifyListeners();
+		model.notifyListeners(this);
 	}
     
     public void setGroupName(String groupName) {
@@ -107,7 +107,7 @@ public class TarNode extends Node {
     		return;
 		this.groupName = groupName;
 		model.setDirty(true);
-		model.notifyListeners();
+		model.notifyListeners(this);
 	}
     
     public void setUserId(int userId) {
@@ -115,7 +115,7 @@ public class TarNode extends Node {
     		return;
 		this.userId = userId;
 		model.setDirty(true);
-		model.notifyListeners();
+		model.notifyListeners(this);
 	}
     
     public void setUserName(String userName) {
@@ -123,7 +123,7 @@ public class TarNode extends Node {
     		return;
 		this.userName = userName;
 		model.setDirty(true);
-		model.notifyListeners();
+		model.notifyListeners(this);
 	}
 
     protected InputStream doGetContent() throws IOException {

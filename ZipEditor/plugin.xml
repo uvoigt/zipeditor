@@ -112,10 +112,11 @@
       <navigatorContent
             activeByDefault="true"
             contentProvider="zipeditor.ZipContentProvider"
-            icon="icons/zipicon.gif"
+            icon="icons/zipicon_closed.gif"
             id="zipeditor.navigatorContent"
             labelProvider="zipeditor.ZipLabelProvider"
-            name="%navigatorContent.name.0">
+            name="%navigatorContent.name.0"
+            providesSaveables="true">
          <triggerPoints>
             <or>
                <instanceof value="org.eclipse.core.resources.IFile"/>
@@ -154,6 +155,19 @@
                </or>
             </enablement>
          </actionProvider>
+         <dropAssistant
+               class="zipeditor.ZipDropAssistant"
+               id="zipeditor.ZipDropAssistant">
+            <possibleDropTargets>
+               <or>
+                  <instanceof
+                        value="org.eclipse.core.resources.IFile">
+                  </instanceof>
+                  <instanceof
+                        value="zipeditor.model.Node">
+                  </instanceof>
+               </or></possibleDropTargets>
+         </dropAssistant>
       </navigatorContent>
    </extension>
    <extension
@@ -163,6 +177,10 @@
             <contentExtension pattern="zipeditor.navigatorContent"/>
          </includes>
       </viewerContentBinding>
+      <dragAssistant
+            class="zipeditor.ZipDragAssistant"
+            viewerId="org.eclipse.ui.navigator.ProjectExplorer">
+      </dragAssistant>
    </extension>
    <extension
          point="org.eclipse.ui.propertyPages">
@@ -204,6 +222,75 @@
             schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
             sequence="M1+M2+*">
       </key>
+   </extension>
+   <extension
+         point="org.eclipse.ui.popupMenus">
+      <objectContribution
+            objectClass="org.eclipse.core.resources.IFile"
+            id="zipeditor.CommonZipActionGroup"
+            adaptable="true">
+         <menu
+               icon="icons/zipicon.gif"
+               id="zipEditor.menu"
+               label="%archive.label"
+               path="group.openWith">
+            <groupMarker
+                  name="zipEditor.open">
+            </groupMarker>
+            <separator
+                  name="zipEditor.sep1">
+            </separator>
+            <groupMarker
+                  name="zipEditor.close">
+            </groupMarker>
+         </menu>
+         <action
+               class="zipeditor.actions.CloseZipFileAction"
+               enablesFor="*"
+               id="CloseZipFileAction"
+               label="%CloseZipFileAction.label"
+               menubarPath="zipEditor.menu/zipEditor.close"
+               tooltip="%CloseZipFileAction.tooltip">
+            <enablement>
+               <objectState
+                     name="sessionProperty"
+                     value="zipeditor.open=true">
+               </objectState>
+            </enablement>
+         </action>
+         <action
+               class="zipeditor.actions.SaveZipFileAction"
+               id="SaveZipFileAction"
+               label="%SaveZipFileAction.label"
+               menubarPath="zipEditor.menu/zipEditor.open"
+               tooltip="%SaveZipFileAction.tooltip">
+            <enablement>
+            	<objectState name="sessionProperty" value="zipeditor.dirty=true"/>
+            </enablement>
+         </action>
+         <action
+               class="zipeditor.actions.OpenZipFileAction"
+               id="OpenZipFileAction"
+               label="%OpenZipFileAction.label"
+               menubarPath="zipEditor.menu/zipEditor.open"
+               tooltip="%OpenZipFileAction.tooltip">
+            <enablement>
+            	<objectState name="sessionProperty" value="zipeditor.open=false"/>
+            </enablement>
+         </action>
+         <visibility>
+         	<or>
+         		<or>
+	         		<objectState name="contentTypeId" value="ZipEditor.zipfile"/>
+	         		<objectState name="contentTypeId" value="ZipEditor.gzipfile"/>
+         		</or>
+				<or>
+	         		<objectState name="contentTypeId" value="ZipEditor.tarfile"/>
+	         		<objectState name="contentTypeId" value="ZipEditor.targzfile"/>
+				</or>         		
+         	</or>	
+         </visibility>
+      </objectContribution>
    </extension>
 
 </plugin>

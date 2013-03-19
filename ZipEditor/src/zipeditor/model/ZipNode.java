@@ -11,8 +11,8 @@ import java.util.zip.ZipFile;
 
 public class ZipNode extends Node {
 	private class EntryStream extends InputStream {
-		private InputStream in;
-		private ZipFile zipFile;
+		private final InputStream in;
+		private final ZipFile zipFile;
 		private EntryStream(ZipEntry entry, ZipFile zipFile) throws IOException {
 			in = zipFile.getInputStream(entry);
 			this.zipFile = zipFile;
@@ -53,7 +53,7 @@ public class ZipNode extends Node {
 			return;
 		this.comment = comment;
 		model.setDirty(true);
-		model.notifyListeners();
+		model.notifyListeners(this);
 	}
 	
 	public byte[] getExtra() {
