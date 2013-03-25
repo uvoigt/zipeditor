@@ -6,6 +6,8 @@ package zipeditor.operations;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -66,7 +68,9 @@ public class ExtractOperation {
 	
 	private final static int ASK = 0x01;
 	private final static int OVERRIDE = 0x02;
-	
+
+	private final static Set extracting = new HashSet();
+
 	public File execute(Node[] nodes, File toDir, boolean inBackground, boolean overwrite) {
 		return inBackground ? extractInBackground(nodes, toDir) :
 			extract(nodes, toDir, overwrite, false, new NullProgressMonitor());
@@ -105,6 +109,13 @@ public class ExtractOperation {
 			}
 		} else {
 			file = new File(toDir, fullNodePath ? node.getFullPath() : node.getName());
+			while (extracting.contains(file)) {
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e) {
+					break;
+				}
+			}
 			boolean writeFile = !file.exists();
 			if (!writeFile && !overwrite && (fUserStatus & ASK) > 0 && !isTempFolder(toDir, node.getModel())) {
 				switch (showWarning(file)) {
@@ -129,13 +140,16 @@ public class ExtractOperation {
 				if (!parent.exists())
 					parent.mkdirs();
 				monitor.subTask(file.getName());
-				long time = System.currentTimeMillis();
 				try {
+					extracting.add(file);
+					long time = System.currentTimeMillis();
 					Utils.readAndWrite(node.getContent(), new FileOutputStream(file), true);
 					if (ZipEditorPlugin.DEBUG)
 						System.out.println("Extracted " + node + " in " + (System.currentTimeMillis() - time) + "ms"); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
 				} catch (Exception e) {
 					node.getModel().logError(e);
+				} finally {
+					extracting.remove(file);
 				}
 			}
 			monitor.worked(1);

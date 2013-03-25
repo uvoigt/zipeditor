@@ -5,6 +5,10 @@
 package zipeditor.actions;
 
 import org.eclipse.core.filesystem.IFileStore;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.action.ContributionItem;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.SWT;
@@ -12,6 +16,7 @@ import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.ui.PlatformUI;
 
 import zipeditor.PreferenceConstants;
 import zipeditor.PreferenceInitializer;
@@ -20,6 +25,29 @@ import zipeditor.actions.FileOpener.Editor;
 import zipeditor.model.FileAdapter;
 
 public class MostRecentlyUsedMenu extends ContributionItem {
+	private class ExtractJob extends Job {
+		private Editor fEditor;
+
+		public ExtractJob(Editor editor) {
+			super(ActionMessages.getString("MostRecentlyUsedMenu.0")); //$NON-NLS-1$
+			fEditor = editor;
+		}
+
+		protected IStatus run(IProgressMonitor monitor) {
+			monitor.beginTask(ActionMessages.getString("MostRecentlyUsedMenu.1"), 1); //$NON-NLS-1$
+			try {
+				final Object adapter = fFileAdapter.getAdapter(IFileStore.class);
+				PlatformUI.getWorkbench().getDisplay().syncExec(new Runnable() {
+					public void run() {
+						fFileOpener.openFromOther((IFileStore) adapter, fEditor);
+					}
+				});
+			} finally {
+				monitor.done();
+			}
+			return Status.OK_STATUS;
+		}
+	}
 	private FileOpener fFileOpener;
 	private FileAdapter fFileAdapter;
 
@@ -51,7 +79,7 @@ public class MostRecentlyUsedMenu extends ContributionItem {
 				public void handleEvent(Event event) {
 					switch (event.type) {
 					case SWT.Selection:
-						fFileOpener.openFromOther((IFileStore) fFileAdapter.getAdapter(IFileStore.class), editor);
+						new ExtractJob(editor).schedule();
 						break;
 					}
 				}
