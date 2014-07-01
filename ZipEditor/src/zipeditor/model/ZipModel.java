@@ -143,7 +143,19 @@ public class ZipModel {
 	private static boolean isTarArchive(InputStream bzip) throws IOException {
 		byte[] tarEntryHeader = new byte[TAR_MAGIC_OFFSET + TarConstants.MAGICLEN];
 		bzip.read(tarEntryHeader);
-		String magic = String.valueOf(TarUtils.parseName(tarEntryHeader, TAR_MAGIC_OFFSET, TarConstants.MAGICLEN));
+		String magic;
+		try {
+			magic = String.valueOf(TarUtils.parseName(tarEntryHeader, TAR_MAGIC_OFFSET, TarConstants.MAGICLEN));
+		} catch (NoSuchMethodError e) {
+			// http://sourceforge.net/p/zipeditor/bugs/7/
+			// since Ant 1.9.0, this has been changed to String parseName(byte[] buffer, final int offset, final int length)
+			try {
+				magic = (String) TarUtils.class.getMethod("parseName", new Class[] { byte[].class, int.class, int.class }).invoke(null, //$NON-NLS-1$
+						new Object[] { tarEntryHeader, Integer.valueOf(TAR_MAGIC_OFFSET), Integer.valueOf(TarConstants.MAGICLEN) });
+			} catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
+		}
 		return TarConstants.TMAGIC.equals(magic) || TarConstants.GNU_TMAGIC.equals(magic);
 	}
 
