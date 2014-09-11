@@ -5,71 +5,48 @@
          point="org.eclipse.core.contenttype.contentTypes">
       <content-type
             id="archive"
+            describer="zipeditor.model.ZipContentDescriber"
             name="%content-type.name.0"
             priority="normal"/>
       <content-type
             base-type="archive"
-            describer="zipeditor.model.ZipContentDescriber"
             id="zipfile"
             name="%content-type.name.1"
             priority="normal">
-         <property
-               default="ZIP"
-               name="ZipEditor.archiveType"/>
       </content-type>
       <content-type
             base-type="archive"
-            describer="zipeditor.model.ZipContentDescriber"
             id="targzfile"
             name="%content-type.name.2"
             priority="normal">
-         <property
-               default="TGZ"
-               name="ZipEditor.archiveType"/>
       </content-type>
       <content-type
             base-type="archive"
-            describer="zipeditor.model.ZipContentDescriber"
             id="tarfile"
             name="%content-type.name.3"
             priority="normal">
-         <property
-               default="TAR"
-               name="ZipEditor.archiveType"/>
       </content-type>
       <content-type
             base-type="archive"
-            describer="zipeditor.model.ZipContentDescriber"
             id="gzipfile"
             name="%content-type.name.4"
             priority="normal">
-         <property
-               default="GZ"
-               name="ZipEditor.archiveType"/>
       </content-type>
       <content-type
             base-type="archive"
-            describer="zipeditor.model.ZipContentDescriber"
             id="bz2file"
             name="%content-type.name.5"
             priority="normal">
-         <property
-               default="BZ2"
-               name="ZipEditor.archiveType"/>
       </content-type>
       <content-type
             base-type="archive"
-            describer="zipeditor.model.ZipContentDescriber"
             id="tarbz2file"
             name="%content-type.name.6"
             priority="normal">
-         <property
-               default="TBZ"
-               name="ZipEditor.archiveType"/>
       </content-type>
       <file-association
             content-type="ZipEditor.zipfile"
-            file-extensions="jar, zip, war, ear"/>
+            file-extensions="jar, zip, war, ear, aar, apk"/>
       <file-association
             content-type="ZipEditor.gzipfile"
             file-extensions="gz"/>
@@ -101,6 +78,15 @@
          <contentTypeBinding contentTypeId="ZipEditor.targzfile"/>
          <contentTypeBinding contentTypeId="ZipEditor.bz2file"/>
          <contentTypeBinding contentTypeId="ZipEditor.tarbz2file"/>
+      </editor>
+      <editor
+            class="zipeditor.ZipEditor"
+            contributorClass="zipeditor.ZipEditorActionBarContributor"
+            extensions="aar, apk"
+            default="true"
+            icon="icons/android_archive.png"
+            id="zipeditor.AndroidZipEditor"
+            name="%editor.name.1">
       </editor>
    </extension>
    <extension
