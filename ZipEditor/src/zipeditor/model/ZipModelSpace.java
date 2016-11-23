@@ -10,6 +10,8 @@ import java.util.Iterator;
 import java.util.Map;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IResourceChangeEvent;
+import org.eclipse.core.resources.IResourceChangeListener;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -23,6 +25,24 @@ import zipeditor.ZipEditorPlugin;
 
 public class ZipModelSpace {
 	private final Map fModels = new HashMap();
+	private IResourceChangeListener fResourceListener;
+
+	public ZipModelSpace() {
+		fResourceListener = new IResourceChangeListener() {
+			public void resourceChanged(IResourceChangeEvent event) {
+				// TODO klappt so nicht: https://eclipse.org/articles/Article-Resource-deltas/resource-deltas.html
+				if (event.getType() == IResourceChangeEvent.PRE_DELETE) {
+					File file = event.getResource().getLocation().toFile();
+					ZipModel model = (ZipModel) fModels.get(file);
+					if (model != null) {
+						model.dispose();
+						fModels.remove(file);
+					}
+				}
+			}
+		};
+		ResourcesPlugin.getWorkspace().addResourceChangeListener(fResourceListener);
+	}
 
 	public ZipModel getModel(File file) {
 		return (ZipModel) fModels.get(file);
@@ -114,5 +134,9 @@ public class ZipModelSpace {
 
 	private void internalSaveLocalFile(File file, InputStream in) throws Exception {
 		Utils.readAndWrite(in, new FileOutputStream(file), true);
+	}
+
+	public void close() {
+		ResourcesPlugin.getWorkspace().removeResourceChangeListener(fResourceListener);
 	}
 }
