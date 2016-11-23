@@ -53,6 +53,7 @@ import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.ui.IPartListener;
+import org.eclipse.ui.ISaveablesLifecycleListener;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.Saveable;
@@ -182,7 +183,7 @@ public class ZipContentProvider extends SaveablesProvider implements ITreeConten
 	}
 
 	private class SaveableModel extends Saveable {
-		private final IFile file;
+		private final IFile file; // TODO beim Umbennennen ist die Referenz falsch
 		public SaveableModel(IFile file) {
 			this.file = file;
 		}
@@ -201,8 +202,11 @@ public class ZipContentProvider extends SaveablesProvider implements ITreeConten
 
 		public void doSave(IProgressMonitor monitor) throws CoreException {
 			ZipModel model = getModel(file, false);
-			if (model != null)
+			if (model != null) {
 				ZipEditorPlugin.getSpace().saveModel(model, new Path(model.getZipPath().getAbsolutePath()), monitor);
+				fireSaveablesDirtyChanged(new SaveableModel[] { this} );
+				refreshViewer(file);
+			}
 		}
 
 		public boolean isDirty() {
@@ -257,9 +261,12 @@ public class ZipContentProvider extends SaveablesProvider implements ITreeConten
 
 	public ZipContentProvider() {
 //		((CommonViewer) viewer).getCommonNavigator().getSite().getPage().addPartListener(fPartListener);
+		ISaveablesLifecycleListener listener = (ISaveablesLifecycleListener) PlatformUI.getWorkbench().getService(ISaveablesLifecycleListener.class);
+		init(listener);
 	}
 
 	public ZipContentProvider(int mode) {
+		this();
 		fMode = mode;
 	}
 
@@ -379,6 +386,14 @@ public class ZipContentProvider extends SaveablesProvider implements ITreeConten
 						for (Iterator it = selection.iterator(); it.hasNext(); ) {
 							Object next = it.next();
 							viewer.refresh(next, true);
+							if (next instanceof IFile) {
+								IFile file = (IFile) next;
+								SaveableModel saveableModel = findModel(file);
+								if (saveableModel == null) {
+									ZipModel model = ZipEditorPlugin.getSpace().getModel(file.getLocation().toFile());
+									addSaveable(model, file);
+								}
+							}
 						}
 					}
 				});
@@ -555,14 +570,20 @@ public class ZipContentProvider extends SaveablesProvider implements ITreeConten
 			}
 		});
 		final Node node = event.getNode();
-		refreshViewer(node);
+		if (node != null) {
+			refreshViewer(node);
+			IFile file = Utils.getFile(node.getModel().getZipPath());
+			if (file != null)
+				refreshViewer(file);
+		}
+
 		if (event.isDispose()) {
 			removeSaveable(saveableModel);
 //			((CommonViewer) viewer).getCommonNavigator().
 		}
 	}
 
-	private void refreshViewer(final Node node) {
+	private void refreshViewer(final Object node) {
 		if (viewer instanceof CommonViewer) {
 			viewer.getControl().getDisplay().syncExec(new Runnable() {
 				public void run() {

@@ -29,6 +29,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.core.runtime.jobs.Job;
@@ -179,11 +180,16 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 
 		private void doRun() {
 			if (!fZipViewer.getControl().isDisposed()) {
+				if (fModelChangeEvent.isDispose() && !fReverting) {
+					close();
+					return;
+				}
 				fZipViewer.getControl().setRedraw(false);
 				fZipViewer.refresh();
 				fZipViewer.getControl().setRedraw(true);
+				fReverting = false;
 			}
-			if (fOutlinePage != null && !fOutlinePage.getControl().isDisposed()) {
+			if (fOutlinePage != null && fOutlinePage.getControl() != null && !fOutlinePage.getControl().isDisposed()) {
 				if (fOutlinePage.getInput() == null)
 					fOutlinePage.setInput(fModel.getRoot());
 				else
@@ -270,12 +276,14 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	private Map fActions = new HashMap();
 	private IResourceChangeListener fInputFileListener;
 	private ZipModel fModel;
+	private ModelListener fModelListener;
 	private long fModelModified;
 	private ZipOutlinePage fOutlinePage;
 	private FrameList fFrameList;
 	private IMemento fState;
 	private boolean fCheckedDeletion;
 	private ISelectionChangedListener fOutlineSelectionChangedListener;
+	private boolean fReverting;
 	private DisposeListener fTableDisposeListener = new DisposeListener() {
 		public void widgetDisposed(DisposeEvent e) {
 			storeTableColumnPreferences();
@@ -337,7 +345,12 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 					}
 				});
 			}
-			doRevert();
+//			doRevert();
+			getSite().getShell().getDisplay().syncExec(new Runnable() {
+				public void run() {
+					fZipViewer.refresh();
+				}
+			});
 		} catch (final Exception e) {
 			if (Utils.isUIThread()) {
 				doShowErrorDialog(e);
@@ -409,8 +422,11 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	}
 
 	public void doRevert() {
-		if (fModel != null)
+		fReverting = true;
+		if (fModel != null) {
 			fModel.dispose();
+			fModel.removeModelListener(fModelListener);
+		}
 		fModel = null;
 		doFirePropertyChange(PROP_DIRTY);
 		setViewerInput(fZipViewer);
@@ -456,6 +472,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	}
 	
 	public void dispose() {
+		fModel.removeModelListener(fModelListener);
 		if (fInputFileListener != null) {
 			ResourcesPlugin.getWorkspace().removeResourceChangeListener(fInputFileListener);
 			fInputFileListener = null;
@@ -476,6 +493,17 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		Object[] info = getEditorInputFileInfo(true);
 		File file = (File) info[0];
 		InputStream in = (InputStream) info[1];
+		ZipModel model = ZipEditorPlugin.getSpace().getModel(file);
+		if (model != null) {
+			if (in != null) {
+				try {
+					in.close();
+				} catch (IOException e) {
+					ZipEditorPlugin.log(e);
+				}
+			}
+			return model;
+		}
 		boolean isReadOnly = ((Boolean) info[2]).booleanValue();
 		if (in != null && file != null && !file.exists()) {
 			try {
@@ -487,6 +515,16 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 				ZipEditorPlugin.log(e);
 			}
 		}
+		if (getEditorInput() instanceof IFileEditorInput) {
+			IFile iFile = ((IFileEditorInput) getEditorInput()).getFile();
+			try {
+				iFile.setSessionProperty(new QualifiedName("zipeditor", "open"), Boolean.TRUE); //$NON-NLS-1$ //$NON-NLS-2$
+				iFile.setSessionProperty(new QualifiedName("zipeditor", "dirty"), Boolean.FALSE); //$NON-NLS-1$ //$NON-NLS-2$
+			} catch (CoreException e) {
+				ZipEditorPlugin.log(new Status(IStatus.ERROR, ZipEditorPlugin.PLUGIN_ID,  null, e));
+			}
+		}
+
 		return new ZipModel(file, in, isReadOnly, this);
 	}
 	
@@ -705,7 +743,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			fModel = createModel();
 			if (fModel.getZipPath() != null)
 				fModelModified = fModel.getZipPath().lastModified();
-			fModel.addModelListener(new ModelListener());
+			fModel.addModelListener(fModelListener = new ModelListener());
 			input = fModel.getRoot();
 			if (fFrameList != null) {
 				Object node = updateFrameList();

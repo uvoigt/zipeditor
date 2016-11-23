@@ -101,7 +101,12 @@ public class Utils {
 		IFileStore fileStore = EFS.getLocalFileSystem().getStore(new Path(file.getParentFile().getAbsolutePath()));
 		return fileStore.getChild(file.getName());
 	}
-	
+
+	public static IFile getFile(File file) {
+		IFile[] files = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocation(new Path(file.getAbsolutePath()));
+		return files.length == 0 ? null : files[0];
+	}
+
 	public static void openFilesFromNodes(Node[] nodes) {
 		if (nodes == null || nodes.length == 0)
 			return;

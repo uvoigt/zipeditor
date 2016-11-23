@@ -25,6 +25,8 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.IActionFilter;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.ide.FileStoreEditorInput;
+import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 
@@ -67,8 +69,13 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 		super.start(context);
 		
 		IAdapterManager manager = Platform.getAdapterManager();
-		manager.registerAdapters(new ZipAdapterFactory(), IFile.class);
-		manager.registerAdapters(new ZipAdapterFactory(), IActionFilter.class);
+		ZipAdapterFactory factory = new ZipAdapterFactory();
+		manager.registerAdapters(factory, IFile.class);
+		manager.registerAdapters(factory, IActionFilter.class);
+		manager.registerAdapters(factory, FileEditorInput.class);
+		manager.registerAdapters(factory, FileStoreEditorInput.class);
+		manager.registerAdapters(factory, LocalFileEditorInput.class);
+		manager.registerAdapters(factory, Node.class);
 	}
 
 	/*
@@ -76,6 +83,7 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 	 * @see org.eclipse.ui.plugin.AbstractUIPlugin#stop(org.osgi.framework.BundleContext)
 	 */
 	public void stop(BundleContext context) throws Exception {
+		fModelSpace.close();
 		plugin = null;
 		if (images != null) {
 			for (Iterator it = images.values().iterator(); it.hasNext();) {
