@@ -144,8 +144,21 @@ public class ZipModel {
 	private static boolean isTarArchive(InputStream bzip) throws IOException {
 		byte[] tarEntryHeader = new byte[TAR_MAGIC_OFFSET + TarConstants.MAGICLEN];
 		bzip.read(tarEntryHeader);
-		String magic = String.valueOf(TarUtils.parseName(tarEntryHeader, TAR_MAGIC_OFFSET, TarConstants.MAGICLEN));
-		return TarConstants.TMAGIC.equals(magic) || TarConstants.GNU_TMAGIC.equals(magic);
+		String magic;
+		try {
+			magic = String.valueOf(TarUtils.parseName(tarEntryHeader, TAR_MAGIC_OFFSET, TarConstants.MAGICLEN));
+		} catch (NoSuchMethodError e) {
+			// http://sourceforge.net/p/zipeditor/bugs/7/
+			// since Ant 1.9.0, this has been changed to String parseName(byte[] buffer, final int offset, final int length)
+			try {
+				magic = (String) TarUtils.class.getMethod("parseName", new Class[] { byte[].class, int.class, int.class }).invoke(null, //$NON-NLS-1$
+						new Object[] { tarEntryHeader, Integer.valueOf(TAR_MAGIC_OFFSET), Integer.valueOf(TarConstants.MAGICLEN) });
+			} catch (Exception ex) {
+				throw new RuntimeException(ex);
+			}
+		}
+		return TarConstants.TMAGIC.equals(magic) || TarConstants.GNU_TMAGIC.equals(magic)
+				|| (TarConstants.MAGIC_POSIX + TarConstants.VERSION_POSIX).equals(magic);
 	}
 
 	private Node root;
@@ -157,7 +170,18 @@ public class ZipModel {
 	private Boolean storeFolders;
 	private final ListenerList listenerList = new ListenerList();
 	private final IErrorReporter errorReporter;
-	
+
+	/**
+	 * Creates a model without registering it in the model space. This model can only be read once in a sequence.
+	 * @param inputStream the stream
+	 */
+	public ZipModel(File path, InputStream inputStream) {
+		zipPath = path;
+		readonly = true;
+		errorReporter = null;
+		initialize(inputStream);
+	}
+
 	public ZipModel(File path, final InputStream inputStream, boolean readonly) {
 		this(path, inputStream, readonly, null);
 	}
@@ -167,7 +191,6 @@ public class ZipModel {
 		zipPath = path;
 		this.readonly = readonly;
 		this.errorReporter = errorReporter;
-		state |= INITIALIZING;
 		if (path != null && path.length() >= 10000000) {
 			Thread initThread = new Thread(Messages.getFormattedString("ZipModel.0", path.getName())) { //$NON-NLS-1$
 				public void run() {
@@ -187,6 +210,7 @@ public class ZipModel {
 	}
 
 	private void initialize(InputStream inputStream) {
+		state |= INITIALIZING;
 		if (inputStream != null && zipPath != null && !zipPath.exists()) {
 			try {
 				zipPath = File.createTempFile("tmp", null); //$NON-NLS-1$
@@ -259,11 +283,17 @@ public class ZipModel {
 				state &= -1 ^ DIRTY;
 				break;
 			}
-			String entryName = zipEntry != null ? zipEntry.getName() : tarEntry != null ? tarEntry.getName() : zipPath
-					.getName().endsWith(".gz") ? zipPath.getName().substring(0, //$NON-NLS-1$
-					zipPath.getName().length() - 3)
-					: zipPath.getName().endsWith(".bz2") ? zipPath.getName().substring(0, //$NON-NLS-1$
-							zipPath.getName().length() - 4) : zipPath.getName();
+			String zipName = zipPath != null ? zipPath.getName() : ""; //$NON-NLS-1$
+			String entryName = zipName;
+			if (zipEntry != null)
+				entryName = zipEntry.getName();
+			else if (tarEntry != null)
+				entryName = tarEntry.getName();
+			else if (zipName.endsWith(".gz")) //$NON-NLS-1$
+				entryName = zipName.substring(0, zipName.length() - 3);
+			else if (zipName.endsWith(".bz2")) //$NON-NLS-1$
+				entryName = zipName.substring(0, zipName.length() - 4);
+
 			String[] names = splitName(entryName);
 			Node node = null;
 			int n = names.length - 1;
@@ -375,6 +405,7 @@ public class ZipModel {
 			if (out instanceof TarOutputStream)
 				((TarOutputStream) out).setLongFileMode(TarOutputStream.LONGFILE_GNU);
 			saveNodes(out, root, type, isStoreFolders(), monitor);
+			setDirty(false);
 		} catch (Exception e) {
 			logError(e);
 		} finally {

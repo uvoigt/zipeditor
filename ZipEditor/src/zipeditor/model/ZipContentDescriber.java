@@ -22,6 +22,10 @@ public class ZipContentDescriber implements IContentDescriber {
 	public final static String TBZ_FILE = ZipEditorPlugin.PLUGIN_ID + ".tarbz2file"; //$NON-NLS-1$
 	
 	private final static String EMPTY = "empty"; //$NON-NLS-1$
+
+	public static final String[] ALL = {
+		ZIP_FILE, GZ_FILE, TAR_FILE, TGZ_FILE, BZ2_FILE, TBZ_FILE
+	};
 	
 	public int describe(InputStream contents, IContentDescription description)
 			throws IOException {
