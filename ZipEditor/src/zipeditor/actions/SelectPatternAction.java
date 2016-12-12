@@ -38,7 +38,7 @@ public class SelectPatternAction extends ViewerAction {
 				List selection = new ArrayList();
 				StringMatcher matcher = new StringMatcher(value, true, false);
 				collectMatches((Node) root, matcher, selection);
-				getViewer().setSelection(new StructuredSelection(selection));
+				getViewer().setSelection(new StructuredSelection(selection), true);
 			}
 			fPreviousValue = value;
 		}
