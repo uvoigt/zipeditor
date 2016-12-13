@@ -21,13 +21,12 @@ import zipeditor.model.Node;
 
 public class AddOperation {
 	private class AddFilesJob extends Job {
-		private String[] fFilesNames;
+		private File[] fFilesNames;
 		private Node fParentNode;
 		private Node fBeforeSibling;
-		private boolean fAtLeastOneAdded;
 		private UIJob fRefreshJob;
 
-		public AddFilesJob(String[] filesNames, Node parentNode, Node beforeSibling, UIJob refreshJob) {
+		public AddFilesJob(File[] filesNames, Node parentNode, Node beforeSibling, UIJob refreshJob) {
 			super(Messages.getString("AddOperation.1")); //$NON-NLS-1$
 			fFilesNames = filesNames;
 			fParentNode = parentNode;
@@ -38,7 +37,7 @@ public class AddOperation {
 		public IStatus run(IProgressMonitor monitor) {
 			monitor.beginTask(Messages.getString("AddOperation.4"), 100); //$NON-NLS-1$
 			monitor.worked(1);
-			int totalWork = Utils.computeTotalNumber(getFilesFromNames(fFilesNames), monitor);
+			int totalWork = Utils.computeTotalNumber(fFilesNames, monitor);
 			monitor.setTaskName(Messages.getString("AddOperation.2")); //$NON-NLS-1$
 			SubProgressMonitor subMonitor = new SubProgressMonitor(monitor, 99);
 			subMonitor.beginTask(Messages.getString("AddOperation.2"), totalWork); //$NON-NLS-1$
@@ -48,7 +47,7 @@ public class AddOperation {
 					if (subMonitor.isCanceled())
 						break;
 					try {
-						fParentNode.add(new File(fFilesNames[i]), fBeforeSibling, subMonitor);
+						fParentNode.add(fFilesNames[i], fBeforeSibling, subMonitor);
 						oneAdded = true;
 					} catch (Exception e) {
 						return ZipEditorPlugin.createErrorStatus(Messages.getString("AddOperation.0"), e); //$NON-NLS-1$
@@ -63,10 +62,6 @@ public class AddOperation {
 				monitor.done();
 			}
 			return Status.OK_STATUS;
-		}
-
-		public boolean atLeastOneAdded() {
-			return fAtLeastOneAdded;
 		}
 	};
 	
@@ -85,8 +80,12 @@ public class AddOperation {
 			return Status.OK_STATUS;
 		}
 	};
-	
+
 	public void execute(String[] fileNames, Node parentNode, Node beforeSibling, StructuredViewer viewer) {
+		execute(getFilesFromNames(fileNames), parentNode, beforeSibling, viewer);
+	}
+
+	public void execute(File[] fileNames, Node parentNode, Node beforeSibling, StructuredViewer viewer) {
 		
 		while (parentNode != null && !parentNode.isFolder())
 			parentNode = parentNode.getParent();
