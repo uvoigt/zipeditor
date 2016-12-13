@@ -13,7 +13,6 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.viewers.StructuredViewer;
@@ -35,7 +34,7 @@ public class ExtractAction extends DialogAction {
 
 	};
 
-	private String fSelectedFolder;
+	private File fSelectedFolder;
 	public ExtractAction(StructuredViewer viewer) {
 		super(ActionMessages.getString("ExtractAction.0"), viewer, false); //$NON-NLS-1$
 		setToolTipText(ActionMessages.getString("ExtractAction.1")); //$NON-NLS-1$
@@ -46,11 +45,11 @@ public class ExtractAction extends DialogAction {
 		Node[] nodes = getSelectedNodes();
 		if (nodes.length == 0)
 			nodes = new Node[] { getViewerInputAsNode() };
-		String[] folder = openDialog(ActionMessages.getString("ExtractAction.2"), fSelectedFolder, false, false); //$NON-NLS-1$
+		File[] folder = openDialog(ActionMessages.getString("ExtractAction.2"), fSelectedFolder, false, false); //$NON-NLS-1$
 		if (folder != null && folder.length > 0) {
 			ExtractOperation operation = new ExtractOperation();
 			operation.setRefreshJob(new RefreshJob());
-			fSelectedFolder = operation.execute(nodes, new File(folder[0]), true, false).getAbsolutePath();
+			fSelectedFolder = operation.execute(nodes, folder[0], true, false);
 		}
 	}
 
@@ -58,8 +57,7 @@ public class ExtractAction extends DialogAction {
 		if (fSelectedFolder == null)
 			return;
 		try {
-			IContainer[] resources = ResourcesPlugin.getWorkspace().getRoot().findContainersForLocation(
-					new Path(fSelectedFolder));
+			IContainer[] resources = ResourcesPlugin.getWorkspace().getRoot().findContainersForLocationURI(fSelectedFolder.toURI());
 			if (resources != null && resources.length > 0)
 				resources[0].refreshLocal(IResource.DEPTH_INFINITE, new NullProgressMonitor());
 		} catch (CoreException e) {

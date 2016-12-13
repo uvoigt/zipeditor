@@ -81,32 +81,6 @@ import zipeditor.model.Node;
 public class OpenWithMenu extends ContributionItem {
 	private class ExecutableSelectionDialog extends SelectionStatusDialog {
 		private class EditDialog extends SelectionDialog {
-			// be compatible with release before 3.6
-			private class ContentProposal implements IContentProposal {
-				private String content;
-				private String label;
-				private String description;
-				private int cursorPosition;
-				public ContentProposal(String content, String label, String description) {
-					this.content = content;
-					this.label = label;
-					this.description = description;
-					cursorPosition = content.length();
-				}
-				public String getContent() {
-					return content;
-				}
-				public int getCursorPosition() {
-					return cursorPosition;
-				}
-				public String getLabel() {
-					return label;
-				}
-				public String getDescription() {
-					return description;
-				}
-			}
-
 			private Editor fEditor;
 			private Text fLabel;
 			private Text fPath;
@@ -649,7 +623,7 @@ public class OpenWithMenu extends ContributionItem {
 	}
 	
 	private Node getNode() {
-		return (Node) (fFile instanceof Node ? fFile : fFile.getAdapter(Node.class));
+		return fFile instanceof Node ? (Node) fFile : (Node) fFile.getAdapter(Node.class);
 	}
 
     public boolean isDynamic() {

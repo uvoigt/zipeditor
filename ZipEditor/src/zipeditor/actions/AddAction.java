@@ -4,6 +4,8 @@
  */
 package zipeditor.actions;
 
+import java.io.File;
+
 import org.eclipse.jface.viewers.StructuredViewer;
 
 import zipeditor.ZipEditorPlugin;
@@ -18,7 +20,7 @@ public class AddAction extends DialogAction {
 	}
 
 	public void run() {
-		String[] paths = openDialog(ActionMessages.getString("AddAction.2"), null, true, true); //$NON-NLS-1$);
+		File[] paths = openDialog(ActionMessages.getString("AddAction.2"), null, true, true); //$NON-NLS-1$);
 		if (paths == null || paths.length == 0)
 			return;
 		Node[] selectedNodes = getSelectedNodes();
