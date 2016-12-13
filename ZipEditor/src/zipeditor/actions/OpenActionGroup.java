@@ -10,9 +10,9 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.StructuredViewer;
+import org.eclipse.search.ui.IContextMenuConstants;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IActionBars;
-import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionGroup;
@@ -29,12 +29,10 @@ public class OpenActionGroup extends ActionGroup {
 
 	private final static String GROUP_OPEN_RECENTLY_USED = "openRecentlyUsed"; //$NON-NLS-1$
 
-	public OpenActionGroup(StructuredViewer viewer, boolean useOpenActionHandler) {
+	public OpenActionGroup(StructuredViewer viewer) {
 		fOpenAction = new OpenAction(viewer);
-		if (useOpenActionHandler)
-			fOpenAction.setActionDefinitionId(ICommonActionConstants.OPEN);
 	}
-	
+
 	public void dispose() {
 		fDisposed = true;
 		super.dispose();
@@ -44,9 +42,9 @@ public class OpenActionGroup extends ActionGroup {
 		IStructuredSelection selection = (IStructuredSelection) getContext().getSelection();
 		boolean onlyFilesSelected = !selection.isEmpty() && Utils.allNodesAreFileNodes(selection);
 		if (onlyFilesSelected) {
-			if (menu.find(IWorkbenchActionConstants.MB_ADDITIONS) != null) {
-				menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fOpenAction);
-				menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new GroupMarker(GROUP_OPEN_RECENTLY_USED));
+			if (menu.find(IContextMenuConstants.GROUP_OPEN) != null) {
+				menu.appendToGroup(IContextMenuConstants.GROUP_OPEN, fOpenAction);
+				menu.appendToGroup(IContextMenuConstants.GROUP_OPEN, new GroupMarker(GROUP_OPEN_RECENTLY_USED));
 			} else {
 				menu.add(fOpenAction);
 				menu.add(new GroupMarker(GROUP_OPEN_RECENTLY_USED));
@@ -70,8 +68,7 @@ public class OpenActionGroup extends ActionGroup {
 	}
 	
 	public void fillActionBars(IActionBars actionBars) {
-		if (actionBars.getGlobalActionHandler(fOpenAction.getActionDefinitionId()) == null)
-			actionBars.setGlobalActionHandler(fOpenAction.getActionDefinitionId(), fOpenAction);
+		actionBars.setGlobalActionHandler(ICommonActionConstants.OPEN, fOpenAction);
 		updateActionBars();
 	}
 	
@@ -80,8 +77,8 @@ public class OpenActionGroup extends ActionGroup {
 		if (fileAdapter.isAdapted() && !isRunning) {
 	        MenuManager subMenu = new MenuManager(ActionMessages.getString("OpenActionGroup.0"), PlatformUI.PLUGIN_ID + ".OpenWithSubMenu");  //$NON-NLS-1$//$NON-NLS-2$
 			doAddToMenu(subMenu, null, fileAdapter);
-			if (menu.find(IWorkbenchActionConstants.MB_ADDITIONS) != null)
-				menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, subMenu);
+			if (menu.find(IContextMenuConstants.GROUP_OPEN) != null)
+				menu.appendToGroup(IContextMenuConstants.GROUP_OPEN, subMenu);
 			else
 				menu.add(subMenu);
 		} else {
@@ -92,7 +89,7 @@ public class OpenActionGroup extends ActionGroup {
 					return Status.OK_STATUS;
 				}
 			};
-			DeferredMenuManager.addToMenu(menu, IWorkbenchActionConstants.MB_ADDITIONS, ActionMessages.getString("OpenActionGroup.0"), PlatformUI.PLUGIN_ID + ".OpenWithSubMenu", menuJob); //$NON-NLS-1$ //$NON-NLS-2$
+			DeferredMenuManager.addToMenu(menu, IContextMenuConstants.GROUP_OPEN, ActionMessages.getString("OpenActionGroup.0"), PlatformUI.PLUGIN_ID + ".OpenWithSubMenu", menuJob); //$NON-NLS-1$ //$NON-NLS-2$
 		}
 	}
 
@@ -101,8 +98,8 @@ public class OpenActionGroup extends ActionGroup {
 	}
 	
 	private void fillMostRecentlyUsedItems(IMenuManager menu, FileAdapter fileAdapter, FileOpener fileOpener) {
-		if (menu.find(IWorkbenchActionConstants.MB_ADDITIONS) != null)
-			menu.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, new MostRecentlyUsedMenu(fileOpener, fileAdapter));
+		if (menu.find(IContextMenuConstants.GROUP_OPEN) != null)
+			menu.appendToGroup(IContextMenuConstants.GROUP_OPEN, new MostRecentlyUsedMenu(fileOpener, fileAdapter));
 		else
 			menu.add(new MostRecentlyUsedMenu(fileOpener, fileAdapter));
 	}

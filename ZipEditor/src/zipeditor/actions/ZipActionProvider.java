@@ -23,7 +23,7 @@ public class ZipActionProvider extends CommonActionProvider {
 	
 	public void init(ICommonActionExtensionSite aSite) {
 		super.init(aSite);
-		fOpenActionGroup = new OpenActionGroup(aSite.getStructuredViewer(), true);
+		fOpenActionGroup = new OpenActionGroup(aSite.getStructuredViewer());
 		fExtractAction = new ExtractAction(aSite.getStructuredViewer());
 	}
 	
