@@ -90,6 +90,37 @@
       </editor>
    </extension>
    <extension
+         point="org.eclipse.ui.editors.documentProviders">
+      <provider
+            class="zipeditor.search.ResultEditorInputProvider"
+            id="zipeditor.search.ResultEditorInputProvider"
+            inputTypes="zipeditor.search.ResultEditorInput">
+      </provider>
+   </extension>
+   <extension
+         point="org.eclipse.ui.editors.annotationTypes">
+      <type
+            name="zipeditor.search.match">
+      </type>
+   </extension>
+   <extension
+         point="org.eclipse.ui.editors.markerAnnotationSpecification">
+      <specification
+            annotationType="zipeditor.search.match"
+            colorPreferenceKey="search.match.color"
+            colorPreferenceValue="206,204,247"
+            highlightPreferenceKey="search.match.highlight"
+            highlightPreferenceValue="true"
+            includeOnPreferencePage="true"
+            label="%searchResult.label"
+            overviewRulerPreferenceKey="search.match.overview"
+            overviewRulerPreferenceValue="true"
+            presentationLayer="0"
+            textPreferenceKey="search.match.text"
+            textPreferenceValue="true">
+      </specification>
+   </extension>
+   <extension
          point="org.eclipse.core.runtime.preferences">
       <initializer class="zipeditor.PreferenceInitializer"/>
    </extension>
@@ -136,7 +167,7 @@
             <enablement>
                <or>
                   <instanceof value="zipeditor.model.Node"/>
-                  <instanceof value="org.eclipse.core.resources.IFile"/>
+                  <!--instanceof value="org.eclipse.core.resources.IFile"/-->
                </or>
             </enablement>
          </actionProvider>
@@ -164,6 +195,25 @@
             objectClass="zipeditor.model.TarNode"/>
    </extension>
    <extension
+         point="org.eclipse.search.searchPages">
+      <page
+            showScopeSection="false"
+            label="%searchPage.name"
+            icon="icons/search.gif"
+            class="zipeditor.search.ZipSearchPage"
+            sizeHint="460,160"
+            id="zipeditor.search.ZipSearchPage">
+      </page>
+   </extension>
+   <extension
+         point="org.eclipse.search.searchResultViewPages">
+		<viewPage
+			id="zipeditor.search.ZipSearchResultPage"
+			searchResultClass="zipeditor.search.ZipSearchResult"
+			class="zipeditor.search.ZipSearchResultPage">
+		</viewPage>
+   </extension>
+   <extension
          point="org.eclipse.ui.commands">
       <command
             categoryId="org.eclipse.ui.category.edit"
@@ -174,6 +224,11 @@
             categoryId="org.eclipse.ui.category.edit"
             id="zipeditor.command.reverseSelection"
             name="%command.name.0">
+      </command>
+      <command
+            categoryId="org.eclipse.ui.category.navigate"
+            id="zipeditor.command.openEditor"
+            name="%command.name.1">
       </command>
    </extension>
    <extension

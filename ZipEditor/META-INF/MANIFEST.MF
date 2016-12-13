@@ -10,11 +10,15 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui,
  org.eclipse.ui.ide,
  org.eclipse.ui.navigator,
+ org.eclipse.text,
+ org.eclipse.jface.text,
  org.eclipse.core.filesystem,
  org.eclipse.ui.editors,
  org.eclipse.ui.views,
+ org.eclipse.search,
  org.apache.ant
 Eclipse-LazyStart: true
 Bundle-Vendor: %Bundle-Vendor.0
 Export-Package: zipeditor,
- zipeditor.model
+ zipeditor.model,
+ zipeditor.search
