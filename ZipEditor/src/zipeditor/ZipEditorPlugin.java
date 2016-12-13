@@ -12,6 +12,8 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.StringTokenizer;
 
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.runtime.IAdapterManager;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Platform;
@@ -21,10 +23,14 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.IFileEditorInput;
+import org.eclipse.ui.IStorageEditorInput;
+import org.eclipse.ui.IURIEditorInput;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 
+import zipeditor.actions.ZipAdapterFactory;
 import zipeditor.model.Node;
 import zipeditor.model.ZipModel;
 
@@ -58,6 +64,14 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 	 */
 	public void start(BundleContext context) throws Exception {
 		super.start(context);
+		
+		IAdapterManager manager = Platform.getAdapterManager();
+		ZipAdapterFactory factory = new ZipAdapterFactory();
+		manager.registerAdapters(factory, IFile.class);
+		manager.registerAdapters(factory, IFileEditorInput.class);
+		manager.registerAdapters(factory, IURIEditorInput.class);
+		manager.registerAdapters(factory, IStorageEditorInput.class);
+		manager.registerAdapters(factory, Node.class);
 	}
 
 	/*
