@@ -190,6 +190,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 					fOutlinePage.refresh();
 			}
 			firePropertyChange(PROP_DIRTY);
+			activateActions();
 			if (fModelChangeEvent != null && fModelChangeEvent.isInitializing()) {
 				String suffix = Messages.getString("ZipEditor.10"); //$NON-NLS-1$
 				if (!getPartName().endsWith(suffix)) {
@@ -413,6 +414,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			fModel.dispose();
 		fModel = null;
 		doFirePropertyChange(PROP_DIRTY);
+		if (Utils.isUIThread())
+			activateActions();
 		setViewerInput(fZipViewer);
 	}
 
@@ -917,7 +920,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 
 	private void createActions(int mode) {
 		fZipActionGroup = new ZipActionGroup(this);
-		fOpenActionGroup = new OpenActionGroup(getViewer(), false);
+		fOpenActionGroup = new OpenActionGroup(getViewer());
 		setAction(ACTION_NEW_FOLDER, new NewFolderAction(getViewer()));
 		ToggleViewModeAction toggleViewModeAction = new ToggleViewModeAction(this, ActionMessages.getString("ToggleViewModeAction.0"), PreferenceConstants.PREFIX_EDITOR, PreferenceConstants.VIEW_MODE_TREE); //$NON-NLS-1$
 		toggleViewModeAction.setToolTipText(ActionMessages.getString("ToggleViewModeAction.1")); //$NON-NLS-1$
@@ -1084,6 +1087,10 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	
 	public Node getRootNode() {
 		return (Node) fZipViewer.getInput();
+	}
+
+	public ZipModel getModel() {
+		return fModel;
 	}
 
 	public int getMode() {
