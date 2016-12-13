@@ -151,8 +151,9 @@ public class ZipModel {
 			// http://sourceforge.net/p/zipeditor/bugs/7/
 			// since Ant 1.9.0, this has been changed to String parseName(byte[] buffer, final int offset, final int length)
 			try {
-				magic = (String) TarUtils.class.getMethod("parseName", new Class[] { byte[].class, int.class, int.class }).invoke(null, //$NON-NLS-1$
+				Object o = TarUtils.class.getMethod("parseName", new Class[] { byte[].class, int.class, int.class }).invoke(null, //$NON-NLS-1$
 						new Object[] { tarEntryHeader, Integer.valueOf(TAR_MAGIC_OFFSET), Integer.valueOf(TarConstants.MAGICLEN) });
+				magic = o.toString();
 			} catch (Exception ex) {
 				throw new RuntimeException(ex);
 			}
