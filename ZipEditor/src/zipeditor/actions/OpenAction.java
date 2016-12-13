@@ -19,6 +19,7 @@ public class OpenAction extends ViewerAction {
 		setToolTipText(ActionMessages.getString("OpenAction.1")); //$NON-NLS-1$
 		setImageDescriptor(PlatformUI.getWorkbench().getSharedImages().
 				getImageDescriptor(ISharedImages.IMG_OBJ_FILE));
+		setActionDefinitionId("zipeditor.command.openEditor"); //$NON-NLS-1$
 	}
 
 	public void run() {
