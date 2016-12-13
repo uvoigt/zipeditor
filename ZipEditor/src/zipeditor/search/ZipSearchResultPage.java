@@ -96,10 +96,11 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 		fOpenActionGroup.setContext(context);
 		fOpenActionGroup.fillContextMenu(mgr);
 
-		IStructuredSelection selection = getViewer().getStructuredSelection();
-		if (selection.size() == 1) {
+		ISelection selection = getViewer().getSelection();
+		if (selection instanceof IStructuredSelection && ((IStructuredSelection) selection).size() == 1) {
 			mgr.prependToGroup(IContextMenuConstants.GROUP_OPEN, new Separator());
-			mgr.prependToGroup(IContextMenuConstants.GROUP_OPEN, new OpenArchiveAction(getSite().getPage(), findFileFromNode(selection.getFirstElement())));
+			mgr.prependToGroup(IContextMenuConstants.GROUP_OPEN, new OpenArchiveAction(
+					getSite().getPage(), findFileFromNode(((IStructuredSelection) selection).getFirstElement())));
 		}
 	}
 
