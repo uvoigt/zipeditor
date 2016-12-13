@@ -33,6 +33,8 @@ public class Node extends PlatformObject {
 	private String fullPath;
 	
 	private Hashtable property;
+	// these refer to other models. this comes into play when searching recursively
+	private List parentNodes;
 	
 	private final static int FOLDER = 0x01;
 	private final static int MODIFIED = 0x02;
@@ -172,9 +174,20 @@ public class Node extends PlatformObject {
 		property.put(key, value);
 	}
 
+	public List getParentNodes() {
+		return parentNodes;
+	}
+
+	public void setParentNodes(List parentNodes) {
+		this.parentNodes = parentNodes;
+	}
+
 	public InputStream getContent() {
 		try {
-			return doGetContent();
+			InputStream content = doGetContent();
+			if (content == null && parentNodes != null)
+				content = determineContent();
+			return content;
 		} catch (Exception e) {
 			model.logError(e);
 			return null;
@@ -192,7 +205,24 @@ public class Node extends PlatformObject {
 	protected void setContent(byte[] buf) {
 		this.content = buf;
 	}
-	
+
+	private InputStream determineContent() {
+		InputStream parentContent = null;
+		for (int i = 0; i < parentNodes.size(); i++) {
+			Node parentNode = (Node) parentNodes.get(i);
+			if (parentContent != null) {
+				parentNode.getModel().setNodeContent(parentNode, parentContent);
+			}
+			parentContent = parentNode.getContent();
+		}
+		if (parentContent != null) {
+			getModel().setNodeContent(this, parentContent);
+			return getContent();
+		} else {
+			return null;
+		}
+	}
+
 	private void internalAdd(Node node, int atIndex) {
 		node.parent = this;
 		if (children == null)
