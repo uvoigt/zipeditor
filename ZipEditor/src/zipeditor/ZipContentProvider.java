@@ -41,7 +41,7 @@ public class ZipContentProvider implements ITreeContentProvider {
 	}
 
 	private Object[] getNodeChildren(Node node) {
-		fModels.put(null, node.getModel());
+		addModel(node.getModel());
 		if ((fMode & PreferenceConstants.VIEW_MODE_TREE) > 0)
 			return node.getChildren();
 		else {
@@ -142,5 +142,9 @@ public class ZipContentProvider implements ITreeContentProvider {
 
 	public void disposeModel(boolean enable) {
 		fDisposeModel = enable;
+	}
+
+	protected void addModel(ZipModel model) {
+		fModels.put(model, model);
 	}
 }
