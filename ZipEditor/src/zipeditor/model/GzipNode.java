@@ -20,6 +20,6 @@ public class GzipNode extends Node {
 
 	protected InputStream doGetContent() throws IOException {
 		InputStream in = super.doGetContent();
-		return in != null ? in : new GZIPInputStream(new FileInputStream(model.getZipPath()));
+		return in != null ? in : model.getZipPath() != null ? new GZIPInputStream(new FileInputStream(model.getZipPath())) : null;
 	}
 }

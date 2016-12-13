@@ -77,8 +77,7 @@ public class ZipNode extends Node {
 		if (in != null)
 			return in;
 		if (zipEntry != null)
-			return new EntryStream(zipEntry, model.getZipPath() != null ?
-					new ZipFile(model.getZipPath()) : null);
+			return model.getZipPath() != null ? new EntryStream(zipEntry, new ZipFile(model.getZipPath())) : null;
 		return null;
 	}
 	
