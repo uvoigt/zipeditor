@@ -27,6 +27,10 @@ public class ZipContentDescriber implements IContentDescriber {
 
 	private final static String EMPTY = "empty"; //$NON-NLS-1$
 
+	public static String[] getAllContentTypeIds() {
+		return (String[]) ALL_TYPES.toArray(new String[ALL_TYPES.size()]);
+	}
+
 	private static String add(String s) {
 		String contentTypeId = ZipEditorPlugin.PLUGIN_ID + '.' + s;
 		ALL_TYPES.add(contentTypeId);

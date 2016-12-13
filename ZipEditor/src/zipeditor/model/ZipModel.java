@@ -8,6 +8,7 @@ import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -156,7 +157,8 @@ public class ZipModel {
 				throw new RuntimeException(ex);
 			}
 		}
-		return TarConstants.TMAGIC.equals(magic) || TarConstants.GNU_TMAGIC.equals(magic);
+		return TarConstants.TMAGIC.equals(magic) || TarConstants.GNU_TMAGIC.equals(magic)
+				|| (TarConstants.MAGIC_POSIX + TarConstants.VERSION_POSIX).equals(magic);
 	}
 
 	private Node root;
@@ -164,11 +166,20 @@ public class ZipModel {
 	private int state;
 	private int type;
 	private File tempDir;
-	private boolean readonly;
+	private final boolean readonly;
 	private Boolean storeFolders;
-	private ListenerList listenerList = new ListenerList();
-	private IErrorReporter errorReporter;
-	
+	private final ListenerList listenerList = new ListenerList();
+	private final IErrorReporter errorReporter;
+	private InputStream inputStream;
+
+	public ZipModel(File path, InputStream inputStream) {
+		zipPath = path;
+		readonly = true;
+		errorReporter = null;
+		// only for one usage
+		this.inputStream = inputStream;
+	}
+
 	public ZipModel(File path, final InputStream inputStream, boolean readonly) {
 		this(path, inputStream, readonly, null);
 	}
@@ -177,16 +188,15 @@ public class ZipModel {
 		zipPath = path;
 		this.readonly = readonly;
 		this.errorReporter = errorReporter;
-		state |= INITIALIZING;
 		if (path != null && path.length() >= 10000000) {
 			Thread initThread = new Thread(Messages.getFormattedString("ZipModel.0", path.getName())) { //$NON-NLS-1$
 				public void run() {
-					initialize(inputStream);
+					initialize(inputStream, null, null);
 				}
 			};
 			initThread.start();
 		} else {
-			initialize(inputStream);
+			initialize(inputStream, null, null);
 		}
 	}
 	
@@ -196,17 +206,36 @@ public class ZipModel {
 			errorReporter.reportError(status);
 	}
 
-	private void initialize(InputStream inputStream) {
+	public void init(IModelInitParticipant participant) {
+		if (inputStream == null)
+			try {
+				inputStream = new FileInputStream(zipPath);
+			} catch (FileNotFoundException e) {
+				logError(e);
+			}
+		initialize(inputStream, participant, null);
+		if (zipPath != null) {
+			try {
+				inputStream.close();
+			} catch (IOException e) {
+				logError(e);
+			}
+			inputStream = null;
+		}
+	}
+
+	private void initialize(InputStream inputStream, IModelInitParticipant participant, Node stopNode) {
+		state |= INITIALIZING;
 		long time = System.currentTimeMillis();
 		InputStream zipStream = inputStream;
 		try {
 			zipStream = detectStream(inputStream);
 			root = getRoot(zipStream);
-			readStream(zipStream);
+			readStream(zipStream, participant, stopNode);
 		} catch (IOException e) {
 			// ignore
 		} finally {
-			if (zipStream != null) {
+			if (zipStream != null && participant == null) {
 				try {
 					zipStream.close();
 				} catch (IOException e) {
@@ -235,7 +264,7 @@ public class ZipModel {
 		return new GzipNode(this, "", true); //$NON-NLS-1$
 	}
 
-	private void readStream(InputStream zipStream) {
+	private void readStream(InputStream zipStream, IModelInitParticipant participant, Node stopNode) {
 		ZipEntry zipEntry = null;
 		TarEntry tarEntry = null;
 		state |= INIT_STARTED;
@@ -258,11 +287,17 @@ public class ZipModel {
 				state &= -1 ^ DIRTY;
 				break;
 			}
-			String entryName = zipEntry != null ? zipEntry.getName() : tarEntry != null ? tarEntry.getName() : zipPath
-					.getName().endsWith(".gz") ? zipPath.getName().substring(0, //$NON-NLS-1$
-					zipPath.getName().length() - 3)
-					: zipPath.getName().endsWith(".bz2") ? zipPath.getName().substring(0, //$NON-NLS-1$
-							zipPath.getName().length() - 4) : zipPath.getName();
+			String zipName = zipPath != null ? zipPath.getName() : ""; //$NON-NLS-1$
+			String entryName = zipName;
+			if (zipEntry != null)
+				entryName = zipEntry.getName();
+			else if (tarEntry != null)
+				entryName = tarEntry.getName();
+			else if (zipName.endsWith(".gz")) //$NON-NLS-1$
+				entryName = zipName.substring(0, zipName.length() - 3);
+			else if (zipName.endsWith(".bz2")) //$NON-NLS-1$
+				entryName = zipName.substring(0, zipName.length() - 4);
+
 			String[] names = splitName(entryName);
 			Node node = null;
 			int n = names.length - 1;
@@ -292,9 +327,10 @@ public class ZipModel {
 										this, name, isFolder) : new GzipNode(this, name, isFolder);
 				node.add(newChild, null);
 				long entrySize = 0;
-				if (zipPath == null || isNoEntry) {
+				ByteArrayOutputStream out = null;
+				boolean isStopNode = stopNode != null && newChild.getFullPath().equals(stopNode.getFullPath());
+				if ((zipPath == null || isNoEntry) && participant == null && (isStopNode || stopNode == null)) {
 					byte[] buf = new byte[8000];
-					ByteArrayOutputStream out = null;
 					try {
 						for (int count = 0; (count = zipStream.read(buf)) != -1; ) {
 							if (out == null)
@@ -306,8 +342,15 @@ public class ZipModel {
 					} catch (Exception e) {
 						logError(e);
 					}
-					if (out != null)
-						newChild.setContent(out.toByteArray());
+					if (out != null) {
+						byte[] content = out.toByteArray();
+						newChild.setContent(content);
+						if (stopNode != null)
+							stopNode.setContent(content);
+					}
+				}
+				if (participant != null) {
+					participant.streamAvailable(zipStream, newChild);
 				}
 				if (zipStream instanceof ZipInputStream) {
 					try {
@@ -318,9 +361,15 @@ public class ZipModel {
 				}
 				newChild.setSize(zipEntry != null ? zipEntry.getSize()
 						: tarEntry != null ? tarEntry.getSize() : entrySize);
+				if (isStopNode)
+					break;
 			}
 			state &= -1 ^ INIT_STARTED;
 		}
+	}
+
+	public void setNodeContent(Node node, InputStream modelContent) {
+		initialize(modelContent, null, node);
 	}
 
 	private InputStream detectStream(InputStream contents) throws IOException {
@@ -374,6 +423,7 @@ public class ZipModel {
 			if (out instanceof TarOutputStream)
 				((TarOutputStream) out).setLongFileMode(TarOutputStream.LONGFILE_GNU);
 			saveNodes(out, root, type, isStoreFolders(), monitor);
+//			setDirty(false);
 		} catch (Exception e) {
 			logError(e);
 		} finally {
