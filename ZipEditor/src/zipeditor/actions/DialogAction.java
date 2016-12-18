@@ -19,6 +19,7 @@ import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
@@ -54,8 +55,10 @@ public abstract class DialogAction extends ViewerAction {
 
 		protected Control createDialogArea(Composite parent) {
 			Composite control = (Composite) super.createDialogArea(parent);
-			fWorkspaceViewer = createWorkspaceArea(control);
-			fFileSystemViewer = createFileSystemArea(control);
+			SashForm sashForm = new SashForm(control, SWT.VERTICAL);
+			sashForm.setLayoutData(new GridData(GridData.FILL, SWT.FILL, true, true));
+			fWorkspaceViewer = createWorkspaceArea(sashForm);
+			fFileSystemViewer = createFileSystemArea(sashForm);
 			fWorkspaceViewer.addSelectionChangedListener(this);
 			fFileSystemViewer.addSelectionChangedListener(this);
 			
