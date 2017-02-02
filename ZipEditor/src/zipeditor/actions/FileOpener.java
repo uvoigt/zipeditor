@@ -128,9 +128,11 @@ public class FileOpener {
 		String commandString = editor.getPath();
 		commandString = replaceAll(commandString, "$p", file.toString()); //$NON-NLS-1$
 		commandString = replaceAll(commandString, "$f", file.getName()); //$NON-NLS-1$
-		commandString = replaceAll(commandString, "$z", fNode.getModel().getZipPath().getAbsolutePath()); //$NON-NLS-1$
+		if (fNode.getModel().getZipPath() != null)
+			commandString = replaceAll(commandString, "$z", fNode.getModel().getZipPath().getAbsolutePath()); //$NON-NLS-1$
 		int dotIndex = file.getName().lastIndexOf('.');
-		commandString = replaceAll(commandString, "$n", file.getName().substring(0, dotIndex != -1 ? dotIndex : file.getName().length())); //$NON-NLS-1$
+		String nameWithoutExt = file.getName().substring(0, dotIndex != -1 ? dotIndex : file.getName().length());
+		commandString = replaceAll(commandString, "$n", nameWithoutExt); //$NON-NLS-1$
 		if (commandString.equals(editor.getPath()))
 			commandString += ' ' + file.toString();
 		String outCommand = null;
@@ -140,7 +142,7 @@ public class FileOpener {
 			commandString = commandString.substring(0, pipeIndex);
 		}
         int extIndex = commandString.indexOf("$x"); //$NON-NLS-1$
-        String ext = null;
+        String ext = ".tmp"; //$NON-NLS-1$
 		if (extIndex != -1) {
 			int endIndex = (ext = commandString.substring(extIndex + 2).trim()).indexOf(' ');
 			ext = ext.substring(0, endIndex == -1 ? ext.length() : endIndex);
@@ -160,7 +162,8 @@ public class FileOpener {
 				if (editorId.indexOf(' ') != -1)
 					editorId = editorId.substring(0, editorId.indexOf(' ')).trim();
 			}
-			final File tmpFile = File.createTempFile("internal", ext, fNode.getModel().getTempDir()); //$NON-NLS-1$
+			final File dir = new File(file.getParent().toURI());
+			final File tmpFile = new File(dir, nameWithoutExt + ext);
 			final FileOutputStream out = new FileOutputStream(tmpFile);
 			Thread.sleep(100);
 			new Thread(new Runnable() {
