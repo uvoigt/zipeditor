@@ -64,6 +64,7 @@ public abstract class DialogAction extends ViewerAction {
 			
 			GridData data = (GridData) control.getLayoutData();
 			data.widthHint = convertWidthInCharsToPixels(80);
+			data.heightHint = convertWidthInCharsToPixels(80);
 
 			fStatusLabel = new Label(control, SWT.LEFT | SWT.WRAP);
 			fStatusLabel.setLayoutData(new GridData(GridData.FILL, SWT.END, true, false));
