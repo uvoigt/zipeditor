@@ -39,9 +39,11 @@ public class ResultEditorInput implements IStorageEditorInput {
 		}
 	};
 	private final Node fNode;
+	private final String fEncoding;
 
-	ResultEditorInput(Node node) {
+	ResultEditorInput(Node node, String encoding) {
 		fNode = node;
+		fEncoding = encoding;
 	}
 
 	public boolean equals(Object obj) {
@@ -76,5 +78,9 @@ public class ResultEditorInput implements IStorageEditorInput {
 
 	public IStorage getStorage() throws CoreException {
 		return fStorage;
+	}
+
+	public String getEncoding() {
+		return fEncoding;
 	}
 }

@@ -193,6 +193,11 @@
             id="zipeditor.TarNodePropertyPage"
             name="%page.name.1"
             objectClass="zipeditor.model.TarNode"/>
+      <page
+            class="zipeditor.search.ElementPropertyPage"
+            id="zipeditor.search.ElementPropertyPage"
+            name="%page.name.2"
+            objectClass="zipeditor.search.Element"/>
    </extension>
    <extension
          point="org.eclipse.search.searchPages">

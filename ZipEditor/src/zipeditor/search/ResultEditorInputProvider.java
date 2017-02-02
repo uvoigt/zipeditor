@@ -13,4 +13,12 @@ public class ResultEditorInputProvider extends StorageDocumentProvider {
 	protected IAnnotationModel createAnnotationModel(Object element) throws CoreException {
 		return new AnnotationModel();
 	}
+
+	public String getEncoding(Object element) {
+		if (element instanceof ResultEditorInput) {
+			return ((ResultEditorInput) element).getEncoding();
+		} else {
+			return super.getEncoding(element);
+		}
+	}
 }

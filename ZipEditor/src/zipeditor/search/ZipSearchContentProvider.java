@@ -95,14 +95,13 @@ public class ZipSearchContentProvider extends ZipContentProvider {
 			File file = model.getZipPath();
 			root = (Element) fElementsToFiles.get(file);
 			if (root == null) {
-				IFile[] workspaceFiles = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocationURI(file.toURI());
-				root = new Element(workspaceFiles.length == 1 ? workspaceFiles[0].getName() : file.getName());
+				root = createRootElement(file);
 				fElementsToFiles.put(file, root);
 			}
 			Element element = root;
 			for (int j = 0; j < parentNodes.size(); j++) {
 				Node parentNode = (Node) parentNodes.get(j);
-				Element child = new Element(parentNode.getName());
+				Element child = new Element(parentNode.getPath(), parentNode.getName());
 				int childIndex = element.getChildren() != null ? element.getChildren().indexOf(child) : -1;
 				if (childIndex != -1)
 					child = (Element) element.getChildren().get(childIndex);
@@ -116,13 +115,23 @@ public class ZipSearchContentProvider extends ZipContentProvider {
 			File file = node.getModel().getZipPath();
 			root = (Element) fElementsToFiles.get(file);
 			if (root == null) {
-				root = new Element(file.getName());
+				root = createRootElement(file);
 				fElementsToFiles.put(file, root);
 				root.addNode(node);
 			} else {
 				root.addNode(node);
 			}
 		}
+		return root;
+	}
+
+	private Element createRootElement(File file) {
+		Element root;
+		IFile[] workspaceFiles = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocationURI(file.toURI());
+		if (workspaceFiles.length == 1)
+			root = new Element(workspaceFiles[0].getFullPath().toString(), workspaceFiles[0].getName());
+		else
+			root = new Element(file.getAbsolutePath(), file.getName());
 		return root;
 	}
 

@@ -14,13 +14,15 @@ public class ZipSearchOptions {
 	private String fNodeNamePattern;
 	private boolean fCaseSensitive;
 	private String fPattern;
+	private String fEncoding;
 	private int fScope;
 	private List fPath;
 	private List fElements;
 
-	public ZipSearchOptions(String nodeNamePattern, String pattern, boolean caseSensitive, int scope) {
+	public ZipSearchOptions(String nodeNamePattern, String pattern, String encoding, boolean caseSensitive, int scope) {
 		fNodeNamePattern = nodeNamePattern;
 		fPattern = pattern;
+		fEncoding = encoding;
 		fCaseSensitive = caseSensitive;
 		fScope = scope;
 	}
@@ -39,6 +41,14 @@ public class ZipSearchOptions {
 
 	public void setPattern(String pattern) {
 		fPattern = pattern;
+	}
+
+	public String getEncoding() {
+		return fEncoding;
+	}
+
+	public void setEncoding(String encoding) {
+		fEncoding = encoding;
 	}
 
 	public void setCaseSensitive(boolean caseSensitive) {

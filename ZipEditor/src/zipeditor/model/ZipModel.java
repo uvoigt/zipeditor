@@ -189,6 +189,7 @@ public class ZipModel {
 		zipPath = path;
 		this.readonly = readonly;
 		this.errorReporter = errorReporter;
+		state |= INITIALIZING;
 		if (path != null && path.length() >= 10000000) {
 			Thread initThread = new Thread(Messages.getFormattedString("ZipModel.0", path.getName())) { //$NON-NLS-1$
 				public void run() {
@@ -289,6 +290,16 @@ public class ZipModel {
 				break;
 			}
 			String zipName = zipPath != null ? zipPath.getName() : ""; //$NON-NLS-1$
+			// handle two special cases here:
+			// 1. the participant is present when an archive is scanned by the search process, the participant knows the nesting structure
+			if (participant != null) {
+				List parentNodes = participant.getParentNodes();
+				if (isNoEntry && parentNodes != null)
+					zipName = ((Node) parentNodes.get(parentNodes.size() - 1)).getName();
+			}
+			// 2. a nested gzip or bzip2 node is is extracted or opened from a search result, the stopNode knows its nesting structure 
+			if (isNoEntry && (stopNode instanceof GzipNode || stopNode instanceof Bzip2Node) && stopNode.getParentNodes() != null)
+				zipName = ((Node) stopNode.getParentNodes().get(stopNode.getParentNodes().size() - 1)).getName();
 			String entryName = zipName;
 			if (zipEntry != null)
 				entryName = zipEntry.getName();

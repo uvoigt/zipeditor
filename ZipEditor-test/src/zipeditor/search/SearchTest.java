@@ -18,7 +18,7 @@ public class SearchTest {
 		List<File> files = new ArrayList<File>();
 		files.add(path);
 
-		ZipSearchOptions options = new ZipSearchOptions("", "Uwe Voigt", false, ZipSearchOptions.SCOPE_WORKSPACE);
+		ZipSearchOptions options = new ZipSearchOptions("", "Uwe Voigt", "Cp1252", false, ZipSearchOptions.SCOPE_WORKSPACE);
 		ZipSearchQuery query = new ZipSearchQuery(options, files, null);
 		IStatus status = query.run(new NullProgressMonitor());
 
@@ -48,7 +48,7 @@ public class SearchTest {
 		List<File> files = new ArrayList<File>();
 		files.add(path);
 
-		ZipSearchOptions options = new ZipSearchOptions("", "Uwe Voigt", true, ZipSearchOptions.SCOPE_WORKSPACE);
+		ZipSearchOptions options = new ZipSearchOptions("", "Uwe Voigt", "Cp1252", true, ZipSearchOptions.SCOPE_WORKSPACE);
 		ZipSearchQuery query = new ZipSearchQuery(options, files, null);
 		IStatus status = query.run(new NullProgressMonitor());
 

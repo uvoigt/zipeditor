@@ -10,15 +10,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.core.runtime.IAdaptable;
+import org.eclipse.ui.model.IWorkbenchAdapter;
+import org.eclipse.ui.model.WorkbenchAdapter;
+
 import zipeditor.model.Node;
 
-public class Element {
+public class Element extends WorkbenchAdapter implements IAdaptable {
 
 	private Set fNodes;
+	private String fPath;
 	private String fFileName;
 	private List fChildren;
 
-	public Element(String fileName) {
+	public Element(String path, String fileName) {
+		fPath = path;
 		fFileName = fileName;
 	}
 
@@ -42,14 +48,29 @@ public class Element {
 		return fFileName;
 	}
 
+	public String getPath() {
+		return fPath;
+	}
+
 	public Collection getNodes() {
 		return fNodes;
+	}
+
+	public Object getAdapter(Class adapter) {
+		if (adapter == IWorkbenchAdapter.class)
+			return this;
+		return null;
+	}
+
+	public String getLabel(Object object) {
+		return fFileName;
 	}
 
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((fFileName == null) ? 0 : fFileName.hashCode());
+		result = prime * result + ((fPath == null) ? 0 : fPath.hashCode());
 		return result;
 	}
 
@@ -65,6 +86,11 @@ public class Element {
 			if (other.fFileName != null)
 				return false;
 		} else if (!fFileName.equals(other.fFileName))
+			return false;
+		if (fPath == null) {
+			if (other.fPath != null)
+				return false;
+		} else if (!fPath.equals(other.fPath))
 			return false;
 		return true;
 	}

@@ -130,7 +130,7 @@ public class TarNode extends Node {
 		InputStream in = super.doGetContent();
 		if (in != null)
 			return in;
-		if (tarEntry != null)
+		if (tarEntry != null && model.getZipPath() != null)
 			return new EntryStream(tarEntry, getTarFile());
 		return null;
 	}

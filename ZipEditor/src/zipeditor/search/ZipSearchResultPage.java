@@ -16,6 +16,7 @@ import java.util.Set;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IAdaptable;
+import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.dialogs.MessageDialog;
@@ -28,16 +29,21 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.search.ui.IContextMenuConstants;
 import org.eclipse.search.ui.NewSearchUI;
 import org.eclipse.search.ui.text.AbstractTextSearchViewPage;
 import org.eclipse.search.ui.text.Match;
+import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IPageLayout;
+import org.eclipse.ui.IWorkbenchActionConstants;
+import org.eclipse.ui.IWorkbenchCommandConstants;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.actions.ActionContext;
+import org.eclipse.ui.dialogs.PropertyDialogAction;
 import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.IShowInSource;
 import org.eclipse.ui.part.IShowInTargetList;
@@ -60,6 +66,7 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 
 	private ZipSearchContentProvider fContentProvider;
 	private OpenActionGroup fOpenActionGroup;
+	private IAction fPropertiesAction;
 	private final List fAnnotationModels = new ArrayList();
 	private TextEditor fPreviousEditor;
 
@@ -73,16 +80,21 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 
 	protected void configureTableViewer(TableViewer viewer) {
 		fContentProvider = new ZipSearchContentProvider(PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER);
-		viewer.setContentProvider(fContentProvider);
-		viewer.setLabelProvider(new ZipSearchLabelProvider(this));
-		fOpenActionGroup = new OpenActionGroup(viewer);
+		configureViewer(viewer);
 	}
 
 	protected void configureTreeViewer(TreeViewer viewer) {
 		fContentProvider = new ZipSearchContentProvider(PreferenceConstants.VIEW_MODE_TREE);
+		configureViewer(viewer);
+	}
+
+	private void configureViewer(StructuredViewer viewer) {
 		viewer.setContentProvider(fContentProvider);
 		viewer.setLabelProvider(new ZipSearchLabelProvider(this));
 		fOpenActionGroup = new OpenActionGroup(viewer);
+		if (fPropertiesAction == null) {
+			fPropertiesAction = new PropertyDialogAction(getSite().getWorkbenchWindow(), getSite().getSelectionProvider());
+			fPropertiesAction.setActionDefinitionId(IWorkbenchCommandConstants.FILE_PROPERTIES);		}
 	}
 
 	protected void elementsChanged(Object[] input) {
@@ -102,6 +114,7 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 			mgr.prependToGroup(IContextMenuConstants.GROUP_OPEN, new OpenArchiveAction(
 					getSite().getPage(), findFileFromNode(((IStructuredSelection) selection).getFirstElement())));
 		}
+		mgr.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fPropertiesAction);
 	}
 
 	public Object getAdapter(Class adapter) {
@@ -163,7 +176,9 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 	protected void showMatch(Match match, int offset, int length, boolean activate) throws PartInitException {
 		final Node node = (Node) match.getElement();
 		IWorkbenchPage page = getSite().getPage();
-		ResultEditorInput input = new ResultEditorInput(node);
+		String encoding = ((ZipSearchQuery) getInput().getQuery()).getOptions().getEncoding();
+
+		ResultEditorInput input = new ResultEditorInput(node, encoding);
 		TextEditor editor = (TextEditor) page.findEditor(input);
 		if (editor != null) {
 			page.bringToTop(editor);
@@ -172,7 +187,10 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 				boolean reuseEditor = NewSearchUI.reuseEditor();
 				if (reuseEditor && fPreviousEditor != null)
 					page.closeEditor(fPreviousEditor, false);
-				editor = (TextEditor) page.openEditor(input, "org.eclipse.ui.DefaultTextEditor", false); //$NON-NLS-1$
+				IEditorPart part = page.openEditor(input, "org.eclipse.ui.DefaultTextEditor", false); //$NON-NLS-1$
+				if (!(part instanceof TextEditor))
+					return;
+				editor = (TextEditor) part;
 				if (reuseEditor)
 					fPreviousEditor = editor;
 				IAnnotationModel annotationModel = editor.getDocumentProvider().getAnnotationModel(input);
