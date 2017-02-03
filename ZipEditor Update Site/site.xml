@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <description url="ZipEditor Updates">
+      ZipEditor list of features
+   </description>
+   <feature url="features/zipeditor_1.1.3.qualifier.jar" id="zipeditor" version="1.1.3.qualifier">
+      <category name="ZipEditor"/>
+   </feature>
+   <category-def name="ZipEditor" label="Eclipse ZipEditor">
+      <description>
+         Here you find all available versions of the Eclipse ZipEditor.
+      </description>
+   </category-def>
+</site>
