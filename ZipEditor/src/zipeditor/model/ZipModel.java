@@ -209,20 +209,24 @@ public class ZipModel {
 	}
 
 	public void init(IModelInitParticipant participant) {
-		if (inputStream == null)
+		if (inputStream == null) {
 			try {
 				inputStream = new FileInputStream(zipPath);
 			} catch (FileNotFoundException e) {
 				logError(e);
 			}
-		initialize(inputStream, participant, null);
-		if (zipPath != null) {
-			try {
-				inputStream.close();
-			} catch (IOException e) {
-				logError(e);
+		}
+		try {
+			initialize(inputStream, participant, null);
+		} finally {
+			if (zipPath != null) {
+				try {
+					inputStream.close();
+				} catch (IOException e) {
+					logError(e);
+				}
+				inputStream = null;
 			}
-			inputStream = null;
 		}
 	}
 
@@ -282,7 +286,10 @@ public class ZipModel {
 				else if (zipStream instanceof TarInputStream)
 					tarEntry = ((TarInputStream) zipStream).getNextEntry();
 			} catch (Exception e) {
-				logError(e);
+				String message = "Error reading archive"; //$NON-NLS-1$
+				if (zipPath != null)
+					message += " " + zipPath.getAbsolutePath(); //$NON-NLS-1$
+				logError(ZipEditorPlugin.createErrorStatus(message, e));
 				break;
 			}
 			if ((!isNoEntry && zipEntry == null && tarEntry == null) || (isNoEntry && root.children != null)) {
