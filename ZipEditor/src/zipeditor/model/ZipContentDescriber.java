@@ -6,12 +6,17 @@ package zipeditor.model;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
+import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.content.IContentDescriber;
 import org.eclipse.core.runtime.content.IContentDescription;
+import org.eclipse.core.runtime.content.IContentType;
+import org.eclipse.core.runtime.content.IContentTypeSettings;
 
 import zipeditor.ZipEditorPlugin;
 
@@ -27,6 +32,8 @@ public class ZipContentDescriber implements IContentDescriber {
 
 	private final static String EMPTY = "empty"; //$NON-NLS-1$
 
+	private static IContentType fArchiveContentType;
+
 	public static String[] getAllContentTypeIds() {
 		return (String[]) ALL_TYPES.toArray(new String[ALL_TYPES.size()]);
 	}
@@ -39,6 +46,44 @@ public class ZipContentDescriber implements IContentDescriber {
 
 	public static boolean isForUs(String contentTypeId) {
 		return ALL_TYPES.contains(contentTypeId);
+	}
+
+	public static IContentType getArchiveContentType() {
+		if (fArchiveContentType == null)
+			fArchiveContentType = Platform.getContentTypeManager().getContentType("ZipEditor.archive"); //$NON-NLS-1$
+		return fArchiveContentType;
+	}
+
+	public static List getFileExtensionsAssociatedWithArchives() {
+		return getFileSpecs(IContentTypeSettings.FILE_EXTENSION_SPEC);
+	}
+
+	public static List getFileNamesAssociatedWithArchives() {
+		return getFileSpecs(IContentTypeSettings.FILE_NAME_SPEC);
+	}
+
+	private static List getFileSpecs(int type) {
+		String[] contentTypeIds = getAllContentTypeIds();
+		List result = new ArrayList();
+		for (int i = 0; i < contentTypeIds.length; i++) {
+			String[] specs = Platform.getContentTypeManager().getContentType(contentTypeIds[i]).getFileSpecs(type);
+			for (int j = 0; j < specs.length; j++) {
+				result.add(specs[j].toLowerCase());
+			}
+		}
+		return result;
+	}
+
+	public static boolean matchesFileSpec(String name, List fileNames, List fileExtension) {
+		for (int i = 0; i < fileNames.size(); i++) {
+			if (name.equals(fileNames.get(i)))
+				return true;
+		}
+		for (int i = 0; i < fileExtension.size(); i++) {
+			if (name.endsWith("." + fileExtension.get(i))) //$NON-NLS-1$
+				return true;
+		}
+		return false;
 	}
 
 	public int describe(InputStream contents, IContentDescription description)

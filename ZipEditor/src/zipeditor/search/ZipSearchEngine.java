@@ -13,17 +13,17 @@ import java.util.List;
 
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.content.IContentType;
 
 import zipeditor.actions.StringMatcher;
 import zipeditor.model.IModelInitParticipant;
 import zipeditor.model.Node;
+import zipeditor.model.ZipContentDescriber;
 import zipeditor.model.ZipModel;
 
 public class ZipSearchEngine implements IModelInitParticipant {
-	private final IContentType fArchiveContentType = Platform.getContentTypeManager().getContentType("ZipEditor.archive"); //$NON-NLS-1$
+	private final List fFileNames = ZipContentDescriber.getFileNamesAssociatedWithArchives();
+	private final List fFileExtensions = ZipContentDescriber.getFileExtensionsAssociatedWithArchives();
 	private char[] fPattern;
 	private String fEncoding;
 	private StringMatcher[] fNodeNameMatchers;
@@ -81,8 +81,7 @@ public class ZipSearchEngine implements IModelInitParticipant {
 	private void searchNodeContent(List parentNodes, Node node, InputStream in, StringMatcher[] nodeNameMatchers,
 			char pattern[], String encoding, boolean caseSensitive, ZipSearchResultCollector collector) throws IOException {
 
-		IContentType contentType = Platform.getContentTypeManager().findContentTypeFor(node.getName());
-		if (contentType != null && contentType.isKindOf(fArchiveContentType)) {
+		if (ZipContentDescriber.matchesFileSpec(node.getName(), fFileNames, fFileExtensions)) {
 			ZipModel model = new ZipModel(null, in);
 			parentNodes.add(node);
 			searchZipModel(model);

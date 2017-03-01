@@ -25,8 +25,6 @@ import zipeditor.model.ZipContentDescriber;
 
 public class ZipSearchScoreComputer implements ISearchPageScoreComputer {
 
-	private final IContentType fArchiveContentType = Platform.getContentTypeManager().getContentType("ZipEditor.archive"); //$NON-NLS-1$
-
 	private Set fFileTypes = readFileTypes(ZipContentDescriber.getAllContentTypeIds());
 
 	public int computeScore(String pageId, Object input) {
@@ -73,7 +71,7 @@ public class ZipSearchScoreComputer implements ISearchPageScoreComputer {
 			IContentDescription contentDescription = file.getContentDescription();
 			if (contentDescription != null) {
 				IContentType contentType = contentDescription.getContentType();
-				if (contentType != null && contentType.isKindOf(fArchiveContentType))
+				if (contentType != null && contentType.isKindOf(ZipContentDescriber.getArchiveContentType()))
 					return 1;
 			}
 		} catch (CoreException e) {

@@ -177,7 +177,6 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 		ZipSearchOptions options = new ZipSearchOptions(fNodeNamePatterns.getText(), fSearchText.getText(), encoding, fCaseSensitiveButton.getSelection(), scope);
 
 		List elements = new ArrayList();
-		String fileName = null;
 		if (scope == ZipSearchOptions.SCOPE_WORKSPACE) {
 			elements.add(ResourcesPlugin.getWorkspace().getRoot());
 			options.setElements(elements);
@@ -186,7 +185,6 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 			if (zipEditor != null) {
 				File file = zipEditor.getModel().getZipPath();
 				elements.add(file);
-				fileName = zipEditor.getTitle();
 			} else if (fContainer.getSelection() != null && !fContainer.getSelection().isEmpty()) {
 				elements.addAll(((IStructuredSelection) fContainer.getSelection()).toList());
 			}
@@ -199,7 +197,7 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 		}
 
 		NewSearchUI.activateSearchResultView();
-		ZipSearchQuery searchQuery = new ZipSearchQuery(options, elements, fileName);
+		ZipSearchQuery searchQuery = new ZipSearchQuery(options, elements);
 		NewSearchUI.runQueryInBackground(searchQuery);
 
 		fPreviousSearches.remove(options);

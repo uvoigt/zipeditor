@@ -61,7 +61,7 @@ public class SearchTest {
 		files.add(path);
 
 		ZipSearchOptions options = new ZipSearchOptions("", "Uwe Voigt", "Cp1252", true, ZipSearchOptions.SCOPE_WORKSPACE);
-		ZipSearchQuery query = new ZipSearchQuery(options, files, null);
+		ZipSearchQuery query = new ZipSearchQuery(options, files);
 		IStatus status = query.run(new NullProgressMonitor());
 
 		Assert.assertNotNull(status);
@@ -87,7 +87,7 @@ public class SearchTest {
 		files.add(path);
 
 		ZipSearchOptions options = new ZipSearchOptions("", new String(new byte[] {(byte) 0xe8, (byte)0xa1, (byte)0x8b}, "UTF8"), "UTF8", false, ZipSearchOptions.SCOPE_WORKSPACE);
-		ZipSearchQuery query = new ZipSearchQuery(options, files, null);
+		ZipSearchQuery query = new ZipSearchQuery(options, files);
 		IStatus status = query.run(new NullProgressMonitor());
 
 		Assert.assertNotNull(status);
@@ -109,7 +109,7 @@ public class SearchTest {
 		files.add(path);
 
 		ZipSearchOptions options = new ZipSearchOptions("", "Uwe Voigt", "Cp1252", false, ZipSearchOptions.SCOPE_WORKSPACE);
-		ZipSearchQuery query = new ZipSearchQuery(options, files, null);
+		ZipSearchQuery query = new ZipSearchQuery(options, files);
 		IStatus status = query.run(new NullProgressMonitor());
 
 		Assert.assertNotNull(status);
