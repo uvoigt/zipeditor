@@ -70,9 +70,7 @@ public class Node extends PlatformObject {
 			return;
 		this.name = name;
 		resetPathCache();
-		state |= MODIFIED;
-		model.setDirty(true);
-		model.notifyListeners();
+		setModified(true);
 	}
 	
 	public String getPath() {
@@ -126,9 +124,7 @@ public class Node extends PlatformObject {
 		if (time == this.time)
 			return;
 		this.time = time;
-		state |= MODIFIED;
-		model.setDirty(true);
-		model.notifyListeners();
+		setModified(true);
 	}
 
 	public long getSize() {
@@ -137,6 +133,13 @@ public class Node extends PlatformObject {
 
 	protected void setSize(long size) {
 		this.size = size;
+	}
+
+	protected void setModified(boolean notify) {
+		state |= MODIFIED;
+		model.setDirty(true);
+		if (notify)
+			model.notifyListeners();
 	}
 
 	public Node[] getChildren() {
@@ -265,9 +268,7 @@ public class Node extends PlatformObject {
 		this.file = file;
 		time = file.lastModified();
 		size = file.length();
-		state |= MODIFIED;
-		model.setDirty(true);
-		model.notifyListeners();
+		setModified(true);
 	}
 	
 	/**

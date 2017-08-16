@@ -52,8 +52,7 @@ public class ZipNode extends Node {
 		if (comment == this.comment || comment != null && comment.equals(this.comment))
 			return;
 		this.comment = comment;
-		model.setDirty(true);
-		model.notifyListeners();
+		setModified(true);
 	}
 	
 	public byte[] getExtra() {
