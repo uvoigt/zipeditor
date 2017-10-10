@@ -251,5 +251,19 @@
             sequence="M1+M2+*">
       </key>
    </extension>
+   <extension
+         point="org.eclipse.ui.popupMenus">
+      <objectContribution
+            id="zipeditor.popupMenu"
+            objectClass="org.eclipse.jdt.core.IPackageFragmentRoot">
+         <action
+               class="zipeditor.actions.OpenInZipEditorAction"
+               enablesFor="1"
+               icon="icons/zipicon.gif"
+               id="zipeditor.OpenInZipEditor"
+               label="%popup.name"
+               menubarPath="group.open"/>
+      </objectContribution>
+   </extension>
 
 </plugin>
