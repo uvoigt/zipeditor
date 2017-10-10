@@ -269,6 +269,19 @@ public class Utils {
 		return nodes;
 	}
 
+	public static IPath getJavaPackageFragmentRoot(Object object) {
+		// no actual way to extract the jar information legally
+		if (object != null) {
+			try {
+				IPath path = (IPath) object.getClass().getMethod("internalPath", null).invoke(object, null); //$NON-NLS-1$
+				return path;
+			} catch (Throwable t) {
+				// ignore this
+			}
+		}
+		return null;
+	}
+
 	private Utils() {
 	}
 }
