@@ -379,7 +379,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		Utils.readAndWrite(in, new FileOutputStream(file), true);
 		IFileStore fileStore = EFS.getLocalFileSystem().getStore(new Path(file.getParentFile().getAbsolutePath()));
 		fileStore = fileStore.getChild(file.getName());
-		return new LocalFileEditorInput(fileStore);
+		return Utils.createEditorInput(fileStore);
 	}
 
 	public void doSaveAs() {
