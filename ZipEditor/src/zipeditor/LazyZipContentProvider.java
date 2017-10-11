@@ -8,6 +8,8 @@ import org.eclipse.jface.viewers.IElementComparer;
 import org.eclipse.jface.viewers.IIndexableLazyContentProvider;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerFilter;
+import org.eclipse.jface.viewers.ViewerSorter;
 
 public class LazyZipContentProvider extends ZipContentProvider implements IIndexableLazyContentProvider {
 
@@ -52,6 +54,13 @@ public class LazyZipContentProvider extends ZipContentProvider implements IIndex
 		if (fTableViewer != null) {
 			fRootChildren = getChildren(input);
 			fTableViewer.setItemCount(fRootChildren.length);
+			ViewerFilter[] filters = fTableViewer.getFilters();
+			for (int i = 0; i < filters.length; i++) {
+				fRootChildren = filters[i].filter(fTableViewer, input, fRootChildren);
+			}
+			ViewerSorter sorter = fTableViewer.getSorter();
+			if (sorter != null)
+				sorter.sort(fTableViewer, fRootChildren);
 		}
 	}
 }
