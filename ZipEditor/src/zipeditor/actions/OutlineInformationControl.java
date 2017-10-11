@@ -12,7 +12,9 @@ import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.text.IInformationControl;
 import org.eclipse.jface.text.IInformationControlExtension2;
 import org.eclipse.jface.text.IInformationControlExtension3;
+import org.eclipse.jface.viewers.IElementComparer;
 import org.eclipse.jface.viewers.ILabelProvider;
+import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.StructuredViewer;
@@ -40,8 +42,6 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Table;
-import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
@@ -104,15 +104,15 @@ public class OutlineInformationControl implements IInformationControl,
 	
 	private final static String PREFERENCE_SORTER = "quick_outline"; //$NON-NLS-1$
 	
-	public OutlineInformationControl(StructuredViewer viewer, Shell parent) {
+	public OutlineInformationControl(StructuredViewer viewer, Shell parent, IElementComparer comparer) {
 		fViewer = viewer;
 		fShell = createShell(parent);
 		fText = createTextControl(fShell);
 		new Label(fShell, SWT.SEPARATOR | SWT.HORIZONTAL).setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-		fTableViewer = createViewer(fShell);
+		fTableViewer = createViewer(fShell, comparer);
 		new Label(fShell, SWT.SEPARATOR | SWT.HORIZONTAL).setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-		setForegroundColor(parent.getDisplay().getSystemColor(SWT.COLOR_INFO_FOREGROUND));
-		setBackgroundColor(parent.getDisplay().getSystemColor(SWT.COLOR_INFO_BACKGROUND));
+		setForegroundColor(parent.getDisplay().getSystemColor(SWT.COLOR_LIST_FOREGROUND));
+		setBackgroundColor(parent.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
 
 		fillMenuManager(fMenuManager);
 	}
@@ -178,7 +178,7 @@ public class OutlineInformationControl implements IInformationControl,
 		if (menuManager == null)
 			return;
 		fToolBar = new ToolBar(parent, SWT.FLAT);
-		fToolBar.setBackground(parent.getDisplay().getSystemColor(SWT.COLOR_INFO_BACKGROUND));
+		fToolBar.setBackground(parent.getDisplay().getSystemColor(SWT.COLOR_LIST_BACKGROUND));
 		ToolItem item = new ToolItem(fToolBar, SWT.PUSH, 0);
 		GridData data = new GridData(GridData.VERTICAL_ALIGN_BEGINNING | GridData.HORIZONTAL_ALIGN_END);
 		fToolBar.setLayoutData(data);
@@ -200,12 +200,14 @@ public class OutlineInformationControl implements IInformationControl,
 		menu.setVisible(true);
 	}
 
-	private TableViewer createViewer(Shell shell) {
+	private TableViewer createViewer(Shell shell, IElementComparer comparer) {
 		TableViewer viewer = new TableViewer(shell, SWT.MULTI | SWT.H_SCROLL | SWT.V_SCROLL | SWT.VIRTUAL);
 		viewer.getControl().setLayoutData(new GridData(GridData.FILL_BOTH));
+		// with the lazy provider, filtering is bypassed
 		viewer.setContentProvider(new ZipContentProvider(PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER));
 		viewer.setLabelProvider(new ZipLabelProvider());
 		viewer.setSorter(new ZipSorter(PREFERENCE_SORTER));
+		viewer.setComparer(comparer);
 		
 		viewer.getTable().addSelectionListener(new SelectionAdapter() {
 			public void widgetDefaultSelected(SelectionEvent e) {
@@ -224,10 +226,9 @@ public class OutlineInformationControl implements IInformationControl,
 
 	protected void handleKeyReleased(KeyEvent e) {
 		if (e.keyCode == SWT.ARROW_UP) {
-			TableItem[] selection = fTableViewer.getTable().getSelection();
-			int itemCount = fTableViewer.getTable().getItemCount();
-			if (selection.length > 0 && itemCount > 0 && fTableViewer.getTable().getItems()[0].equals(
-					selection[0]))
+			IStructuredSelection selection = (IStructuredSelection) fTableViewer.getSelection();
+			Object firstElement = selection.getFirstElement();
+			if (firstElement != null && fTableViewer.getElementAt(0) == firstElement)
 				fText.setFocus();
 		}
 	}
@@ -247,18 +248,19 @@ public class OutlineInformationControl implements IInformationControl,
 	}
 	
 	protected void selectFirstMatch() {
-		Table table = fTableViewer.getTable();
-		Object element = findElement(table.getItems());
+		Object element = findElement();
 		if (element != null)
 			fTableViewer.setSelection(new StructuredSelection(element), true);
 		else
 			fTableViewer.setSelection(StructuredSelection.EMPTY);
 	}
 
-	private Node findElement(TableItem[] items) {
+	private Node findElement() {
 		ILabelProvider labelProvider = (ILabelProvider) fTableViewer.getLabelProvider();
-		for (int i = 0; i < items.length; i++) {
-			Node element = (Node) items[i].getData();
+		IStructuredContentProvider contentProvider = (IStructuredContentProvider) fTableViewer.getContentProvider();
+		Object[] elements = contentProvider.getElements(fTableViewer.getInput());
+		for (int i = 0; i < elements.length; i++) {
+			Node element = (Node) elements[i];
 			if (fMatcher == null)
 				return element;
 
