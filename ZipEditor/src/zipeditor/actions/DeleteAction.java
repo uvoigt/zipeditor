@@ -23,9 +23,6 @@ public class DeleteAction extends ViewerAction {
 		for (int i = 0; i < nodes.length; i++) {
 			nodes[i].getParent().remove(nodes[i]);
 		}
-		if (nodes.length > 0) {
-			refreshViewer();
-		}
 	}
 
 }
