@@ -24,6 +24,8 @@ import org.eclipse.jface.fieldassist.IContentProposal;
 import org.eclipse.jface.fieldassist.IContentProposalProvider;
 import org.eclipse.jface.fieldassist.TextContentAdapter;
 import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.resource.JFaceResources;
+import org.eclipse.jface.resource.LocalResourceManager;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IBaseLabelProvider;
 import org.eclipse.jface.viewers.IContentProvider;
@@ -38,11 +40,17 @@ import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.dnd.DND;
+import org.eclipse.swt.dnd.DropTargetEvent;
+import org.eclipse.swt.dnd.FileTransfer;
+import org.eclipse.swt.dnd.Transfer;
+import org.eclipse.swt.dnd.TransferData;
 import org.eclipse.swt.events.DisposeEvent;
 import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.FocusEvent;
@@ -61,21 +69,20 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.fieldassist.ContentAssistCommandAdapter;
+import org.eclipse.ui.model.IWorkbenchAdapter;
 import org.eclipse.ui.model.WorkbenchLabelProvider;
+import org.eclipse.ui.part.PluginDropAdapter;
 import org.eclipse.ui.texteditor.ITextEditorActionDefinitionIds;
 
 import zipeditor.ZipEditorPlugin;
 
 public class FileSystemChooseControl extends Composite implements ISelectionProvider {
 	private class FileSystemContentProvider implements ITreeContentProvider, ILazyTreeContentProvider, ILazyContentProvider {
-		private boolean fReturnFiles;
 		private Viewer fViewer;
 		private File[] fTableFiles;
-		private Map cache = new HashMap();
 
-		private FileSystemContentProvider(Viewer viewer, boolean returnFiles) {
+		private FileSystemContentProvider(Viewer viewer) {
 			fViewer = viewer;
-			fReturnFiles = returnFiles;
 		}
 
 		public Object[] getChildren(Object parentElement) {
@@ -105,7 +112,7 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 		}
 
 		public void dispose() {
-			cache.clear();
+			filesCache.clear();
 		}
 
 		public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
@@ -119,37 +126,6 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 				((TreeViewer) fViewer).replace(parent, index, files[index]);
 				((TreeViewer) fViewer).setChildCount(files[index], getFiles(files[index]).length);
 			}
-		}
-
-		private File[] getFiles(File file) {
-			File[] files = null;
-			files = (File[]) cache.get(file);
-			if (files == null) {
-				if (file != null) {
-					files = file.listFiles(new FileFilter() {
-						public boolean accept(File file) {
-							return fReturnFiles && file.isFile() || file.isDirectory();
-						}
-					});
-				}
-				if (files == null)
-					files = new File[0];
-				Arrays.sort(files, new Comparator() {
-					public int compare(Object o1, Object o2) {
-						File f1 = (File) o1;
-						File f2 = (File) o2;
-						int result = f1.compareTo(f2);
-						result = result < 0 ? -1 : result > 0 ? 1 : 0;
-						if (f1.isDirectory() && f2.isFile())
-							result = -1;
-						else if (f1.isFile() && f2.isDirectory())
-							result = 1;
-						return result;
-					}
-				});
-				cache.put(file, files);
-			}
-			return files;
 		}
 
 		public void updateChildCount(Object element, int currentChildCount) {
@@ -196,21 +172,44 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 		}
 		public Object[] getChildren(Object element) {
 			Object[] children = super.getChildren(element);
-			if (!fReturnFiles) {
-				List result = new ArrayList(Arrays.asList(children));
-				for (Iterator it = result.iterator(); it.hasNext(); ) {
-					if (it.next() instanceof IFile)
-						it.remove();
-				}
-				children = result.toArray();
-			}
+			if (!fReturnFiles)
+				children = filterIFiles(children);
 			return children;
+		}
+	}
+	private class ContentProposalLabelProvider extends FileSystemLabelProvider {
+		private LocalResourceManager resources;
+		public Image getImage(Object element) {
+			ContentProposal proposal = (ContentProposal) element;
+			Object file = proposal.getFile();
+			if (file instanceof IResource) {
+				IResource resource = (IResource) file;
+				IWorkbenchAdapter adapter = (IWorkbenchAdapter) resource.getAdapter(IWorkbenchAdapter.class);
+				ImageDescriptor imageDescriptor = adapter.getImageDescriptor(resource);
+				return imageDescriptor == null ? null : (Image) getResourceManager().get(imageDescriptor);
+			} else {
+				return super.getImage(file);
+			}
+		}
+		private LocalResourceManager getResourceManager() {
+			if (resources == null)
+				resources = new LocalResourceManager(JFaceResources.getResources());
+			return resources;
+		}
+		public void dispose() {
+			super.dispose();
+			if (resources != null)
+				resources.dispose();
+		}
+		public String getText(Object element) {
+			return ((IContentProposal) element).getLabel();
 		}
 	}
 	private class FilterArea extends Composite implements FocusListener, KeyListener, DisposeListener, TraverseListener {
 		private Color fGrayColor;
 		private final String fEmptyText = ActionMessages.getString("FileSystemChooseControl.0"); //$NON-NLS-1$
 		private final Text fText;
+		private ContentProposalLabelProvider fContentProposalLabelProvider;
 
 		public FilterArea(Composite parent) {
 			super(parent, SWT.NONE);
@@ -226,12 +225,14 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 			fText.addKeyListener(this);
 			fText.addTraverseListener(this);
 
-			new ContentAssistCommandAdapter(fText, new TextContentAdapter(),
+			ContentAssistCommandAdapter adapter = new ContentAssistCommandAdapter(fText, new TextContentAdapter(),
 					new IContentProposalProvider() {
 						public IContentProposal[] getProposals(String contents, int position) {
 							return doGetProposals(contents, position);
 						}
 					}, ITextEditorActionDefinitionIds.CONTENT_ASSIST_PROPOSALS, new char[0], true);
+			fContentProposalLabelProvider = new ContentProposalLabelProvider();
+			adapter.setLabelProvider(fContentProposalLabelProvider);
 			addDisposeListener(this);
 		}
 
@@ -270,6 +271,7 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 		public void widgetDisposed(DisposeEvent e) {
 			if (fGrayColor != null)
 				fGrayColor.dispose();
+			fContentProposalLabelProvider.dispose();
 		}
 
 		public void focusLost(FocusEvent e) {
@@ -286,6 +288,44 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 		}
 	}
 
+	private class DropAdapter extends PluginDropAdapter {
+
+		private DropAdapter(StructuredViewer viewer) {
+			super(viewer);
+			setFeedbackEnabled(false);
+			setScrollExpandEnabled(false);
+		}
+
+		public void dragEnter(DropTargetEvent event) {
+			if (FileTransfer.getInstance().isSupportedType(event.currentDataType)
+					&& event.detail == DND.DROP_DEFAULT) {
+				event.detail = DND.DROP_COPY;
+			}
+			super.dragEnter(event);
+		}
+
+		public boolean validateDrop(Object target, int operation, TransferData transferType) {
+			
+			if (FileTransfer.getInstance().isSupportedType(transferType)) {
+				String[] paths = (String[]) FileTransfer.getInstance().nativeToJava(transferType);
+				if (paths.length == 1) {
+					File file = new File(paths[0]);
+					if (file.exists() && file.isDirectory())
+						return true;
+				}
+			}
+			return super.validateDrop(target, operation, transferType);
+		}
+
+		public boolean performDrop(Object data) {
+			String[] paths = (String[]) data;
+			List files = new ArrayList(1);
+			files.add(new File(paths[0]));
+			setFileSelection(files);
+			return true;
+		}
+	}
+
 	private FilterArea fText;
 	private TreeViewer fTree;
 	private TableViewer fTable;
@@ -295,6 +335,7 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 	private final boolean fShowFiles;
 	private final boolean fMultiSelect;
 	private final ListenerList fSelectionChangedListeners = new ListenerList();
+	private Map filesCache = new HashMap();
 
 	public FileSystemChooseControl(Composite parent, boolean useWorkspace, boolean showFiles, boolean multiselect) {
 		super(parent, SWT.NONE);
@@ -330,9 +371,10 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 			}
 		});
 		fTree.setUseHashlookup(true);
-		fTree.setContentProvider(fUseWorkspace ? (IContentProvider) new WorkbenchContentProvider(false) : new FileSystemContentProvider(fTree, false));
+		fTree.setContentProvider(fUseWorkspace ? (IContentProvider) new WorkbenchContentProvider(false) : new FileSystemContentProvider(fTree));
 		fTree.setLabelProvider(fUseWorkspace ? (IBaseLabelProvider) new WorkbenchLabelProvider() : new FileSystemLabelProvider());
 		fTree.setInput(fUseWorkspace ? (Object) ResourcesPlugin.getWorkspace().getRoot() : File.listRoots());
+		fTree.addDropSupport(DND.DROP_COPY | DND.DROP_DEFAULT, new Transfer[] { FileTransfer.getInstance() }, new DropAdapter(fTree));
 	}
 
 	private void createTable(Composite parent) {
@@ -360,8 +402,9 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 			}
 		});
 		fTable.setUseHashlookup(true);
-		fTable.setContentProvider(fUseWorkspace ? (IContentProvider) new WorkbenchContentProvider(fShowFiles) : new FileSystemContentProvider(fTable, fShowFiles));
+		fTable.setContentProvider(fUseWorkspace ? (IContentProvider) new WorkbenchContentProvider(fShowFiles) : new FileSystemContentProvider(fTable));
 		fTable.setLabelProvider(fUseWorkspace ? (IBaseLabelProvider) new WorkbenchLabelProvider() : new FileSystemLabelProvider());
+		fTable.addDropSupport(DND.DROP_COPY | DND.DROP_DEFAULT, new Transfer[] { FileTransfer.getInstance() }, new DropAdapter(fTable));
 	}
 
 	private void pathChanged(String path) {
@@ -421,11 +464,11 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 					return;
 			} else {
 				if (((File) parentFile).isDirectory())
-					files = ((FileSystemContentProvider) fTable.getContentProvider()).getFiles((File) parentFile);
+					files = getFiles((File) parentFile);
 				else if (((File) parentFile).isFile())
 					return;
 			}
-			fTree.setInput(fUseWorkspace ? (Object) ResourcesPlugin.getWorkspace().getRoot() : File.listRoots());
+//			fTree.setInput(fUseWorkspace ? (Object) ResourcesPlugin.getWorkspace().getRoot() : File.listRoots());
 			fTable.setInput(parentFile);
 			fTable.setItemCount(files.length);
 			fTable.setSelection(StructuredSelection.EMPTY);
@@ -506,12 +549,32 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 			files = fUseWorkspace ? new Object[] { fTree.getInput()} : (Object[]) fTree.getInput();
 		} else {
 			if (fUseWorkspace) {
-				IResource parent = ResourcesPlugin.getWorkspace().getRoot().findMember(word);
-				if (parent != null && !parent.exists())
-					parent = parent.getParent();
+				String fileName = word;
+				String parentName = word;
+				int slashIndex = word.lastIndexOf('/');
+				if (slashIndex != -1) {
+					parentName = word.substring(0,  slashIndex + 1);
+					fileName = word.substring(slashIndex + 1).toLowerCase();
+				}
+				IResource resource = ResourcesPlugin.getWorkspace().getRoot().findMember(word);
+				IResource parent = null;
+				if (resource != null && resource.exists()) {
+					parent = resource;
+					fileName = ""; //$NON-NLS-1$
+				} else {
+					parent = ResourcesPlugin.getWorkspace().getRoot().findMember(parentName);
+				}
 				if (parent instanceof IContainer) {
 					try {
 						files = ((IContainer) parent).members();
+						if (!fShowFiles)
+							files = filterIFiles(files);
+						List result = new ArrayList(Arrays.asList(files));
+						for (Iterator it = result.iterator(); it.hasNext(); ) {
+							if (!((IResource) it.next()).getName().toLowerCase().startsWith(fileName))
+								it.remove();
+						}
+						files = result.toArray();
 					} catch (CoreException e) {
 						ZipEditorPlugin.log(e);
 					}
@@ -521,21 +584,62 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 				if (!parent.exists())
 					parent = parent.getParentFile();
 				if (parent != null)
-					files = parent.listFiles();
+					files = getFiles(parent);
 			}
 		}
 		if (files != null) {
 			String wordLowerCase = word.toLowerCase();
 			for (int i = 0; i < files.length; i++) {
-				String path = fUseWorkspace ? ((IResource) files[i]).getFullPath().toString() : ((File) files[i]).getPath();
-				String name = fUseWorkspace ? ((IResource) files[i]).getName() : ((File) files[i]).getName();
+				Object file = files[i];
+				String path = fUseWorkspace ? ((IResource) file).getFullPath().toString() : ((File) file).getPath();
+				String name = fUseWorkspace ? ((IResource) file).getName() : ((File) file).getName();
 				if (name.length() == 0)
 					name = path;
 				if (path.toLowerCase().startsWith(wordLowerCase))
-					proposals.add(new ContentProposal(path.substring(word.length()), name, null));
+					proposals.add(new ContentProposal(path.substring(word.length()), name, null, file));
 			}
 		}
 		return (IContentProposal[]) proposals.toArray(new IContentProposal[proposals.size()]);
+	}
+
+	private Object[] filterIFiles(final Object[] resources) {
+		List result = new ArrayList(Arrays.asList(resources));
+		for (Iterator it = result.iterator(); it.hasNext(); ) {
+			if (it.next() instanceof IFile)
+				it.remove();
+		}
+		return result.toArray();
+	}
+
+	private File[] getFiles(File parent) {
+		File[] files = null;
+		files = (File[]) filesCache.get(parent);
+		if (files == null) {
+			if (parent != null) {
+				files = parent.listFiles(new FileFilter() {
+					public boolean accept(File file) {
+						return fShowFiles && file.isFile() || file.isDirectory();
+					}
+				});
+			}
+			if (files == null)
+				files = new File[0];
+			Arrays.sort(files, new Comparator() {
+				public int compare(Object o1, Object o2) {
+					File f1 = (File) o1;
+					File f2 = (File) o2;
+					int result = f1.compareTo(f2);
+					result = result < 0 ? -1 : result > 0 ? 1 : 0;
+					if (f1.isDirectory() && f2.isFile())
+						result = -1;
+					else if (f1.isFile() && f2.isDirectory())
+						result = 1;
+					return result;
+				}
+			});
+			filesCache.put(parent, files);
+		}
+		return files;
 	}
 
 	public void addSelectionChangedListener(ISelectionChangedListener listener) {
@@ -545,8 +649,6 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 	public void removeSelectionChangedListener(ISelectionChangedListener listener) {
 		fSelectionChangedListeners.remove(listener);
 	}
-
-	
 
 	private void propagateSelectionEvent(SelectionChangedEvent event) {
 		if (!fSelectionChangedListeners.isEmpty()) {
