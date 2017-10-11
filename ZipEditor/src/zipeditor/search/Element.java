@@ -4,56 +4,44 @@
  */
 package zipeditor.search;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.ui.model.IWorkbenchAdapter;
 import org.eclipse.ui.model.WorkbenchAdapter;
 
-import zipeditor.model.Node;
-
 public class Element extends WorkbenchAdapter implements IAdaptable {
 
-	private Set fNodes;
-	private String fPath;
-	private String fFileName;
-	private List fChildren;
+	private final Object fParent;
+	private final String fPath;
+	private final String fFileName;
+	private final Long fSize;
+	private final Long fLastModified;
 
-	public Element(String path, String fileName) {
+	public Element(Object parent, String path, String fileName, Long size, Long lastModified) {
+		fParent = parent;
 		fPath = path;
 		fFileName = fileName;
-	}
-
-	public void addChild(Element child) {
-		if (fChildren == null)
-			fChildren = new ArrayList();
-		fChildren.add(child);
-	}
-
-	public void addNode(Node node) {
-		if (fNodes == null)
-			fNodes = new HashSet();
-		fNodes.add(node);
-	}
-
-	public List getChildren() {
-		return fChildren;
+		fSize = size;
+		fLastModified = lastModified;
 	}
 
 	public String getFileName() {
 		return fFileName;
 	}
 
+	public Object getParent(Object object) {
+		return fParent;
+	}
+
 	public String getPath() {
 		return fPath;
 	}
 
-	public Collection getNodes() {
-		return fNodes;
+	public Long getSize() {
+		return fSize;
+	}
+
+	public Long getLastModified() {
+		return fLastModified;
 	}
 
 	public Object getAdapter(Class adapter) {
@@ -70,6 +58,7 @@ public class Element extends WorkbenchAdapter implements IAdaptable {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((fFileName == null) ? 0 : fFileName.hashCode());
+		result = prime * result + ((fParent == null) ? 0 : fParent.hashCode());
 		result = prime * result + ((fPath == null) ? 0 : fPath.hashCode());
 		return result;
 	}
@@ -86,6 +75,11 @@ public class Element extends WorkbenchAdapter implements IAdaptable {
 			if (other.fFileName != null)
 				return false;
 		} else if (!fFileName.equals(other.fFileName))
+			return false;
+		if (fParent == null) {
+			if (other.fParent != null)
+				return false;
+		} else if (!fParent.equals(other.fParent))
 			return false;
 		if (fPath == null) {
 			if (other.fPath != null)
