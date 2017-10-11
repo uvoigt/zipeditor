@@ -4,6 +4,9 @@
  */
 package zipeditor.search;
 
+import java.text.DateFormat;
+import java.text.NumberFormat;
+
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.content.IContentType;
 import org.eclipse.swt.SWT;
@@ -20,6 +23,8 @@ public class ElementPropertyPage extends PropertyPage {
 	private StyledText fEntry;
 	private StyledText fPath;
 	private StyledText fType;
+	private StyledText fSize;
+	private StyledText fLastModified;
 
 	protected Control createContents(Composite parent) {
 		Composite control = new Composite(parent, SWT.NONE);
@@ -53,6 +58,26 @@ public class ElementPropertyPage extends PropertyPage {
 		fType.setText(contentType.getName());
 		fType.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
 		fType.setBackground(control.getBackground());
+
+		label = new Label(control, SWT.LEFT);
+		label.setText(SearchMessages.getString("ElementPropertyPage.3")); //$NON-NLS-1$
+		label.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
+		fSize = new StyledText(control, SWT.LEFT | SWT.READ_ONLY);
+		String size = element.getSize() != null ? NumberFormat.getNumberInstance().format(element.getSize()) + " " //$NON-NLS-1$
+				+ SearchMessages.getString("ElementPropertyPage.5") : SearchMessages.getString("ElementPropertyPage.6"); //$NON-NLS-1$ //$NON-NLS-2$
+		fSize.setText(size);
+		fSize.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+		fSize.setBackground(control.getBackground());
+
+		label = new Label(control, SWT.LEFT);
+		label.setText(SearchMessages.getString("ElementPropertyPage.4")); //$NON-NLS-1$
+		label.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
+		fLastModified = new StyledText(control, SWT.LEFT | SWT.READ_ONLY);
+		String lastModified = element.getLastModified() != null ? DateFormat.getDateTimeInstance().format(element.getLastModified())
+				: SearchMessages.getString("ElementPropertyPage.6"); //$NON-NLS-1$
+		fLastModified.setText(lastModified);
+		fLastModified.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
+		fLastModified.setBackground(control.getBackground());
 
 		applyDialogFont(control);
 		return control;
