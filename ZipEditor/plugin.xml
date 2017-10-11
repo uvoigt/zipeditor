@@ -235,22 +235,40 @@
             id="zipeditor.command.openEditor"
             name="%command.name.1">
       </command>
+      <command
+            categoryId="org.eclipse.ui.category.navigate"
+            id="zipeditor.command.quickOutline"
+            name="%command.name.2">
+      </command>
    </extension>
    <extension
          point="org.eclipse.ui.bindings">
       <key
             commandId="zipeditor.command.selectPattern"
-            contextId="org.eclipse.ui.contexts.dialogAndWindow"
+            contextId="zipeditor.zipEditorContext"
             schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
             sequence="M1+M2++">
       </key>
       <key
             commandId="zipeditor.command.reverseSelection"
-            contextId="org.eclipse.ui.contexts.dialogAndWindow"
+            contextId="zipeditor.zipEditorContext"
             schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
             sequence="M1+M2+*">
       </key>
+      <key
+            commandId="zipeditor.command.quickOutline"
+            contextId="zipeditor.zipEditorContext"
+            schemeId="org.eclipse.ui.defaultAcceleratorConfiguration"
+            sequence="M1+O">
+      </key>
    </extension>
+    <extension point="org.eclipse.ui.contexts">
+        <context
+            name="%context.name"
+            parentId="org.eclipse.ui.contexts.dialogAndWindow"
+            id="zipeditor.zipEditorContext">
+        </context>
+    </extension>
    <extension
          point="org.eclipse.ui.popupMenus">
       <objectContribution

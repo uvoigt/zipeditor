@@ -34,6 +34,7 @@ import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.actions.RetargetAction;
 import org.eclipse.ui.part.EditorActionBarContributor;
 
+import zipeditor.actions.QuickOutlineAction;
 import zipeditor.actions.ReverseSelectionAction;
 import zipeditor.actions.SelectPatternAction;
 
@@ -83,6 +84,7 @@ public class ZipEditorActionBarContributor extends EditorActionBarContributor {
 	private IEditorPart activeEditor;
 	private RetargetAction selectPattern;
 	private RetargetAction reverseSelection;
+	private RetargetAction quickOutline;
 
 	public void contributeToStatusLine(IStatusLineManager statusLineManager) {
 		statusLineManager.add(new ErrorStatus());
@@ -90,10 +92,14 @@ public class ZipEditorActionBarContributor extends EditorActionBarContributor {
 
 	public void contributeToMenu(IMenuManager menuManager) {
 		initActions();
-		IMenuManager menu = menuManager.findMenuUsingPath("edit"); //$NON-NLS-1$
-		if (menu != null) {
-			menu.insertAfter(ActionFactory.SELECT_ALL.getId(), selectPattern);
-			menu.insertAfter(SelectPatternAction.ID, reverseSelection);
+		IMenuManager editMenu = menuManager.findMenuUsingPath("edit"); //$NON-NLS-1$
+		if (editMenu != null) {
+			editMenu.insertAfter(ActionFactory.SELECT_ALL.getId(), selectPattern);
+			editMenu.insertAfter(SelectPatternAction.ID, reverseSelection);
+		}
+		IMenuManager navigationMenu = menuManager.findMenuUsingPath("navigate"); //$NON-NLS-1$
+		if (navigationMenu != null) {
+			navigationMenu.insertAfter("show.ext3", quickOutline); //$NON-NLS-1$
 		}
 	}
 	
@@ -107,6 +113,11 @@ public class ZipEditorActionBarContributor extends EditorActionBarContributor {
 			reverseSelection = new RetargetAction(ReverseSelectionAction.ID, Messages.getString("ZipEditorActionBarContributor.2")); //$NON-NLS-1$
 			reverseSelection.setActionDefinitionId(ReverseSelectionAction.ID);
 			getPage().addPartListener(reverseSelection);
+		}
+		if (quickOutline == null) {
+			quickOutline = new RetargetAction(QuickOutlineAction.ID, Messages.getString("ZipEditorActionBarContributor.3")); //$NON-NLS-1$
+			quickOutline.setActionDefinitionId(QuickOutlineAction.ID);
+			getPage().addPartListener(quickOutline);
 		}
 	}
 
@@ -156,6 +167,8 @@ public class ZipEditorActionBarContributor extends EditorActionBarContributor {
 		activeEditor = null;
 		errors.clear();
 		getPage().removePartListener(selectPattern);
+		getPage().removePartListener(reverseSelection);
+		getPage().removePartListener(quickOutline);
 	}
 
 	public void reportError(IEditorPart editor, IStatus message) {
