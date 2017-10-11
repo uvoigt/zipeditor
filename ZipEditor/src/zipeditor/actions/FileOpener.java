@@ -18,6 +18,7 @@ import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.ui.IEditorDescriptor;
 import org.eclipse.ui.IEditorInput;
+import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
@@ -114,7 +115,8 @@ public class FileOpener {
 				IEditorInput input = Utils.createEditorInput(file);
 				String editorId = editor.getDescriptor().getId();
 				try {
-					fPage.openEditor(input, editorId);
+					IEditorPart editorPart = fPage.openEditor(input, editorId);
+					Utils.handlePostOpen(editorPart, fNode);
 					ZipEditorPlugin.getDefault().addFileMonitor(new File(file.toURI()), fNode);
 					addToRecentlyUsedExecutables(editor);
 				} catch (PartInitException e) {

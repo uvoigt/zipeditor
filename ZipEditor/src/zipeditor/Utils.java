@@ -33,6 +33,7 @@ import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.IEditorDescriptor;
 import org.eclipse.ui.IEditorInput;
+import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorRegistry;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.PlatformUI;
@@ -41,6 +42,7 @@ import org.eclipse.ui.editors.text.EditorsUI;
 import org.eclipse.ui.ide.FileStoreEditorInput;
 import org.eclipse.ui.part.FileEditorInput;
 
+import zipeditor.actions.IPostOpenProcessor;
 import zipeditor.model.Node;
 import zipeditor.operations.ExtractOperation;
 import zipeditor.operations.OpenFileOperation;
@@ -117,10 +119,17 @@ public class Utils {
 			Node node = nodes[i];
 			monitor.subTask(node.getName());
 			File file = extractOperation.extract(node, tmpDir, true, monitor);
-			openFileOperation.execute(file);
+			IEditorPart editor = openFileOperation.execute(file);
+			handlePostOpen(editor, node);
 			ZipEditorPlugin.getDefault().addFileMonitor(file, node);
 			monitor.worked(1);
 		}
+	}
+
+	public static void handlePostOpen(IEditorPart editor, Node node) {
+		Object property = node.getProperty("postOpen"); //$NON-NLS-1$
+		if (editor != null && property instanceof IPostOpenProcessor)
+			((IPostOpenProcessor) property).postOpen(editor);
 	}
 	
 	public static IEditorInput createEditorInput(IFileStore fileStore) {

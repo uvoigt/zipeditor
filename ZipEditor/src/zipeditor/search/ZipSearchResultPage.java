@@ -5,6 +5,7 @@
 package zipeditor.search;
 
 import java.io.File;
+import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -48,14 +49,33 @@ import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.IShowInSource;
 import org.eclipse.ui.part.IShowInTargetList;
 import org.eclipse.ui.part.ShowInContext;
+import org.eclipse.ui.texteditor.ITextEditor;
 
 import zipeditor.Messages;
 import zipeditor.PreferenceConstants;
+import zipeditor.Utils;
 import zipeditor.ZipEditorPlugin;
+import zipeditor.actions.IPostOpenProcessor;
 import zipeditor.actions.OpenActionGroup;
 import zipeditor.model.Node;
 
 public class ZipSearchResultPage extends AbstractTextSearchViewPage implements IAdaptable {
+
+	private class OccurrencesAdder implements IPostOpenProcessor {
+		private Match[] fMatches;
+		private String fPattern;
+
+		public OccurrencesAdder(Match[] matches, String pattern) {
+			fMatches = matches;
+			fPattern = pattern;
+		}
+
+		public void postOpen(IEditorPart editor) {
+			if (editor instanceof ITextEditor) {
+				addAnnotations((ITextEditor) editor, fMatches, fPattern);
+			}
+		}
+	}
 
 	private static final String[] SHOW_IN_TARGETS = new String[] { IPageLayout.ID_RES_NAV };
 	private  static final IShowInTargetList SHOW_IN_TARGET_LIST = new IShowInTargetList() {
@@ -103,16 +123,26 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 
 	protected void fillContextMenu(IMenuManager mgr) {
 		super.fillContextMenu(mgr);
-		ActionContext context= new ActionContext(getSite().getSelectionProvider().getSelection());
-		context.setInput(getInput());
+		ISelection selection = getViewer().getSelection();
+		ActionContext context = new ActionContext(selection);
+		IStructuredSelection structuredSelection = selection instanceof IStructuredSelection ? (IStructuredSelection) selection : null;
+		if (structuredSelection != null && Utils.allNodesAreFileNodes(structuredSelection)) {
+			Node[] selectedNodes = Utils.getSelectedNodes(structuredSelection);
+			String pattern = ((ZipSearchQuery) getInput().getQuery()).getOptions().getPattern();
+			for (int i = 0; i < selectedNodes.length; i++) {
+				Node node = selectedNodes[i];
+				node.setProperty("postOpen", new OccurrencesAdder(getInput().getMatches(node), pattern)); //$NON-NLS-1$
+			}
+		}
 		fOpenActionGroup.setContext(context);
 		fOpenActionGroup.fillContextMenu(mgr);
 
-		ISelection selection = getViewer().getSelection();
-		if (selection instanceof IStructuredSelection && ((IStructuredSelection) selection).size() == 1) {
+		if (structuredSelection != null && structuredSelection.size() == 1) {
 			mgr.prependToGroup(IContextMenuConstants.GROUP_OPEN, new Separator());
+			Object[] fileAndNode = findFileFromNode(structuredSelection.getFirstElement());
+			
 			mgr.prependToGroup(IContextMenuConstants.GROUP_OPEN, new OpenArchiveAction(
-					getSite().getPage(), findFileFromNode(((IStructuredSelection) selection).getFirstElement())));
+					getSite().getPage(), (File) fileAndNode[0], (Node) fileAndNode[1]));
 		}
 		mgr.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fPropertiesAction);
 	}
@@ -148,29 +178,35 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 	}
 
 	private IFile findIFileFromNode(Object element) {
-		File file = findFileFromNode(element);
-		IFile[] workspaceFiles = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocationURI(file.toURI());
-		return workspaceFiles.length == 1 ? workspaceFiles[0] : null;
+		Object[] fileAndNode = findFileFromNode(element);
+		if (fileAndNode[0] instanceof File) {
+			IFile[] workspaceFiles = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocationURI(((File) fileAndNode[0]).toURI());
+			if (workspaceFiles.length == 1)
+				return workspaceFiles[0];
+		}
+		return null;
 	}
 
-	private File findFileFromNode(Object element) {
+	/*
+	 * returns a file at 0 and a node at 1 
+	 */
+	private Object[] findFileFromNode(Object element) {
 		if (element instanceof Element) {
-			Element e = (Element) element;
-			if (e.getChildren() != null)
-				return findFileFromNode(e.getChildren().get(0));
-			if (e.getNodes() != null)
-				return findFileFromNode(e.getNodes().iterator().next());
+			Object[] children = fContentProvider.getChildren(element);
+			if (children.length > 0)
+				return findFileFromNode(children[0]);
 		}
 		File file = null;
-		List parentNodes = ((Node) element).getParentNodes();
-		if (parentNodes != null && !parentNodes.isEmpty())
-			return findFileFromNode(parentNodes.get(0));
-		else
-			file = ((Node) element).getModel().getZipPath();
-
-		if (file == null)
-			file = ((Node) element).getModel().getZipPath();
-		return file;
+		Node node = null;
+		if (element instanceof Node) {
+			List parentNodes = ((Node) element).getParentNodes();
+			if (parentNodes != null && !parentNodes.isEmpty()) {
+				return findFileFromNode(parentNodes.get(0));
+			}
+			node = (Node) element;
+			file = node.getModel().getZipPath();
+		}
+		return new Object[] {file, node};
 	}
 
 	protected void showMatch(Match match, int offset, int length, boolean activate) throws PartInitException {
@@ -193,9 +229,7 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 				editor = (TextEditor) part;
 				if (reuseEditor)
 					fPreviousEditor = editor;
-				IAnnotationModel annotationModel = editor.getDocumentProvider().getAnnotationModel(input);
-				addAnnotations(node, annotationModel);
-				fAnnotationModels.add(annotationModel);
+				addAnnotations(editor, getInput().getMatches(node), ((ZipSearchQuery) getInput().getQuery()).getOptions().getPattern());
 			} catch (PartInitException e) {
 				ZipEditorPlugin.log(e);
 				MessageDialog.openError(getSite().getShell(), Messages.getString("ZipEditor.8"), e.getMessage()); //$NON-NLS-1$
@@ -205,21 +239,26 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 		editor.getSelectionProvider().setSelection(new TextSelection(offset, length));
 	}
 
-	private void addAnnotations(final Node node, IAnnotationModel annotationModel) {
-		Match[] matches = getInput().getMatches(node);
+	private void addAnnotations(ITextEditor editor, Match[] matches, String pattern) {
+		IAnnotationModel annotationModel = editor.getDocumentProvider().getAnnotationModel(editor.getEditorInput());
+		String text = MessageFormat.format(SearchMessages.getString("ZipSearchResultPage.1"), new Object[] { pattern }); //$NON-NLS-1$
 		if (annotationModel instanceof IAnnotationModelExtension) {
 			Map annotations = new HashMap();
 			for (int i = 0; i < matches.length; i++) {
 				Match m = matches[i];
-				annotations.put(new Annotation("zipeditor.search.match", false, null), new Position(m.getOffset(), m.getLength())); //$NON-NLS-1$
+				// ignore matches of zero length, this should occur if ZipMatch.fOnNodeName == true
+				if (m.getLength() > 0)
+					annotations.put(new Annotation("zipeditor.search.match", false, text), new Position(m.getOffset(), m.getLength())); //$NON-NLS-1$
 			}
 			((IAnnotationModelExtension) annotationModel).replaceAnnotations(null, annotations);
 		} else {
 			for (int i = 0; i < matches.length; i++) {
 				Match m = matches[i];
-				annotationModel.addAnnotation(new Annotation("zipeditor.search.match", false, null), new Position(m.getOffset(), m.getLength())); //$NON-NLS-1$
+				if (m.getLength() > 0)
+					annotationModel.addAnnotation(new Annotation("zipeditor.search.match", false, text), new Position(m.getOffset(), m.getLength())); //$NON-NLS-1$
 			}
 		}
+		fAnnotationModels.add(annotationModel);
 	}
 
 	private void clearAnnotations(IAnnotationModel annotationModel) {

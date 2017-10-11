@@ -60,6 +60,7 @@ import org.eclipse.swt.widgets.MenuItem;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.IEditorDescriptor;
+import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorRegistry;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.IWorkbenchPage;
@@ -637,7 +638,8 @@ public class OpenWithMenu extends ContributionItem {
 		}
 		try {
 			String editorId = editor == null ? IEditorRegistry.SYSTEM_EXTERNAL_EDITOR_ID : editor.getId();
-			fPage.openEditor(Utils.createEditorInput(file), editorId, true, MATCH_BOTH);
+			IEditorPart editorPart = fPage.openEditor(Utils.createEditorInput(file), editorId, true, MATCH_BOTH);
+			Utils.handlePostOpen(editorPart, getNode());
 			ZipEditorPlugin.getDefault().addFileMonitor(new File(file.toURI()), getNode());
 		} catch (PartInitException e) {
 			ErrorDialog.openError(fPage.getWorkbenchWindow().getShell(),
@@ -663,8 +665,9 @@ public class OpenWithMenu extends ContributionItem {
 				case SWT.Selection:
 					if (menuItem.getSelection()) {
 						try {
-							fPage.openEditor(Utils.createEditorInput(file), Utils.getEditorId(file),
+							IEditorPart editorPart = fPage.openEditor(Utils.createEditorInput(file), Utils.getEditorId(file),
 									true, MATCH_BOTH);
+							Utils.handlePostOpen(editorPart, getNode());
 							ZipEditorPlugin.getDefault().addFileMonitor(new File(file.toURI()), getNode());
 						} catch (PartInitException e) {
 							ErrorDialog.openError(fPage.getWorkbenchWindow().getShell(),
