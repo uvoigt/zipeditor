@@ -91,6 +91,7 @@ import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorSite;
 import org.eclipse.ui.IFileEditorInput;
+import org.eclipse.ui.IKeyBindingService;
 import org.eclipse.ui.IMemento;
 import org.eclipse.ui.IPathEditorInput;
 import org.eclipse.ui.IPersistableElement;
@@ -313,6 +314,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			super(creator);
 			takesFocusWhenVisible(true);
 			setCloser(new Closer());
+			setAnchor(ANCHOR_GLOBAL);
 		}
 
 		protected void computeInformation() {
@@ -694,7 +696,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			viewer = createTableViewer(parent);
 		}
 		
-		viewer.setContentProvider(new ZipContentProvider(mode));
+		viewer.setContentProvider(new LazyZipContentProvider(mode));
 		viewer.setLabelProvider(new ZipLabelProvider());
 		viewer.setSorter(new ZipSorter(PreferenceConstants.PREFIX_EDITOR));
 		viewer.setComparer(new NodeComparer());
@@ -882,7 +884,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	}
 
 	private TableViewer createTableViewer(Composite parent) {
-		TableViewer viewer = new TableViewer(parent, SWT.MULTI | SWT.FULL_SELECTION | SWT.VIRTUAL);
+		TableViewer viewer = new ZipTableViewer(parent, SWT.MULTI | SWT.FULL_SELECTION | SWT.VIRTUAL);
 		Table table = viewer.getTable();
 		table.setHeaderVisible(true);
 		createTableColumns(table);
@@ -1037,10 +1039,10 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	private void installOutlineInformationControl() {
 		fInformationPresenter = new InformationPresenter(new IInformationControlCreator() {
 			public IInformationControl createInformationControl(Shell parent) {
-				return new OutlineInformationControl(fZipViewer, parent);
+				return new OutlineInformationControl(fZipViewer, parent, new NodeComparer());
 			}
 		});
-		fInformationPresenter.setSizeConstraints(40, 20, true, false);
+		fInformationPresenter.setSizeConstraints(60, 20, true, false);
 		IDialogSettings section = ZipEditorPlugin.getDefault().getDialogSettings().getSection("outlinePresenterBounds"); //$NON-NLS-1$
 		if (section == null)
 			section = ZipEditorPlugin.getDefault().getDialogSettings().addNewSection("outlinePresenterBounds"); //$NON-NLS-1$
@@ -1152,6 +1154,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		getEditorSite().getActionBars().setGlobalActionHandler(ReverseSelectionAction.ID, getAction(ACTION_REVERSE_SELECTION));
 		getEditorSite().getActionBars().setGlobalActionHandler(QuickOutlineAction.ID, getAction(ACTION_QUICK_OUTLINE));
 		getEditorSite().getActionBars().setGlobalActionHandler(ActionFactory.RENAME.getId(), getAction(ACTION_RENAME));
+		IKeyBindingService service = getEditorSite().getKeyBindingService();
+		service.setScopes(new String[] {"zipeditor.zipEditorContext"}); //$NON-NLS-1$
 		fZipActionGroup.setContext(new ActionContext(fZipViewer.getSelection()));
 		fZipActionGroup.fillActionBars(getEditorSite().getActionBars());
 		getEditorSite().getActionBars().updateActionBars();
