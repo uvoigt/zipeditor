@@ -28,17 +28,21 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
 import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IPartListener;
 import org.eclipse.ui.ISharedImages;
+import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.actions.RetargetAction;
+import org.eclipse.ui.contexts.IContextActivation;
+import org.eclipse.ui.contexts.IContextService;
 import org.eclipse.ui.part.EditorActionBarContributor;
 
 import zipeditor.actions.QuickOutlineAction;
 import zipeditor.actions.ReverseSelectionAction;
 import zipeditor.actions.SelectPatternAction;
 
-public class ZipEditorActionBarContributor extends EditorActionBarContributor {
+public class ZipEditorActionBarContributor extends EditorActionBarContributor implements IPartListener {
 	private class ErrorStatus extends ControlContribution {
 		private ErrorStatus() {
 			super("zipeditor.ErrorStatusContribution"); //$NON-NLS-1$
@@ -85,6 +89,7 @@ public class ZipEditorActionBarContributor extends EditorActionBarContributor {
 	private RetargetAction selectPattern;
 	private RetargetAction reverseSelection;
 	private RetargetAction quickOutline;
+	private IContextActivation activation;
 
 	public void contributeToStatusLine(IStatusLineManager statusLineManager) {
 		statusLineManager.add(new ErrorStatus());
@@ -101,23 +106,53 @@ public class ZipEditorActionBarContributor extends EditorActionBarContributor {
 		if (navigationMenu != null) {
 			navigationMenu.insertAfter("show.ext3", quickOutline); //$NON-NLS-1$
 		}
+		getPage().addPartListener(this);
+	}
+
+	public void partActivated(IWorkbenchPart part) {
+		selectPattern.partActivated(part);
+		reverseSelection.partActivated(part);
+		quickOutline.partActivated(part);
+	}
+
+	public void partBroughtToTop(IWorkbenchPart part) {
+		selectPattern.partBroughtToTop(part);
+		reverseSelection.partBroughtToTop(part);
+		quickOutline.partBroughtToTop(part);
+	}
+
+	public void partClosed(IWorkbenchPart part) {
+		selectPattern.partClosed(part);
+		reverseSelection.partClosed(part);
+		quickOutline.partClosed(part);
+	}
+
+	public void partDeactivated(IWorkbenchPart part) {
+		selectPattern.partDeactivated(part);
+		reverseSelection.partDeactivated(part);
+		quickOutline.partDeactivated(part);
+		if (part == activeEditor)
+			deactivateContext();
+	}
+
+	public void partOpened(IWorkbenchPart part) {
+		selectPattern.partOpened(part);
+		reverseSelection.partOpened(part);
+		quickOutline.partOpened(part);
 	}
 	
 	private void initActions() {
 		if (selectPattern == null) {
 			selectPattern = new RetargetAction(SelectPatternAction.ID, Messages.getString("ZipEditorActionBarContributor.1")); //$NON-NLS-1$
 			selectPattern.setActionDefinitionId(SelectPatternAction.ID);
-			getPage().addPartListener(selectPattern);
 		}
 		if (reverseSelection == null) {
 			reverseSelection = new RetargetAction(ReverseSelectionAction.ID, Messages.getString("ZipEditorActionBarContributor.2")); //$NON-NLS-1$
 			reverseSelection.setActionDefinitionId(ReverseSelectionAction.ID);
-			getPage().addPartListener(reverseSelection);
 		}
 		if (quickOutline == null) {
 			quickOutline = new RetargetAction(QuickOutlineAction.ID, Messages.getString("ZipEditorActionBarContributor.3")); //$NON-NLS-1$
 			quickOutline.setActionDefinitionId(QuickOutlineAction.ID);
-			getPage().addPartListener(quickOutline);
 		}
 	}
 
@@ -161,14 +196,24 @@ public class ZipEditorActionBarContributor extends EditorActionBarContributor {
 	public void setActiveEditor(IEditorPart targetEditor) {
 		activeEditor = targetEditor;
 		showCurrentError();
+
+		activateContext();
+	}
+
+	private void activateContext() {
+		IContextService contextService = (IContextService) PlatformUI.getWorkbench().getService(IContextService.class);
+		activation = contextService.activateContext("zipeditor.zipEditorContext"); //$NON-NLS-1$
+	}
+
+	private void deactivateContext() {
+		IContextService contextService = (IContextService) PlatformUI.getWorkbench().getService(IContextService.class);
+		contextService.deactivateContext(activation);
 	}
 
 	public void dispose() {
 		activeEditor = null;
 		errors.clear();
-		getPage().removePartListener(selectPattern);
-		getPage().removePartListener(reverseSelection);
-		getPage().removePartListener(quickOutline);
+		getPage().removePartListener(this);
 	}
 
 	public void reportError(IEditorPart editor, IStatus message) {

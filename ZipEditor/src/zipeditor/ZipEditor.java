@@ -100,10 +100,8 @@ import org.eclipse.ui.IViewSite;
 import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.PartInitException;
-import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionContext;
 import org.eclipse.ui.actions.ActionFactory;
-import org.eclipse.ui.contexts.IContextService;
 import org.eclipse.ui.dialogs.SaveAsDialog;
 import org.eclipse.ui.part.EditorPart;
 import org.eclipse.ui.part.FileEditorInput;
@@ -1149,9 +1147,6 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	}
 
 	private void activateActions() {
-		IContextService contextService = (IContextService) PlatformUI.getWorkbench().getService(IContextService.class);
-		contextService.activateContext("zipeditor.zipEditorContext"); //$NON-NLS-1$
-
 		getEditorSite().getActionBars().setGlobalActionHandler(ActionFactory.SELECT_ALL.getId(), getAction(ACTION_SELECT_ALL));
 		getEditorSite().getActionBars().setGlobalActionHandler(SelectPatternAction.ID, getAction(ACTION_SELECT_PATTERN));
 		getEditorSite().getActionBars().setGlobalActionHandler(ReverseSelectionAction.ID, getAction(ACTION_REVERSE_SELECTION));
