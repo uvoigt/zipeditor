@@ -8,6 +8,8 @@ import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 
+import zipeditor.ZipTableViewer;
+
 public class SelectAllAction extends ViewerAction {
 	public SelectAllAction(StructuredViewer viewer) {
 		super(ActionMessages.getString("SelectAllAction.0"), viewer); //$NON-NLS-1$
@@ -19,6 +21,9 @@ public class SelectAllAction extends ViewerAction {
 			((TreeViewer) viewer).getTree().selectAll();
 		else if (viewer instanceof TableViewer)
 			((TableViewer) viewer).getTable().selectAll();
-		viewer.setSelection(viewer.getSelection());
+		if (viewer instanceof ZipTableViewer)
+			((ZipTableViewer) viewer).fireSelectionChanged();
+		else
+			viewer.setSelection(viewer.getSelection());
 	}
 }
