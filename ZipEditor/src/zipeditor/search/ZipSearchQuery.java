@@ -16,6 +16,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceVisitor;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.OperationCanceledException;
@@ -80,7 +81,7 @@ public class ZipSearchQuery implements ISearchQuery {
 		return files;
 	}
 
-	private ZipModel[] getModelsFromElements(IProgressMonitor monitor) throws OperationCanceledException {
+	private ZipModel[] getModelsFromElements(final IProgressMonitor monitor) throws OperationCanceledException {
 		final IContentType archiveContentType = ZipContentDescriber.getArchiveContentType();
 		List fileNames = ZipContentDescriber.getFileNamesAssociatedWithArchives();
 		List fileExtensions = ZipContentDescriber.getFileExtensionsAssociatedWithArchives();
@@ -89,6 +90,9 @@ public class ZipSearchQuery implements ISearchQuery {
 		monitor.setTaskName(SearchMessages.getString("ZipSearchQuery.1")); //$NON-NLS-1$
 
 		for (Iterator it = fElements.iterator(); it.hasNext(); ) {
+			if (monitor.isCanceled())
+				throw new OperationCanceledException();
+
 			try {
 				Object element = it.next();
 				if (element instanceof IFile) {
@@ -96,7 +100,6 @@ public class ZipSearchQuery implements ISearchQuery {
 					addFile(archiveContentType, models, file);
 				} else if (element instanceof File) {
 					List files = expandToFiles((File) element, new ArrayList(), fileNames, fileExtensions, monitor);
-					monitor.subTask(""); //$NON-NLS-1$
 					for (int i = 0; i < files.size(); i++) {
 						File file = (File) files.get(i);
 						try {
@@ -106,16 +109,12 @@ public class ZipSearchQuery implements ISearchQuery {
 							ZipEditorPlugin.log(e);
 						}
 					}
-				} else if (element instanceof IContainer) {
-					IContainer container = (IContainer) element;
-					container.accept(new IResourceVisitor() {
-						public boolean visit(IResource resource) throws CoreException {
-							if (resource instanceof IFile) {
-								addFile(archiveContentType, models, (IFile) resource);
-							}
-							return true;
-						}
-					}, IResource.DEPTH_INFINITE, false);
+				} else if (element instanceof IResource) {
+					getModelsFromResource(monitor, archiveContentType, models, (IResource) element);
+				} else if (element instanceof IAdaptable) {
+					element = ((IAdaptable) element).getAdapter(IResource.class);
+					if (element instanceof IResource)
+						getModelsFromResource(monitor, archiveContentType, models, (IResource) element);
 				} else if (element instanceof Node) {
 					Node node = (Node) element;
 					if (node.getModel().getZipPath() != null)
@@ -125,8 +124,26 @@ public class ZipSearchQuery implements ISearchQuery {
 				ZipEditorPlugin.log(e);
 			}
 		}
+		monitor.subTask(""); //$NON-NLS-1$
 		monitor.done();
 		return (ZipModel[]) models.toArray(new ZipModel[models.size()]);
+	}
+
+	private void getModelsFromResource(final IProgressMonitor monitor, final IContentType archiveContentType, final List models,
+			IResource resource) throws CoreException {
+		resource.accept(new IResourceVisitor() {
+			public boolean visit(IResource resource) throws CoreException {
+				if (monitor.isCanceled())
+					throw new OperationCanceledException();
+
+				if (resource instanceof IContainer) {
+					monitor.subTask(resource.getFullPath().toString());
+				} else if (resource instanceof IFile) {
+					addFile(archiveContentType, models, (IFile) resource);
+				}
+				return true;
+			}
+		}, IResource.DEPTH_INFINITE, false);
 	}
 
 	private void addFile(IContentType archiveContentType, List models, IFile file) throws CoreException {
