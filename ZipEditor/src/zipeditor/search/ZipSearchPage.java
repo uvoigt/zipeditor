@@ -11,6 +11,8 @@ import java.util.List;
 
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.runtime.IAdaptable;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.DialogPage;
 import org.eclipse.jface.dialogs.IDialogSettings;
@@ -34,6 +36,7 @@ import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.WorkbenchEncoding;
 
+import zipeditor.Utils;
 import zipeditor.ZipEditor;
 import zipeditor.ZipEditorPlugin;
 import zipeditor.actions.FileSystemChooseControl;
@@ -197,13 +200,25 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 		}
 
 		NewSearchUI.activateSearchResultView();
-		ZipSearchQuery searchQuery = new ZipSearchQuery(options, elements);
+		ZipSearchQuery searchQuery = new ZipSearchQuery(options, transform(elements));
 		NewSearchUI.runQueryInBackground(searchQuery);
 
 		fPreviousSearches.remove(options);
 		fPreviousSearches.add(0, options);
 		saveDialogSettings();
 		return true;
+	}
+
+	private List transform(List elements) {
+		for (int i = 0; i < elements.size(); i++) {
+			Object element = elements.get(i);
+			if (element instanceof IResource || element instanceof File)
+				continue;
+			IPath path = Utils.getJavaPackageFragmentRoot(element);
+			if (path != null)
+				elements.set(i, path.toFile());
+		}
+		return elements;
 	}
 
 	private ZipEditor getActiveEditor() {
@@ -270,7 +285,14 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 	private boolean isScopeSelectedPossible() {
 		IStructuredSelection selection = fContainer.getSelection() instanceof IStructuredSelection ? (IStructuredSelection) fContainer.getSelection() : null;
 		Object firstElement = selection != null && selection.getFirstElement() != null ? selection.getFirstElement() : null;
-		return firstElement instanceof IResource || firstElement instanceof File || getActiveEditor() != null;
+		if (firstElement instanceof IResource || firstElement instanceof File || getActiveEditor() != null)
+			return true;
+		IPath path = Utils.getJavaPackageFragmentRoot(firstElement);
+		if (path != null)
+			return true;
+		if (firstElement instanceof IAdaptable)
+			firstElement = ((IAdaptable) firstElement).getAdapter(IResource.class);
+		return firstElement instanceof IResource;
 	}
 
 	protected void saveDialogSettings() {
