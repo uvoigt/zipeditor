@@ -109,7 +109,7 @@ public class ZipContentProvider implements ITreeContentProvider {
 		disposeModels();
 	}
 
-	private void disposeModels() {
+	protected void disposeModels() {
 		if (fModels != null) {
 			for (Iterator it = fModels.values().iterator(); it.hasNext();) {
 				ZipModel model = (ZipModel) it.next();
