@@ -119,8 +119,7 @@ public class Utils {
 			Node node = nodes[i];
 			monitor.subTask(node.getName());
 			File file = extractOperation.extract(node, tmpDir, true, monitor);
-			IEditorPart editor = openFileOperation.execute(file);
-			handlePostOpen(editor, node);
+			openFileOperation.execute(file, node);
 			ZipEditorPlugin.getDefault().addFileMonitor(file, node);
 			monitor.worked(1);
 		}
