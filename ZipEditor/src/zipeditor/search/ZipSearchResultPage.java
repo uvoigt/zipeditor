@@ -45,9 +45,9 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.actions.ActionContext;
 import org.eclipse.ui.dialogs.PropertyDialogAction;
-import org.eclipse.ui.editors.text.TextEditor;
 import org.eclipse.ui.part.IShowInSource;
 import org.eclipse.ui.part.IShowInTargetList;
+import org.eclipse.ui.part.MultiPageEditorPart;
 import org.eclipse.ui.part.ShowInContext;
 import org.eclipse.ui.texteditor.ITextEditor;
 
@@ -71,9 +71,10 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 		}
 
 		public void postOpen(IEditorPart editor) {
-			if (editor instanceof ITextEditor) {
-				addAnnotations((ITextEditor) editor, fMatches, fPattern);
-			}
+			TextSelection selection = null;
+			if (fMatches.length > 0)
+				selection = new TextSelection(fMatches[0].getOffset(), fMatches[0].getLength());
+			addAnnotations(editor, fMatches, fPattern, selection);
 		}
 	}
 
@@ -88,7 +89,7 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 	private OpenActionGroup fOpenActionGroup;
 	private IAction fPropertiesAction;
 	private final List fAnnotationModels = new ArrayList();
-	private TextEditor fPreviousEditor;
+	private IEditorPart fPreviousEditor;
 
 	protected void clear() {
 		if (fContentProvider != null)
@@ -215,7 +216,7 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 		String encoding = ((ZipSearchQuery) getInput().getQuery()).getOptions().getEncoding();
 
 		ResultEditorInput input = new ResultEditorInput(node, encoding);
-		TextEditor editor = (TextEditor) page.findEditor(input);
+		IEditorPart editor = page.findEditor(input);
 		if (editor != null) {
 			page.bringToTop(editor);
 		} else {
@@ -223,24 +224,25 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 				boolean reuseEditor = NewSearchUI.reuseEditor();
 				if (reuseEditor && fPreviousEditor != null)
 					page.closeEditor(fPreviousEditor, false);
-				IEditorPart part = page.openEditor(input, "org.eclipse.ui.DefaultTextEditor", false); //$NON-NLS-1$
-				if (!(part instanceof TextEditor))
-					return;
-				editor = (TextEditor) part;
+				editor = page.openEditor(input, "org.eclipse.ui.DefaultTextEditor", false); //$NON-NLS-1$
 				if (reuseEditor)
 					fPreviousEditor = editor;
-				addAnnotations(editor, getInput().getMatches(node), ((ZipSearchQuery) getInput().getQuery()).getOptions().getPattern());
+				addAnnotations(editor, getInput().getMatches(node), ((ZipSearchQuery) getInput().getQuery()).
+						getOptions().getPattern(), new TextSelection(offset, length));
 			} catch (PartInitException e) {
 				ZipEditorPlugin.log(e);
 				MessageDialog.openError(getSite().getShell(), Messages.getString("ZipEditor.8"), e.getMessage()); //$NON-NLS-1$
 				return;
 			}
 		}
-		editor.getSelectionProvider().setSelection(new TextSelection(offset, length));
 	}
 
-	private void addAnnotations(ITextEditor editor, Match[] matches, String pattern) {
-		IAnnotationModel annotationModel = editor.getDocumentProvider().getAnnotationModel(editor.getEditorInput());
+	private void addAnnotations(IEditorPart editor, Match[] matches, String pattern, TextSelection textSelection) {
+		ITextEditor textEditor = findTextEditor(editor);
+		if (textEditor == null)
+			return;
+
+		IAnnotationModel annotationModel = textEditor.getDocumentProvider().getAnnotationModel(editor.getEditorInput());
 		String text = MessageFormat.format(SearchMessages.getString("ZipSearchResultPage.1"), new Object[] { pattern }); //$NON-NLS-1$
 		if (annotationModel instanceof IAnnotationModelExtension) {
 			Map annotations = new HashMap();
@@ -259,6 +261,8 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 			}
 		}
 		fAnnotationModels.add(annotationModel);
+		if (textSelection != null)
+			textEditor.getSelectionProvider().setSelection(textSelection);
 	}
 
 	private void clearAnnotations(IAnnotationModel annotationModel) {
@@ -269,6 +273,26 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 				annotationModel.removeAnnotation((Annotation) it.next());
 			}
 		}
+	}
+
+	private ITextEditor findTextEditor(IEditorPart editor) {
+		if (editor instanceof ITextEditor)
+			return (ITextEditor) editor;
+		if (editor instanceof MultiPageEditorPart) {
+			MultiPageEditorPart multiPageEditor = (MultiPageEditorPart) editor;
+			IEditorPart[] editors = multiPageEditor.findEditors(editor.getEditorInput());
+			for (int i = 0; i < editors.length; i++) {
+				if (editors[i] instanceof ITextEditor)
+					return (ITextEditor) editors[i];
+			}
+			Object adapted = multiPageEditor.getAdapter(IEditorPart.class);
+			if (adapted instanceof ITextEditor)
+				return (ITextEditor) adapted;
+			Object selectedPage = multiPageEditor.getSelectedPage();
+			if (selectedPage instanceof ITextEditor)
+				return (ITextEditor) selectedPage;
+		}
+		return null;
 	}
 
 	public void dispose() {
