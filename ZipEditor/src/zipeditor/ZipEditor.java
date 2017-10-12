@@ -1046,7 +1046,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		IDialogSettings section = ZipEditorPlugin.getDefault().getDialogSettings().getSection("outlinePresenterBounds"); //$NON-NLS-1$
 		if (section == null)
 			section = ZipEditorPlugin.getDefault().getDialogSettings().addNewSection("outlinePresenterBounds"); //$NON-NLS-1$
-		fInformationPresenter.setRestoreInformationControlBounds(section, true, true);
+		fInformationPresenter.setRestoreInformationControlBounds(section, false, true);
 
 		fInformationPresenter.install(fZipViewer.getControl());
 	}
