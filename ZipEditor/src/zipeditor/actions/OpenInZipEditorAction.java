@@ -7,7 +7,6 @@ package zipeditor.actions;
 import java.io.File;
 
 import org.eclipse.core.filesystem.IFileStore;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -20,10 +19,16 @@ import zipeditor.ZipEditorPlugin;
 
 public class OpenInZipEditorAction implements IObjectActionDelegate {
 	private IWorkbenchPart fActivePart;
-	private File fFile;
+	private File[] fFiles;
 
 	public void run(IAction action) {
-		IFileStore fileStore = Utils.getFileStore(fFile);
+		for (int i = 0; i < fFiles.length; i++) {
+			openFileInZipEditor(fFiles[i]);
+		}
+	}
+
+	private void openFileInZipEditor(File file) {
+		IFileStore fileStore = Utils.getFileStore(file);
 		try {
 			fActivePart.getSite().getPage().openEditor(Utils.createEditorInput(fileStore), "zipeditor.ZipEditor"); //$NON-NLS-1$
 		} catch (PartInitException e) {
@@ -33,10 +38,8 @@ public class OpenInZipEditorAction implements IObjectActionDelegate {
 
 	public void selectionChanged(IAction action, ISelection selection) {
 		if (selection instanceof IStructuredSelection) {
-			Object firstElement = ((IStructuredSelection) selection).getFirstElement();
-			IPath path = Utils.getJavaPackageFragmentRoot(firstElement);
-			if (path != null)
-				fFile = path.toFile();
+			fFiles = Utils.getJavaPackageFragmentRoots(((IStructuredSelection) selection).toArray());
+			action.setEnabled(fFiles.length > 0);
 		}
 	}
 

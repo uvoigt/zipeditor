@@ -11,10 +11,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IWorkspace;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
@@ -277,15 +279,34 @@ public class Utils {
 		return nodes;
 	}
 
-	public static IPath getJavaPackageFragmentRoot(Object object) {
+	public static File[] getJavaPackageFragmentRoots(Object[] objects) {
 		// no actual way to extract the jar information legally
-		if (object != null) {
-			try {
-				IPath path = (IPath) object.getClass().getMethod("internalPath", null).invoke(object, null); //$NON-NLS-1$
-				return path;
-			} catch (Throwable t) {
-				// ignore this
-			}
+		if (objects == null)
+			return new File[0];
+		List files = new ArrayList();
+		for (int i = 0; i < objects.length; i++) {
+			Object object = objects[i];
+			File file = getJavaPackageFragmentRoot(object);
+			if (file != null)
+				files.add(file);
+		}
+		return (File[]) files.toArray(new File[files.size()]);
+	}
+
+	public static File getJavaPackageFragmentRoot(Object object) {
+		IPath path = null;
+		try {
+			path = (IPath) object.getClass().getMethod("internalPath", null).invoke(object, null); //$NON-NLS-1$
+		} catch (Throwable t) {
+			// ignore this
+		}
+		if (path != null) {
+			IResource resource = ResourcesPlugin.getWorkspace().getRoot().findMember(path);
+			if (resource != null && resource instanceof IFile)
+				return resource.getLocation().toFile();
+			File file = path.toFile();
+			if (file.exists() && file.isFile())
+				return file;
 		}
 		return null;
 	}

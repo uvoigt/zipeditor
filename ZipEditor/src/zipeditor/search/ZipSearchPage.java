@@ -12,7 +12,6 @@ import java.util.List;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IAdaptable;
-import org.eclipse.core.runtime.IPath;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.DialogPage;
 import org.eclipse.jface.dialogs.IDialogSettings;
@@ -214,9 +213,9 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 			Object element = elements.get(i);
 			if (element instanceof IResource || element instanceof File)
 				continue;
-			IPath path = Utils.getJavaPackageFragmentRoot(element);
-			if (path != null)
-				elements.set(i, path.toFile());
+			File file = Utils.getJavaPackageFragmentRoot(element);
+			if (file != null)
+				elements.set(i, file);
 		}
 		return elements;
 	}
@@ -287,8 +286,8 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 		Object firstElement = selection != null && selection.getFirstElement() != null ? selection.getFirstElement() : null;
 		if (firstElement instanceof IResource || firstElement instanceof File || getActiveEditor() != null)
 			return true;
-		IPath path = Utils.getJavaPackageFragmentRoot(firstElement);
-		if (path != null)
+		File file = Utils.getJavaPackageFragmentRoot(firstElement);
+		if (file != null)
 			return true;
 		if (firstElement instanceof IAdaptable)
 			firstElement = ((IAdaptable) firstElement).getAdapter(IResource.class);
