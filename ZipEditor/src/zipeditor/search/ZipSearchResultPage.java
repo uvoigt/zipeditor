@@ -228,13 +228,15 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 				if (reuseEditor)
 					fPreviousEditor = editor;
 				addAnnotations(editor, getInput().getMatches(node), ((ZipSearchQuery) getInput().getQuery()).
-						getOptions().getPattern(), new TextSelection(offset, length));
+						getOptions().getPattern(), null);
 			} catch (PartInitException e) {
 				ZipEditorPlugin.log(e);
 				MessageDialog.openError(getSite().getShell(), Messages.getString("ZipEditor.8"), e.getMessage()); //$NON-NLS-1$
 				return;
 			}
 		}
+		if (editor instanceof ITextEditor)
+			((ITextEditor) editor).getSelectionProvider().setSelection(new TextSelection(offset, length));
 	}
 
 	private void addAnnotations(IEditorPart editor, Match[] matches, String pattern, TextSelection textSelection) {
