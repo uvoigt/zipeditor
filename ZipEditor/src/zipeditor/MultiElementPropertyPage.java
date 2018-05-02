@@ -4,6 +4,10 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 
 import org.eclipse.core.runtime.IAdaptable;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.widgets.Combo;
+import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.dialogs.PropertyPage;
 
@@ -61,6 +65,16 @@ public abstract class MultiElementPropertyPage extends PropertyPage {
 		return fElements;
 	}
 
+	protected Combo createCombo(Composite parent, int width, int hspan) {
+		Combo combo = new Combo(parent, SWT.DROP_DOWN);
+		GridData data = new GridData(GridData.FILL_HORIZONTAL);
+		data.horizontalSpan = hspan;
+		data.widthHint = convertWidthInCharsToPixels(width);
+		combo.setLayoutData(data);
+		combo.add(nonEqualStringLabel);
+		return combo;
+	}
+
 	protected void setFieldText(Text field, PropertyAccessor accessor) {
 		setFieldText(field, accessor, false);
 	}
@@ -89,6 +103,25 @@ public abstract class MultiElementPropertyPage extends PropertyPage {
 			field.setText(nonEqualStringLabel);
 		} else if (singularValue != null) {
 			field.setText(singularValue.toString());
+		}
+	}
+
+	protected void select(Combo combo, PropertyAccessor accessor) {
+		boolean isUnequal = false;
+		Object previousValue = fElements.length > 0 ? accessor.getPropertyValue(fElements[0]) : null;
+		Object singularValue = null;
+		for (int i = 0; i < fElements.length; i++) {
+			singularValue = accessor.getPropertyValue(fElements[i]);
+			if (singularValue == previousValue || singularValue != null && singularValue.equals(previousValue))
+				continue;
+			previousValue = singularValue;
+			isUnequal = true;
+		}
+		if (isUnequal) {
+			combo.select(0);
+		} else if (singularValue != null) {
+			int index = combo.indexOf(singularValue.toString());
+			combo.select(index);
 		}
 	}
 

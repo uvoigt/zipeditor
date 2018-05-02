@@ -15,6 +15,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.CRC32;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
@@ -470,8 +471,26 @@ public class ZipModel {
 			TarEntry tarEntry = type == TAR || type == TARGZ || type == TARBZ2 ? new TarEntry(entryName) : null;
 			if (zipEntry != null) {
 				zipEntry.setTime(child.getTime());
-				if (child instanceof ZipNode)
+				if (child instanceof ZipNode) {
 					zipEntry.setComment(((ZipNode) child).getComment());
+					zipEntry.setMethod(((ZipNode) child).getMethod());
+					if (zipEntry.getMethod() == ZipEntry.STORED) {
+						InputStream in = child.getContent();
+						CRC32 crc32 = new CRC32();
+						try {
+							byte[] buf = new byte[4096];
+							for (int c; (c = in.read(buf)) > 0; ) {
+								crc32.update(buf, 0, c);
+							}
+						} finally {
+							if (in != null) {
+								in.close();
+							}
+						}
+						zipEntry.setSize(child.size);
+						zipEntry.setCrc(crc32.getValue());
+					}
+				}
 			} else if (tarEntry != null) {
 				tarEntry.setModTime(child.getTime());
 				tarEntry.setSize(child.getSize());
@@ -655,6 +674,10 @@ public class ZipModel {
 	}
 
 	public void setStoreFolders(boolean store) {
+		if (storeFolders == null || storeFolders.booleanValue() != store) {
+			setDirty(true);
+			notifyListeners();
+		}
 		storeFolders = store ? Boolean.TRUE : Boolean.FALSE;
 	}
 }

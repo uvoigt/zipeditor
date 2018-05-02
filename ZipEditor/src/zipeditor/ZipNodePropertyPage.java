@@ -1,5 +1,8 @@
 package zipeditor;
 
+import java.util.zip.ZipEntry;
+
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Text;
@@ -10,16 +13,32 @@ import zipeditor.model.ZipNode;
 import zipeditor.model.ZipNodeProperty;
 
 public class ZipNodePropertyPage extends NodePropertyPage implements IWorkbenchPropertyPage {
+	private class MappingPropertyAccessor extends MultiplePropertyAccessor {
+		private MappingPropertyAccessor(Class clazz) {
+			super(clazz);
+		}
+
+		public Object getPropertyValue(Object object) {
+			Object value = super.getPropertyValue(object);
+			return Messages.getString("MappingPropertyAccessor." + value); //$NON-NLS-1$
+		}
+	}
 	private Text fAttributes;
 	private Text fPackedSize;
 	private Text fRatio;
 	private Text fCrc;
 	private Text fComment;
+	private Combo fMethod;
 	
 	protected Control createContents(Composite parent) {
 		
 		Composite control = (Composite) createPropertiesSection(parent);
 
+		createLabel(control, ZipNodeProperty.PMETHOD.toString(), 1);
+		fMethod = createCombo(control, 30, 1);
+		fMethod.add(Messages.getString("MappingPropertyAccessor.8")); //$NON-NLS-1$
+		fMethod.add(Messages.getString("MappingPropertyAccessor.0")); //$NON-NLS-1$
+		select(fMethod, new MappingPropertyAccessor(ZipNode.class).getAccessor("method")); //$NON-NLS-1$
 		createLabel(control, ZipNodeProperty.PPACKED_SIZE.toString(), 1);
 		fPackedSize = createText(control, 30, 1, false);
 		setFieldText(fPackedSize, new NodePropertyAccessor() {
@@ -62,9 +81,15 @@ public class ZipNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 			return false;
 		Node[] nodes = getNodes();
 		String comment = fComment.getText();
+		int method = fMethod.getSelectionIndex();
 		for (int i = 0; i < nodes.length; i++) {
+			ZipNode zipNode = (ZipNode) nodes[i];
 			if (!nonEqualStringLabel.equals(comment))
-				((ZipNode) nodes[i]).setComment(comment.length() > 0 ? comment : null);
+				zipNode.setComment(comment.length() > 0 ? comment : null);
+			if (method == 1)
+				zipNode.setMethod(ZipEntry.DEFLATED);
+			else if (method == 2)
+				zipNode.setMethod(ZipEntry.STORED);
 		}
 		return true;
 	}

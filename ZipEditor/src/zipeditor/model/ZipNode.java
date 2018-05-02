@@ -29,6 +29,7 @@ public class ZipNode extends Node {
 
 	private String comment;
 	private ZipEntry zipEntry;
+	private int method;
 
 	public ZipNode(ZipModel model, ZipEntry entry, String name, boolean isFolder) {
 		this(model, name, isFolder);
@@ -37,6 +38,7 @@ public class ZipNode extends Node {
 			time = entry.getTime();
 			size = entry.getSize();
 			comment = entry.getComment();
+			method = entry.getMethod();
 		}
 	}
 	
@@ -69,6 +71,15 @@ public class ZipNode extends Node {
 	
 	public double getRatio() {
 		return zipEntry != null && file == null ? (zipEntry.getSize() - zipEntry.getCompressedSize()) / (double) zipEntry.getSize() * 100 : 0;
+	}
+	
+	public int getMethod() {
+		return method;
+	}
+	
+	public void setMethod(int method) {
+		this.method = method;
+		setModified(true);
 	}
 
 	protected InputStream doGetContent() throws IOException {
