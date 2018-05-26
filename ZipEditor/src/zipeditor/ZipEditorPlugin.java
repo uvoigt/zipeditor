@@ -124,12 +124,12 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 			long creationTime = ((Long) value[1]).longValue();
 			if (file.lastModified() > creationTime) {
 				value[1] = new Long(file.lastModified());
-				indicateModification(fileToNode, file, (Node) value[0]);
+				indicateModification(it, file, (Node) value[0]);
 			}
 		}
 	}
 
-	private void indicateModification(Map fileToNode, File file, Node node) {
+	private void indicateModification(Iterator it, File file, Node node) {
 		if (MessageDialog.openQuestion(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
 				Messages.getString("ZipEditor.1"), Messages.getFormattedString("ZipEditor.0", //$NON-NLS-1$ //$NON-NLS-2$
 						new Object[] { file.getName(), node.getModel().getZipPath() != null
@@ -137,7 +137,7 @@ public class ZipEditorPlugin extends AbstractUIPlugin {
 			node.updateContent(file);
 		} else {
 			node.reset();
-			fileToNode.remove(file);
+			it.remove();
 		}
 	}
 
