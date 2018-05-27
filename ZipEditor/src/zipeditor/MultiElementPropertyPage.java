@@ -66,7 +66,7 @@ public abstract class MultiElementPropertyPage extends PropertyPage {
 	}
 
 	protected Combo createCombo(Composite parent, int width, int hspan) {
-		Combo combo = new Combo(parent, SWT.DROP_DOWN);
+		Combo combo = new Combo(parent, SWT.DROP_DOWN | SWT.READ_ONLY);
 		GridData data = new GridData(GridData.FILL_HORIZONTAL);
 		data.horizontalSpan = hspan;
 		data.widthHint = convertWidthInCharsToPixels(width);
