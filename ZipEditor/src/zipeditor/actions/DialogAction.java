@@ -8,7 +8,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.jface.dialogs.Dialog;
@@ -75,17 +74,19 @@ public abstract class DialogAction extends ViewerAction {
 
 		public void create() {
 			super.create();
-			updateStatusText();
 			setInitialSelection();
+			updateStatusText();
 		}
 
 		private void setInitialSelection() {
 			if (fInitialSelection == null)
 				return;
 			List fileSelection = new ArrayList(1);
-			IFile[] files = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocationURI(fInitialSelection.toURI());
+			IResource[] files = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocationURI(fInitialSelection.toURI());
+			if (files.length == 0)
+				files = ResourcesPlugin.getWorkspace().getRoot().findContainersForLocationURI(fInitialSelection.toURI());
 			if (files.length > 0) {
-				fileSelection.set(0, files[0]);
+				fileSelection.add(0, files[0]);
 				fWorkspaceViewer.setFileSelection(fileSelection);
 			} else {
 				fileSelection.add(fInitialSelection);
@@ -106,8 +107,8 @@ public abstract class DialogAction extends ViewerAction {
 		}
 		
 		protected void okPressed() {
-			fWorkspaceSelection = fWorkspaceViewer.getFileSelection(true);
-			fFileSystemSelection = fFileSystemViewer.getFileSelection(true);
+			fWorkspaceSelection = fWorkspaceViewer.getFileSelection(false);
+			fFileSystemSelection = fFileSystemViewer.getFileSelection(false);
 			super.okPressed();
 		}
 
@@ -137,7 +138,10 @@ public abstract class DialogAction extends ViewerAction {
 		
 		public void selectionChanged(SelectionChangedEvent event) {
 			if (!fMultiSelection) {
-				(event.getSource() == fFileSystemViewer ? fWorkspaceViewer : fFileSystemViewer).deselectAll();
+				FileSystemChooseControl control = event.getSource() == fFileSystemViewer ? fWorkspaceViewer : fFileSystemViewer;
+				control.removeSelectionChangedListener(this);
+				control.setFileSelection(null);
+				control.addSelectionChangedListener(this);
 			}
 			updateStatusText();
 		}

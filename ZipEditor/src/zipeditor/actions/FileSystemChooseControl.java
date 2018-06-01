@@ -258,7 +258,10 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 		}
 
 		void setText(String text) {
-			fText.setText(text);
+			if (text == null || text.length() == 0)
+				fText.setText(fEmptyText);
+			else
+				fText.setText(text);
 			focusLost(null);
 		}
 
@@ -494,8 +497,13 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 		if (!fTree.getSelection().isEmpty())
 			return ((IStructuredSelection) fTree.getSelection()).toList();
 		List list = new ArrayList(1);
-		if (!ignoreTextField)
-			list.add(new File(fText.getText()));
+		String text = fText.getText();
+		if (!ignoreTextField && !fText.fEmptyText.equals(text)) {
+			if (fUseWorkspace)
+				list.add(ResourcesPlugin.getWorkspace().getRoot().findMember(fText.getText()));
+			else
+				list.add(new File(fText.getText()));
+		}
 		return list;
 	}
 
@@ -510,16 +518,21 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 			List treeSelection = new ArrayList();
 			List tableSelection = new ArrayList();
 			for (int i = 0; i < files.size(); i++) {
-				File file = (File) files.get(i);
-				if (file.isDirectory())
+				Object file = files.get(i);
+				if (isDirectory(file))
 					treeSelection.add(file);
-				else if (file.isFile())
+				else if (isFile(file))
 					tableSelection.add(file);
 			}
 			fTree.setSelection(new StructuredSelection(treeSelection), true);
 			if (treeSelection.isEmpty() && !tableSelection.isEmpty()) {
-				File input = (File) fTable.getInput();
-				File parentFile = ((File) tableSelection.get(0)).getParentFile();
+				Object input = fTable.getInput();
+				Object firstSelected = tableSelection.get(0);
+				Object parentFile = null;
+				if (firstSelected instanceof File)
+					parentFile = ((File) firstSelected).getParentFile();
+				else if (firstSelected instanceof IResource)
+					parentFile = ((IResource) firstSelected).getParent();
 				if (input == null || !input.equals(parentFile))
 					setTableInput(parentFile);
 			}
@@ -527,13 +540,24 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 			for (int i = 0; i < tableSelection.size(); i++) {
 				fTableSelection.put(tableSelection.get(i), null);
 			}
-			if (files.size() == 1 && ((File) files.get(0)).isDirectory())
-				setTableInput(files.get(0));
-			if (files.size() == 1 && ((File) files.get(0)).isFile())
-				fText.setText(((File) files.get(0)).getAbsolutePath());
+			Object selectedObect = files.size() == 1 ? files.get(0) : null;
+			if (isDirectory(selectedObect))
+				setTableInput(selectedObect);
+			if (isFile(selectedObect))
+				fText.setText(selectedObect instanceof File ? ((File) selectedObect).getAbsolutePath() :
+					((IResource) selectedObect).getFullPath().toString());
 		} else {
 			setTableInput(null);
+			fText.setText(null);
 		}
+	}
+	
+	private boolean isDirectory(Object object) {
+		return object instanceof File ? ((File) object).isDirectory() : object instanceof IContainer;
+	}
+
+	private boolean isFile(Object object) {
+		return object instanceof File ? ((File) object).isFile() : object instanceof IFile;
 	}
 
 	public void deselectAll() {
