@@ -33,7 +33,7 @@ public class ZipSearchContentProvider extends ZipContentProvider {
 	private Map fTreeChildren = new HashMap();
 
 	public ZipSearchContentProvider(int viewMode) {
-		super(viewMode);
+		super(viewMode, true);
 	}
 
 	public void elementsChanged(Object[] elements) {

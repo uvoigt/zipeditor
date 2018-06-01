@@ -17,7 +17,7 @@ public class LazyZipContentProvider extends ZipContentProvider implements IIndex
 	private Object[] fRootChildren;
 
 	public LazyZipContentProvider(int mode) {
-		super(mode);
+		super(mode, true);
 	}
 
 	public int findElement(Object element) {
