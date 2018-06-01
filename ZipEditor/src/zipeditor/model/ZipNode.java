@@ -29,7 +29,7 @@ public class ZipNode extends Node {
 
 	private String comment;
 	private ZipEntry zipEntry;
-	private int method;
+	private int method = ZipEntry.DEFLATED;
 
 	public ZipNode(ZipModel model, ZipEntry entry, String name, boolean isFolder) {
 		this(model, name, isFolder);
@@ -51,10 +51,10 @@ public class ZipNode extends Node {
 	}
 	
 	public void setComment(String comment) {
-		if (comment == this.comment || comment != null && comment.equals(this.comment))
-			return;
-		this.comment = comment;
-		setModified(true);
+		if (comment != this.comment && (comment == null || !comment.equals(this.comment))) {
+			this.comment = comment;
+			setModified(true);
+		}
 	}
 	
 	public byte[] getExtra() {
@@ -78,16 +78,22 @@ public class ZipNode extends Node {
 	}
 	
 	public void setMethod(int method) {
-		this.method = method;
-		setModified(true);
+		if (method != this.method) {
+			this.method = method;
+			setModified(true);
+		}
 	}
 
 	protected InputStream doGetContent() throws IOException {
 		InputStream in = super.doGetContent();
 		if (in != null)
 			return in;
-		if (zipEntry != null)
+		if (zipEntry != null) {
+			ZipRootNode root = (ZipRootNode) model.getRoot();
+			if (root.getZipFile() != null)
+				return root.getZipFile().getInputStream(zipEntry);
 			return model.getZipPath() != null ? new EntryStream(zipEntry, new ZipFile(model.getZipPath())) : null;
+		}
 		return null;
 	}
 	

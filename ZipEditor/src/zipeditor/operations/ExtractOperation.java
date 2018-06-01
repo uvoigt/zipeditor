@@ -24,6 +24,8 @@ import zipeditor.Messages;
 import zipeditor.Utils;
 import zipeditor.ZipEditorPlugin;
 import zipeditor.model.Node;
+import zipeditor.model.NodeVisitor;
+import zipeditor.model.RootNode;
 import zipeditor.model.ZipModel;
 
 public class ExtractOperation {
@@ -62,7 +64,39 @@ public class ExtractOperation {
 			return rule instanceof ExtractRule;
 		}
 	};
-	
+
+	private class ExtractVisitor extends NodeVisitor {
+		// can be null which means all nodes are to be extracted
+		private Set fToBeExtracted;
+		private boolean fOverwrite;
+		private boolean fFullNodePath;
+		private IProgressMonitor fMonitor;
+
+		ExtractVisitor(Set toBeExtracted, boolean overwrite, boolean fullNodePath, IProgressMonitor monitor) {
+			fToBeExtracted = toBeExtracted;
+			fOverwrite = overwrite;
+			fFullNodePath = fullNodePath;
+			fMonitor = monitor;
+			propagateResult = true;
+		}
+
+		public Object visit(Node node, Object argument) {
+			File file = null;
+			if (fToBeExtracted == null || fToBeExtracted.contains(node)) {
+				file = internalExtract(node, (File) argument, fOverwrite, fFullNodePath, fMonitor);
+				if (fToBeExtracted != null) {
+					if (fToBeExtracted.size() == 1 && !node.isFolder())
+						canceled = true;
+					fToBeExtracted.remove(node);
+				}
+			}
+			if (fMonitor.isCanceled())
+				canceled = true;
+
+			return file != null ? file : argument;
+		}
+	}
+
 	private Job fRefreshJob;
 	private int fUserStatus = ASK;
 	
@@ -95,18 +129,13 @@ public class ExtractOperation {
 	}
 
 	private File internalExtract(Node node, File toDir, boolean overwrite, boolean fullNodePath, IProgressMonitor monitor) {
-		if (monitor.isCanceled())
-			return null;
+
 		toDir = determineFolderTarget(toDir);
 		File file = null;
 		if (node.isFolder()) {
 			file = fullNodePath ? toDir : new File(toDir, node.getName());
 			if (!file.exists())
 				file.mkdirs();
-			Node[] children = node.getChildren();
-			for (int i = 0; i < children.length; i++) {
-				internalExtract(children[i], file, overwrite, fullNodePath, monitor);
-			}
 		} else {
 			file = new File(toDir, fullNodePath ? node.getFullPath() : node.getName());
 			while (extracting.contains(file)) {
@@ -156,6 +185,16 @@ public class ExtractOperation {
 		}
 		return file;
 	}
+
+	private void computeNodesToBeExtracted(Node node, Set result) {
+		if (node.isFolder()) {
+			Node[] children = node.getChildren();
+			for (int i = 0; i < children.length; i++) {
+				computeNodesToBeExtracted(children[i], result);
+			}
+		}
+		result.add(node);
+	}
 	
 	private int showWarning(final File file) {
 		if (Utils.isUIThread()) {
@@ -191,8 +230,23 @@ public class ExtractOperation {
 		if (nodes == null || nodes.length == 0)
 			return toDir;
 		File targetDir = determineFolderTarget(toDir != null ? toDir : nodes[0].getModel().getTempDir());
+		Set toBeExtracted = null;
+		ZipModel model = null;
 		for (int i = 0; i < nodes.length; i++) {
-			internalExtract(nodes[i], targetDir, overwrite, fullNodePath, monitor);
+			Node node = nodes[i];
+			if (model == null) {
+				model = node.getModel();
+				if (node instanceof RootNode && nodes.length == 1)
+					break;
+				toBeExtracted = new HashSet();
+			}
+			computeNodesToBeExtracted(node, toBeExtracted);
+		}
+		try {
+			ExtractVisitor visitor = new ExtractVisitor(toBeExtracted, overwrite, fullNodePath, monitor);
+			model.getRoot().accept(visitor, targetDir);
+		} catch (Exception e) {
+			ZipEditorPlugin.log(e);
 		}
 		return toDir;
 	}

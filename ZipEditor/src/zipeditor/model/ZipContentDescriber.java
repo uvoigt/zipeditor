@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -21,37 +22,79 @@ import org.eclipse.core.runtime.content.IContentTypeSettings;
 import zipeditor.ZipEditorPlugin;
 
 public class ZipContentDescriber implements IContentDescriber {
+	public static class ContentTypeId {
+
+		public final static int ZIP = 1;
+		public final static int GZ = 2;
+		public final static int TAR = 3;
+		public final static int TGZ = 4;
+		public final static int BZ2 = 5;
+		public final static int TBZ = 6;
+		public final static int RPM = 7;
+
+		public final static ContentTypeId ZIP_FILE = add("zipfile", ContentTypeId.ZIP); //$NON-NLS-1$
+		public final static ContentTypeId GZ_FILE = add("gzipfile", ContentTypeId.GZ); //$NON-NLS-1$
+		public final static ContentTypeId TAR_FILE = add("tarfile", ContentTypeId.TAR); //$NON-NLS-1$
+		public final static ContentTypeId TGZ_FILE = add("targzfile", ContentTypeId.TGZ); //$NON-NLS-1$
+		public final static ContentTypeId BZ2_FILE = add("bz2file", ContentTypeId.BZ2); //$NON-NLS-1$
+		public final static ContentTypeId TBZ_FILE = add("tarbz2file", ContentTypeId.TBZ); //$NON-NLS-1$
+		public final static ContentTypeId RPM_FILE = add("rpmfile", ContentTypeId.RPM); //$NON-NLS-1$
+
+		private String id;
+		private int ordinal;
+		private ContentTypeId(String id, int ordinal) {
+			this.id = id;
+			this.ordinal = ordinal;
+		}
+
+		public String getId() {
+			return id;
+		}
+
+		public int getOrdinal() {
+			return ordinal;
+		}
+	}
+
 	private final static Set ALL_TYPES = new HashSet();
-
-	public final static String ZIP_FILE = add("zipfile"); //$NON-NLS-1$
-	public final static String GZ_FILE = add("gzipfile"); //$NON-NLS-1$
-	public final static String TAR_FILE = add("tarfile"); //$NON-NLS-1$
-	public final static String TGZ_FILE = add("targzfile"); //$NON-NLS-1$
-	public final static String BZ2_FILE = add("bz2file"); //$NON-NLS-1$
-	public final static String TBZ_FILE = add("tarbz2file"); //$NON-NLS-1$
-
-	private final static String EMPTY = "empty"; //$NON-NLS-1$
+	private final static Set STRINGS = new HashSet();
 
 	private static IContentType fArchiveContentType;
 
 	public static String[] getAllContentTypeIds() {
-		return (String[]) ALL_TYPES.toArray(new String[ALL_TYPES.size()]);
+		return (String[]) STRINGS.toArray(new String[STRINGS.size()]);
 	}
 
-	private static String add(String s) {
-		String contentTypeId = ZipEditorPlugin.PLUGIN_ID + '.' + s;
-		ALL_TYPES.add(contentTypeId);
-		return contentTypeId;
+	private static ContentTypeId add(String s, int n) {
+		ContentTypeId id = new ContentTypeId(ZipEditorPlugin.PLUGIN_ID + '.' + s, n);
+		ALL_TYPES.add(id);
+		STRINGS.add(id.id);
+		return id;
 	}
 
 	public static boolean isForUs(String contentTypeId) {
-		return ALL_TYPES.contains(contentTypeId);
+		return STRINGS.contains(contentTypeId);
 	}
 
 	public static IContentType getArchiveContentType() {
 		if (fArchiveContentType == null)
 			fArchiveContentType = Platform.getContentTypeManager().getContentType("ZipEditor.archive"); //$NON-NLS-1$
 		return fArchiveContentType;
+	}
+
+	public static ContentTypeId getContentTypeForFileExtension(String fileExtension) {
+		if (fileExtension != null) {
+			for (Iterator it = ALL_TYPES.iterator(); it.hasNext(); ) {
+				ContentTypeId typeId = (ContentTypeId) it.next();
+				String[] specs = Platform.getContentTypeManager().getContentType(typeId.id).
+						getFileSpecs(IContentTypeSettings.FILE_EXTENSION_SPEC);
+				for (int j = 0; j < specs.length; j++) {
+					if (fileExtension.equalsIgnoreCase(specs[j]))
+						return typeId;
+				}
+			}
+		}
+		return null;
 	}
 
 	public static List getFileExtensionsAssociatedWithArchives() {
@@ -63,10 +106,10 @@ public class ZipContentDescriber implements IContentDescriber {
 	}
 
 	private static List getFileSpecs(int type) {
-		String[] contentTypeIds = getAllContentTypeIds();
 		List result = new ArrayList();
-		for (int i = 0; i < contentTypeIds.length; i++) {
-			String[] specs = Platform.getContentTypeManager().getContentType(contentTypeIds[i]).getFileSpecs(type);
+		for (Iterator it = ALL_TYPES.iterator(); it.hasNext(); ) {
+			ContentTypeId typeId = (ContentTypeId) it.next();
+			String[] specs = Platform.getContentTypeManager().getContentType(typeId.id).getFileSpecs(type);
 			for (int j = 0; j < specs.length; j++) {
 				result.add(specs[j].toLowerCase());
 			}
@@ -89,42 +132,19 @@ public class ZipContentDescriber implements IContentDescriber {
 	public int describe(InputStream contents, IContentDescription description)
 			throws IOException {
 
-		String type = detectType(contents);
-		if (type == null)
-			return INVALID;
-		if (description == null || type == EMPTY)
+		ContentTypeId type = ZipModel.detectType(contents);
+		if (type == null || description == null)
 			return VALID;
 
 		String contentTypeId = description.getContentType() != null ? description.getContentType().getId() : null;
-		if (type.equals(contentTypeId))
+		if (type.id.equals(contentTypeId))
 			return VALID;
-		if (type == TGZ_FILE && GZ_FILE.equals(contentTypeId))
+		if (type == ContentTypeId.TGZ_FILE && ContentTypeId.GZ_FILE.id.equals(contentTypeId))
 			return VALID;
-		if (type == TBZ_FILE && BZ2_FILE.equals(contentTypeId))
+		if (type == ContentTypeId.TBZ_FILE && ContentTypeId.BZ2_FILE.id.equals(contentTypeId))
 			return VALID;
 
 		return INVALID;
-	}
-
-	private String detectType(InputStream contents) {
-		switch (ZipModel.detectType(contents)) {
-		default:
-			return null;
-		case ZipModel.ZIP:
-			return ZIP_FILE;
-		case ZipModel.TAR:
-			return TAR_FILE;
-		case ZipModel.GZ:
-			return GZ_FILE;
-		case ZipModel.TARGZ:
-			return TGZ_FILE;
-		case ZipModel.BZ2:
-			return BZ2_FILE;
-		case ZipModel.TARBZ2:
-			return TBZ_FILE;
-		case ZipModel.EMPTY:
-			return EMPTY; 
-		}
 	}
 
 	public QualifiedName[] getSupportedOptions() {

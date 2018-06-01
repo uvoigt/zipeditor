@@ -4,11 +4,8 @@
  */
 package zipeditor.model;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.GZIPInputStream;
@@ -17,33 +14,25 @@ import org.apache.tools.bzip2.CBZip2InputStream;
 import org.apache.tools.tar.TarEntry;
 import org.apache.tools.tar.TarInputStream;
 
+import zipeditor.model.ZipContentDescriber.ContentTypeId;
+
 public class TarNode extends Node {
-	private class EntryStream extends InputStream {
-		private InputStream in;
+	private class EntryStream extends FilterInputStream {
+		private boolean close;
+		private EntryStream(TarInputStream in) {
+			super(in);
+		}
 		private EntryStream(TarEntry entry, TarInputStream in) throws IOException {
+			super(in);
+			close = true;
 			for (TarEntry e = null; (e = in.getNextEntry()) != null; ) {
 				if (!entry.equals(e))
 					continue;
-				if (entry.getSize() < 10000000) {
-					ByteArrayOutputStream out = new ByteArrayOutputStream();
-					in.copyEntryContents(out);
-					this.in = new ByteArrayInputStream(out.toByteArray());
-				} else {
-					File tmpFile = new File(model.getTempDir(), Integer.toString((int) System.currentTimeMillis()));
-					FileOutputStream out = new FileOutputStream(tmpFile);
-					in.copyEntryContents(out);
-					out.close();
-					this.in = new FileInputStream(tmpFile);
-				}
 				break;
 			}
-			in.close();
-		}
-		public int read() throws IOException {
-			return in != null ? in.read() : -1;
 		}
 		public void close() throws IOException {
-			if (in != null)
+			if (close)
 				in.close();
 		}
 	};
@@ -74,6 +63,21 @@ public class TarNode extends Node {
 		super(model, name, isFolder);
 	}
 
+	public Object accept(NodeVisitor visitor, Object argument) throws IOException {
+		TarRootNode rootNode = (TarRootNode) model.getRoot();
+		TarInputStream tarStream = rootNode.getInputStream();
+		if (tarStream != null && tarEntry != null) {
+			TarEntry entry = tarStream.getNextEntry();
+			if (!tarEntry.equals(entry)) {
+				// when something has been added to or removed from the node tree
+				do
+					entry = tarStream.getNextEntry();
+				while (entry != null && !tarEntry.equals(entry));
+			}
+		}
+		return super.accept(visitor, argument);
+	}
+
     public int getGroupId() {
         return groupId;
     }
@@ -93,7 +97,17 @@ public class TarNode extends Node {
     public int getMode() {
         return mode;
     }
-    
+
+    public String getModeString() {
+    	StringBuilder sb = new StringBuilder(9);
+		String s = "rwx"; //$NON-NLS-1$
+		int mask = 0x100;
+		for (int i = 0; i < 9; i++, mask >>= 1) {
+			sb.append((mode & mask) > 0 ? s.charAt(i % 3) : '-');
+		}
+    	return sb.toString();
+    }
+
     public void setGroupId(int groupId) {
     	if (groupId == this.groupId)
     		return;
@@ -122,29 +136,59 @@ public class TarNode extends Node {
 		setModified(true);
 	}
 
+    public void setMode(int mode) {
+    	if (mode != this.mode)
+    		this.mode = mode;
+	}
+
+    public void setModeString(String modeString) {
+    	if (modeString == null || modeString.length() != 9)
+    		throw new IllegalArgumentException();
+		int mode = 0;
+		String s = "rwx"; //$NON-NLS-1$
+		int mask = 0x100;
+		for (int i = 0; i < 9; i++, mask >>= 1) {
+			char c = modeString.charAt(i);
+			if (c == s.charAt(i % 3)) {
+				mode |= mask;
+			} else if (c != '-')
+				throw new IllegalArgumentException();
+		}
+		if (mode != this.mode) {
+			this.mode = mode;
+			setModified(true);
+		}
+	}
+
     protected InputStream doGetContent() throws IOException {
 		InputStream in = super.doGetContent();
 		if (in != null)
 			return in;
-		if (tarEntry != null && model.getZipPath() != null)
-			return new EntryStream(tarEntry, getTarFile());
+		if (tarEntry != null) {
+			TarRootNode rootNode = (TarRootNode) model.getRoot();
+			TarInputStream tarStream = rootNode.getInputStream();
+			if (tarStream != null)
+				return new EntryStream(tarStream);
+			if (model.getZipPath() != null)
+				return new EntryStream(tarEntry, getTarFile(model));
+		}
 		return null;
 	}
-	
-	private TarInputStream getTarFile() throws IOException {
-		switch (model.getType()) {
+
+	static TarInputStream getTarFile(ZipModel model) throws IOException {
+		switch (model.getType().getOrdinal()) {
 		default:
-		case ZipModel.TAR:
+		case ContentTypeId.TAR:
 			return new TarInputStream(new FileInputStream(model.getZipPath()));
-		case ZipModel.TARGZ:
+		case ContentTypeId.TGZ:
 			return new TarInputStream(new GZIPInputStream(new FileInputStream(model.getZipPath())));
-		case ZipModel.TARBZ2:
+		case ContentTypeId.TBZ:
 				InputStream in = new FileInputStream(model.getZipPath());
 				in.skip(2);
 				return new TarInputStream(new CBZip2InputStream(in));
 		}
 	}
-	
+
 	public void reset() {
 		super.reset();
 		size = tarEntry.getSize();

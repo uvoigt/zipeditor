@@ -18,7 +18,7 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.PlatformObject;
 import org.eclipse.ui.model.IWorkbenchAdapter;
 
-public class Node extends PlatformObject {
+public abstract class Node extends PlatformObject {
 	protected Node parent;
 	protected List children;
 	protected int state;
@@ -48,7 +48,25 @@ public class Node extends PlatformObject {
 		this.model = model;
 		this.name = name;
 		state |= isFolder ? FOLDER : 0;
-		this.time = System.currentTimeMillis();			
+		this.time = System.currentTimeMillis();
+	}
+
+	public Object accept(NodeVisitor visitor, Object argument) throws IOException {
+		Object result = visitor.visit(this, argument);
+		if (!visitor.canceled)
+			acceptChildren(visitor, visitor.propagateResult ? result : argument);
+		return result;
+	}
+
+	private void acceptChildren(NodeVisitor visitor, Object argument) throws IOException {
+		if (children != null) {
+			for (int i = 0; i < children.size(); i++) {
+				Node child = (Node) children.get(i);
+				child.accept(visitor, argument);
+				if (visitor.canceled)
+					break;
+			}
+		}
 	}
 
 	public Node getParent() {
@@ -312,9 +330,7 @@ public class Node extends PlatformObject {
 		}
 	}
 
-	public Node create(ZipModel model, String name, boolean isFolder) {
-		return new Node(model, name, isFolder);
-	}
+	public abstract Node create(ZipModel model, String name, boolean isFolder);
 
 	public String toString() {
 		return getFullPath();
