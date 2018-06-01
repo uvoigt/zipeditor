@@ -18,23 +18,27 @@ public class TarNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 	private Text fGroupName;
 	private Text fUserId;
 	private Text fUserName;
+	private Text fMode;
 	
 	protected Control createContents(Composite parent) {
 		Composite control = (Composite) createPropertiesSection(parent);
 
 		MultiplePropertyAccessor accessor = new MultiplePropertyAccessor(TarNode.class);
-		createLabel(control, TarNodeProperty.PGROUP_ID.toString(), 1);
-		fGroupId = createText(control, 30, 1, true);
-		setFieldText(fGroupId, accessor.getAccessor("groupId")); //$NON-NLS-1$
-		createLabel(control, TarNodeProperty.PGROUP_NAME.toString(), 1);
-		fGroupName = createText(control, 30, 1, true);
-		setFieldText(fGroupName, accessor.getAccessor("groupName")); //$NON-NLS-1$
 		createLabel(control, TarNodeProperty.PUSER_ID.toString(), 1);
 		fUserId = createText(control, 30, 1, true);
 		setFieldText(fUserId, accessor.getAccessor("userId")); //$NON-NLS-1$
 		createLabel(control, TarNodeProperty.PUSER_NAME.toString(), 1);
 		fUserName = createText(control, 30, 1, true);
 		setFieldText(fUserName, accessor.getAccessor("userName")); //$NON-NLS-1$
+		createLabel(control, TarNodeProperty.PGROUP_ID.toString(), 1);
+		fGroupId = createText(control, 30, 1, true);
+		setFieldText(fGroupId, accessor.getAccessor("groupId")); //$NON-NLS-1$
+		createLabel(control, TarNodeProperty.PGROUP_NAME.toString(), 1);
+		fGroupName = createText(control, 30, 1, true);
+		setFieldText(fGroupName, accessor.getAccessor("groupName")); //$NON-NLS-1$
+		createLabel(control, TarNodeProperty.PMODE.toString(), 1);
+		fMode = createText(control, 30, 1, true);
+		setFieldText(fMode, accessor.getAccessor("modeString")); //$NON-NLS-1$
 		
 		applyDialogFont(control);
 		return control;
@@ -72,6 +76,14 @@ public class TarNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 				((TarNode) nodes[i]).setUserId(userId.intValue());
 			if (!nonEqualStringLabel.equals(fUserName.getText()))
 				((TarNode) nodes[i]).setUserName(fUserName.getText());
+			if (!nonEqualStringLabel.equals(fMode.getText())) {
+				try {
+					((TarNode) nodes[i]).setModeString(fMode.getText());
+				} catch (Exception e) {
+					setErrorMessage(Messages.getString("TarNodePropertyPage.2")); //$NON-NLS-1$
+					return false;
+				}
+			}
 		}
 		return true;
 	}

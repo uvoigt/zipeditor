@@ -15,8 +15,7 @@ import zipeditor.model.NodeProperty;
 
 public class PreferenceInitializer extends AbstractPreferenceInitializer {
 
-	public PreferenceInitializer() {
-	}
+	private static final String SEP_REPLACEMENT = Character.toString((char) 0x263a);
 
 	public void initializeDefaultPreferences() {
 		IPreferenceStore store = ZipEditorPlugin.getDefault().getPreferenceStore();
@@ -36,6 +35,8 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 				new Integer(NodeProperty.SIZE),
 				new Integer(NodeProperty.PATH),
 		}, PreferenceConstants.COLUMNS_SEPARATOR));
+		store.setDefault(PreferenceConstants.VISIBLE_COLUMNS + PreferenceConstants.TAR_SUFFIX,
+				store.getDefaultString(PreferenceConstants.VISIBLE_COLUMNS));
 	}
 
 	public final static String join(Object array, String separator) {
@@ -45,7 +46,7 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 				sb.append(separator);
 			Object object = Array.get(array, i);
 			if (object != null)
-				sb.append(object);
+				sb.append(replaceSep(object.toString(), separator));
 		}
 		return sb.toString();
 	}
@@ -56,12 +57,20 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 		Object result = Array.newInstance(elementType, size);
 		for (int i = 0; i < size; i++) {
 			try {
-				Array.set(result, i, valueFromString(st.nextToken(), elementType));
+				Array.set(result, i, valueFromString(unreplaceSep(st.nextToken(), separator), elementType));
 			} catch (Exception e) {
 				ZipEditorPlugin.log(e);
 			}
 		}
 		return result;
+	}
+
+	private static String replaceSep(String s, String separator) {
+		return s.replace(separator, SEP_REPLACEMENT);
+	}
+
+	private static String unreplaceSep(String s, String separator) {
+		return s.replace(SEP_REPLACEMENT, separator);
 	}
 
 	private static Object valueFromString(String string, Class type) throws Exception {

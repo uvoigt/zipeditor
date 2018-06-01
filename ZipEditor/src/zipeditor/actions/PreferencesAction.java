@@ -15,6 +15,8 @@ import zipeditor.PreferenceInitializer;
 import zipeditor.ZipEditor;
 import zipeditor.ZipEditorPlugin;
 import zipeditor.model.NodeProperty;
+import zipeditor.model.TarNodeProperty;
+import zipeditor.model.ZipContentDescriber.ContentTypeId;
 import zipeditor.model.ZipNodeProperty;
 
 public class PreferencesAction extends EditorAction {
@@ -24,8 +26,10 @@ public class PreferencesAction extends EditorAction {
 
 		private ColumnAction(NodeProperty nodeProperty) {
 			super(nodeProperty.toString());
+			String suffix = fEditor.getModel().isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
 			fColumnsState = (Integer[]) PreferenceInitializer.split(
-					fEditor.getPreferenceStore().getString(PreferenceConstants.VISIBLE_COLUMNS), PreferenceConstants.COLUMNS_SEPARATOR, Integer.class);
+					fEditor.getPreferenceStore().getString(PreferenceConstants.VISIBLE_COLUMNS + suffix),
+					PreferenceConstants.COLUMNS_SEPARATOR, Integer.class);
 			setChecked(indexOf(fColumnsState, nodeProperty.getType()) != -1);
 			fType = nodeProperty.getType();
 		}
@@ -43,8 +47,8 @@ public class PreferencesAction extends EditorAction {
 			if (set) {
 				if (index == -1) {
 					int size = integers.length;
-					System.arraycopy(integers, 0, integers = new Integer[size + 1], 1, size);
-					integers[0] = new Integer(fType);
+					System.arraycopy(integers, 0, integers = new Integer[size + 1], 0, size);
+					integers[size] = new Integer(fType);
 				}
 			} else {
 				if (index != -1) {
@@ -57,15 +61,16 @@ public class PreferencesAction extends EditorAction {
 		public void run() {
 			fEditor.storeTableColumnPreferences();
 			IPreferenceStore store = fEditor.getPreferenceStore();
+			String suffix = fEditor.getModel().isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
 			fColumnsState = update(fColumnsState, isChecked());
 			String newValue = PreferenceInitializer.join(fColumnsState, PreferenceConstants.COLUMNS_SEPARATOR);
-			store.setValue(PreferenceConstants.VISIBLE_COLUMNS, newValue);
+			store.setValue(PreferenceConstants.VISIBLE_COLUMNS + suffix, newValue);
 			fEditor.updateView(fEditor.getMode(), false);
 		}
 	};
 	
 	private MenuManager fMenuManager;
-	
+
 	public PreferencesAction(ZipEditor editor) {
 		super(ActionMessages.getString("PreferencesAction.0"), editor); //$NON-NLS-1$
 		setToolTipText(ActionMessages.getString("PreferencesAction.1")); //$NON-NLS-1$
@@ -101,11 +106,19 @@ public class PreferencesAction extends EditorAction {
 		manager.add(new ColumnAction(NodeProperty.PTYPE));
 		manager.add(new ColumnAction(NodeProperty.PDATE));
 		manager.add(new ColumnAction(NodeProperty.PSIZE));
-		manager.add(new ColumnAction(ZipNodeProperty.PPACKED_SIZE));
-		manager.add(new ColumnAction(ZipNodeProperty.PRATIO));
-		manager.add(new ColumnAction(ZipNodeProperty.PCRC));
 		manager.add(new ColumnAction(NodeProperty.PPATH));
-		manager.add(new ColumnAction(ZipNodeProperty.PATTR));
+		if (fEditor.getModel().isTar()) {
+			manager.add(new ColumnAction(TarNodeProperty.PUSER_ID));
+			manager.add(new ColumnAction(TarNodeProperty.PUSER_NAME));
+			manager.add(new ColumnAction(TarNodeProperty.PGROUP_ID));
+			manager.add(new ColumnAction(TarNodeProperty.PGROUP_NAME));
+			manager.add(new ColumnAction(TarNodeProperty.PMODE));
+		} else if (fEditor.getModel().getType() == ContentTypeId.ZIP_FILE) {
+			manager.add(new ColumnAction(ZipNodeProperty.PPACKED_SIZE));
+			manager.add(new ColumnAction(ZipNodeProperty.PRATIO));
+			manager.add(new ColumnAction(ZipNodeProperty.PCRC));
+			manager.add(new ColumnAction(ZipNodeProperty.PATTR));
+		}
 	}
 	
 	private void fillFoldersMenu(MenuManager manager) {

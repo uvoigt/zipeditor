@@ -130,6 +130,8 @@ import zipeditor.actions.ZipActionGroup;
 import zipeditor.model.IModelListener;
 import zipeditor.model.Node;
 import zipeditor.model.NodeProperty;
+import zipeditor.model.ZipContentDescriber;
+import zipeditor.model.ZipContentDescriber.ContentTypeId;
 import zipeditor.model.ZipModel;
 import zipeditor.model.ZipModel.IErrorReporter;
 import zipeditor.model.ZipNodeProperty;
@@ -341,6 +343,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		}
 	};
 	private InformationPresenter fInformationPresenter;
+	private boolean createColumns;
 
 	public final static String ACTION_TOGGLE_MODE = "ToggleViewMode"; //$NON-NLS-1$
 	public final static String ACTION_COLLAPSE_ALL = "CollapseAll"; //$NON-NLS-1$
@@ -378,7 +381,13 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		subMonitor.beginTask(Messages.getString("ZipEditor.2") + locationPath, totalWork); //$NON-NLS-1$
 		InputStream in = null;
 		try {
-			in = root.getModel().save(ZipModel.typeFromName(locationPath.lastSegment()), subMonitor);
+			ContentTypeId typeToSave = ZipContentDescriber.getContentTypeForFileExtension(locationPath.getFileExtension());
+			if (typeToSave == null) {
+				ZipEditorPlugin.log(new Status(IStatus.WARNING, ZipEditorPlugin.PLUGIN_ID, 0,
+						"No content type found for file extension " + locationPath.lastSegment() + ", using zip", null)); //$NON-NLS-1$ //$NON-NLS-2$
+				typeToSave = ContentTypeId.ZIP_FILE;
+			}
+			in = root.getModel().save(typeToSave, subMonitor);
 			IFile file = ResourcesPlugin.getWorkspace().getRoot().getFileForLocation(locationPath);
 			IEditorInput newInput = null;
 			if (file != null) {
@@ -398,6 +407,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 					}
 				});
 			}
+			if (fZipViewer instanceof TableViewer && ZipModel.isTar(typeToSave) != root.getModel().isTar())
+				createColumns = true;
 			doRevert();
 		} catch (final Exception e) {
 			if (Utils.isUIThread()) {
@@ -457,9 +468,10 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		if (filePath == null)
 			return;
 
+		final IFile newFile = ResourcesPlugin.getWorkspace().getRoot().getFile(filePath);
 		IRunnableWithProgress op = new IRunnableWithProgress() {
 			public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
-				internalSave(ResourcesPlugin.getWorkspace().getRoot().getFile(filePath).getLocation(), monitor);
+				internalSave(newFile.getLocation(), monitor);
 			}
 		};
 		try {
@@ -526,6 +538,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		if (fOutlinePage != null) {
 			fOutlinePage.removeSelectionChangedListener(fOutlineSelectionChangedListener);
 			fOutlinePage.dispose();
+			fOutlinePage = null;
 		}
 		getPreferenceStore().removePropertyChangeListener(this);
 		fActions.clear();
@@ -540,7 +553,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		File file = (File) info[0];
 		InputStream in = (InputStream) info[1];
 		boolean isReadOnly = ((Boolean) info[2]).booleanValue();
-		if (in != null && file != null && !file.exists()) {
+		if (in != null && file == null || !file.exists()) {
 			try {
 				file = File.createTempFile("tmp", null); //$NON-NLS-1$
 				file.deleteOnExit();
@@ -682,7 +695,6 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			children[i].dispose();
 		}
 		createContent(parent, mode);
-		parent.layout();
 		fZipViewer.setSelection(selection);
 		fZipViewer.getControl().setFocus();
 		((ZipContentProvider) fZipViewer.getContentProvider()).disposeModel(true);
@@ -729,6 +741,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			}
 		});
 
+		if (viewer instanceof TableViewer)
+			createColumns = true;
 		setViewerInput(viewer);
 		initDragAndDrop(viewer);
 
@@ -781,13 +795,11 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		}
 		if (input != null) {
 			if (Utils.isUIThread()) {
-				viewer.setInput(input);
-				if (fFrameList != null)
-					viewer.refresh(true);
+				doSetViewerInput(viewer, input);
 			} else {
 				viewer.getControl().getDisplay().syncExec(new Runnable() {
 					public void run() {
-						viewer.setInput(fModel.getRoot());
+						doSetViewerInput(viewer, fModel.getRoot());
 					}
 				});
 			}
@@ -805,7 +817,24 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			}
 		}
 	}
-	
+
+	private void doSetViewerInput(StructuredViewer viewer, Object input) {
+		viewer.setInput(input);
+		if (createColumns) {
+			TableViewer tableViewer = (TableViewer) viewer;
+			TableColumn[] columns = tableViewer.getTable().getColumns();
+			for (int i = 0; i < columns.length; i++) {
+				columns[i].dispose();
+			}
+			createTableColumns(((TableViewer) viewer).getTable());
+			((Composite) viewer.getControl()).layout();
+			((ZipLabelProvider) viewer.getLabelProvider()).resetOrder();
+			createColumns = false;
+		}
+		if (fFrameList != null)
+			viewer.refresh(true);
+	}
+
 	private void setViewerInputAgain(final StructuredViewer viewer){
 		viewer.getControl().getDisplay().timerExec(100, new Runnable() {
 			public void run() {
@@ -887,16 +916,17 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		TableViewer viewer = new ZipTableViewer(parent, SWT.MULTI | SWT.FULL_SELECTION | SWT.VIRTUAL);
 		Table table = viewer.getTable();
 		table.setHeaderVisible(true);
-		createTableColumns(table);
 		table.addDisposeListener(fTableDisposeListener);
 		return viewer;
 	}
 	
 	private void createTableColumns(Table table) {
 		IPreferenceStore store = getPreferenceStore();
-		int sortColumn = store.getInt(PreferenceConstants.SORT_BY);
-		int sortDirection = store.getInt(PreferenceConstants.SORT_DIRECTION);
-		Integer[] visibleColumns = (Integer[]) PreferenceInitializer.split(store.getString(PreferenceConstants.VISIBLE_COLUMNS), PreferenceConstants.COLUMNS_SEPARATOR, Integer.class);
+		String suffix = fModel.isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
+		int sortColumn = store.getInt(PreferenceConstants.SORT_BY + suffix);
+		int sortDirection = store.getInt(PreferenceConstants.SORT_DIRECTION + suffix);
+		Integer[] visibleColumns = (Integer[]) PreferenceInitializer.split(store.getString(PreferenceConstants.VISIBLE_COLUMNS + suffix),
+				PreferenceConstants.COLUMNS_SEPARATOR, Integer.class);
 		for (int i = 0; i < visibleColumns.length; i++) {
 			int type = visibleColumns[i].intValue();
 			createTableColumn(table, Messages.getString("ZipNodeProperty." + type), type, sortColumn, sortDirection); //$NON-NLS-1$
@@ -904,7 +934,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		TableLayout layout = new TableLayout();
 		TableColumn[] columns = table.getColumns();
 		for (int i = 0; i < columns.length; i++) {
-			int width = store.getInt(PreferenceConstants.SORT_COLUMN_WIDTH + columns[i].getData());
+			int width = store.getInt(PreferenceConstants.SORT_COLUMN_WIDTH + suffix + columns[i].getData());
 			if (width == 0)
 				width = 150;
 			layout.addColumnData(new ColumnPixelData(width));
@@ -932,21 +962,23 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			return;
 		Table table = ((TableViewer) fZipViewer).getTable();
 		IPreferenceStore store = getPreferenceStore();
+		String suffix = fModel.isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
 		TableColumn[] columns = table.getColumns();
 		int[] order = table.getColumnOrder();
 		for (int i = 0; i < columns.length; i++) {
-			store.setValue(PreferenceConstants.SORT_COLUMN_WIDTH + columns[i].getData(), columns[i].getWidth());
+			store.setValue(PreferenceConstants.SORT_COLUMN_WIDTH + suffix + columns[i].getData(), columns[i].getWidth());
 		}
 		for (int i = 0; i < order.length; i++) {
 			order[i] = ((Integer) columns[order[i]].getData()).intValue();
 		}
-		store.setValue(PreferenceConstants.VISIBLE_COLUMNS, PreferenceInitializer.join(order, PreferenceConstants.COLUMNS_SEPARATOR));
+		store.setValue(PreferenceConstants.VISIBLE_COLUMNS + suffix, PreferenceInitializer.join(order, PreferenceConstants.COLUMNS_SEPARATOR));
 	}
 
 	private void handleSortColumnSelected(TableColumn column) {
 		IPreferenceStore store = getPreferenceStore();
-		int sortColumn = store.getInt(PreferenceConstants.SORT_BY);
-		int sortDirection = store.getInt(PreferenceConstants.SORT_DIRECTION);
+		String suffix = fModel.isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
+		int sortColumn = store.getInt(PreferenceConstants.SORT_BY + suffix);
+		int sortDirection = store.getInt(PreferenceConstants.SORT_DIRECTION + suffix);
 		
 		if (((Integer) column.getData()).intValue() == sortColumn) {
 			sortDirection = sortDirection == SWT.UP ? SWT.DOWN : SWT.UP;
@@ -960,8 +992,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 					columns[i].setImage(getSortImage(SWT.NONE));
 			}
 		}
-		store.setValue(PreferenceConstants.SORT_DIRECTION, sortDirection);
-		store.setValue(PreferenceConstants.SORT_BY, sortColumn);
+		store.setValue(PreferenceConstants.SORT_DIRECTION + suffix, sortDirection);
+		store.setValue(PreferenceConstants.SORT_BY + suffix, sortColumn);
 		((ZipSorter) fZipViewer.getSorter()).update();
 		fZipViewer.refresh();
 	}
@@ -1082,12 +1114,12 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 						}
 				};
 				fOutlinePage.addSelectionChangedListener(fOutlineSelectionChangedListener);
-				getEditorSite().getShell().getDisplay().asyncExec(new Runnable() {
-					public void run() {
-						fOutlinePage.setInput(fModel.getRoot());
-					}
-				});
 			}
+			getEditorSite().getShell().getDisplay().asyncExec(new Runnable() {
+				public void run() {
+					fOutlinePage.setInput(fModel.getRoot());
+				}
+			});
 			return fOutlinePage;
 		}
 		return super.getAdapter(adapter);

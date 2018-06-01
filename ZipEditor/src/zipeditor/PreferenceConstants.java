@@ -8,6 +8,8 @@ public class PreferenceConstants {
 
 	public final static String VIEW_MODE = "VIEW_MODE"; //$NON-NLS-1$
 
+	public final static String TAR_SUFFIX = "_TAR"; //$NON-NLS-1$
+
 	public final static String SORT_BY = "SORT_BY"; //$NON-NLS-1$
 
 	public final static String SORT_COLUMN_WIDTH = "SORT_COLUMN_WIDTH"; //$NON-NLS-1$

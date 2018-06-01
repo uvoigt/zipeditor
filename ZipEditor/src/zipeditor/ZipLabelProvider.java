@@ -20,6 +20,9 @@ import org.eclipse.ui.PlatformUI;
 
 import zipeditor.model.Node;
 import zipeditor.model.NodeProperty;
+import zipeditor.model.TarNode;
+import zipeditor.model.TarNodeProperty;
+import zipeditor.model.ZipModel;
 import zipeditor.model.ZipNode;
 import zipeditor.model.ZipNodeProperty;
 
@@ -74,9 +77,12 @@ public class ZipLabelProvider extends LabelProvider implements ITableLabelProvid
 	}
 
 	public Image getColumnImage(Object element, int columnIndex) {
+		if (!(element instanceof Node))
+			return null;
 		if (fOrder == null)
-			fOrder = initializeOrder();if (fOrder.length == 0)
-				return null;
+			fOrder = initializeOrder(((Node) element).getModel());
+		if (fOrder.length == 0)
+			return null;
 		switch (fOrder[columnIndex]) {
 		default:
 			return null;
@@ -87,9 +93,9 @@ public class ZipLabelProvider extends LabelProvider implements ITableLabelProvid
 	
 	public String getColumnText(Object element, int columnIndex) {
 		if (!(element instanceof Node))
-			return new String();
+			return ""; //$NON-NLS-1$
 		if (fOrder == null)
-			fOrder = initializeOrder();
+			fOrder = initializeOrder(((Node) element).getModel());
 		if (fOrder.length == 0)
 			return new String();
 		Node node = (Node) element;
@@ -114,13 +120,29 @@ public class ZipLabelProvider extends LabelProvider implements ITableLabelProvid
 			return Long.toHexString(node instanceof ZipNode ? ((ZipNode) node).getCrc() : 0);
 		case ZipNodeProperty.RATIO:
 			return formatLong(Math.max(Math.round(node instanceof ZipNode ? ((ZipNode) node).getRatio() : 0), 0)) + "%"; //$NON-NLS-1$
+		case TarNodeProperty.GROUP_ID:
+			return Long.toString(node instanceof TarNode ? ((TarNode) node).getGroupId() : 0);
+		case TarNodeProperty.GROUP_NAME:
+			return node instanceof TarNode ? ((TarNode) node).getGroupName() : ""; //$NON-NLS-1$
+		case TarNodeProperty.USER_ID:
+			return Long.toString(node instanceof TarNode ? ((TarNode) node).getUserId() : 0);
+		case TarNodeProperty.USER_NAME:
+			return node instanceof TarNode ? ((TarNode) node).getUserName() : ""; //$NON-NLS-1$
+		case TarNodeProperty.MODE:
+			return node instanceof TarNode ? ((TarNode) node).getModeString() : ""; //$NON-NLS-1$
 		}
 	}
 
-	private int[] initializeOrder() {
+	private int[] initializeOrder(ZipModel model) {
 		IPreferenceStore store = ZipEditorPlugin.getDefault().getPreferenceStore();
-		int[] values = (int[]) PreferenceInitializer.split(store.getString(PreferenceConstants.VISIBLE_COLUMNS), PreferenceConstants.COLUMNS_SEPARATOR, int.class);
+		String suffix = model.isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
+		int[] values = (int[]) PreferenceInitializer.split(store.getString(PreferenceConstants.VISIBLE_COLUMNS + suffix),
+				PreferenceConstants.COLUMNS_SEPARATOR, int.class);
 		return values;
+	}
+
+	void resetOrder() {
+		fOrder = null;
 	}
 
 	protected static String formatDate(long time) {
