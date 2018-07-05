@@ -44,9 +44,15 @@
             name="%content-type.name.6"
             priority="normal">
       </content-type>
+      <content-type
+            base-type="archive"
+            id="rpmfile"
+            name="%content-type.name.7"
+            priority="normal">
+      </content-type>
       <file-association
             content-type="ZipEditor.zipfile"
-            file-extensions="jar, zip, war, ear, aar, apk"/>
+            file-extensions="jar, jmod, zip, war, ear, aar, apk"/>
       <file-association
             content-type="ZipEditor.gzipfile"
             file-extensions="gz"/>
@@ -62,6 +68,9 @@
       <file-association
             content-type="ZipEditor.bz2file"
             file-extensions="bz2"/>
+      <file-association
+            content-type="ZipEditor.rpmfile"
+            file-extensions="rpm"/>
    </extension>
    <extension
          point="org.eclipse.ui.editors">
@@ -78,6 +87,7 @@
          <contentTypeBinding contentTypeId="ZipEditor.targzfile"/>
          <contentTypeBinding contentTypeId="ZipEditor.bz2file"/>
          <contentTypeBinding contentTypeId="ZipEditor.tarbz2file"/>
+         <contentTypeBinding contentTypeId="ZipEditor.rpmfile"/>
       </editor>
       <editor
             class="zipeditor.ZipEditor"
@@ -128,7 +138,7 @@
          point="org.eclipse.ui.navigator.navigatorContent">
       <navigatorContent
             activeByDefault="true"
-            contentProvider="zipeditor.ZipContentProvider"
+            contentProvider="zipeditor.NavigatorZipContentProvider"
             icon="icons/zipicon.gif"
             id="zipeditor.navigatorContent"
             labelProvider="zipeditor.ZipLabelProvider"
@@ -198,6 +208,11 @@
             id="zipeditor.search.ElementPropertyPage"
             name="%page.name.2"
             objectClass="zipeditor.search.Element"/>
+      <page
+            class="zipeditor.RpmNodePropertyPage"
+            id="zipeditor.RpmNodePropertyPage"
+            name="%page.name.3"
+            objectClass="zipeditor.model.RpmNode"/>
    </extension>
    <extension
          point="org.eclipse.search.searchPages">
