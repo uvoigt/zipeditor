@@ -154,8 +154,8 @@ public class TarNode extends Node {
 			} else if (c != '-')
 				throw new IllegalArgumentException();
 		}
-		if (mode != this.mode) {
-			this.mode = mode;
+		if ((mode & 0xfff) != (this.mode & 0xfff)) {
+			this.mode = (this.mode & 0xff000) | mode;
 			setModified(true);
 		}
 	}
