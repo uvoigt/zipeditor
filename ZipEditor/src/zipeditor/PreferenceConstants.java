@@ -4,11 +4,15 @@
  */
 package zipeditor;
 
+import zipeditor.model.ZipContentDescriber.ContentTypeId;
+
 public class PreferenceConstants {
 
 	public final static String VIEW_MODE = "VIEW_MODE"; //$NON-NLS-1$
 
 	public final static String TAR_SUFFIX = "_TAR"; //$NON-NLS-1$
+
+	public final static String ZIP_SUFFIX = "_ZIP"; //$NON-NLS-1$
 
 	public final static String SORT_BY = "SORT_BY"; //$NON-NLS-1$
 
@@ -41,6 +45,20 @@ public class PreferenceConstants {
 	public final static String RECENTLY_USED_SEPARATOR = ","; //$NON-NLS-1$
 
 	public final static String STORE_FOLDERS_IN_ARCHIVES = "storeFoldersInArchives"; //$NON-NLS-1$
+
+	public static String getPreferenceSuffix(ContentTypeId type) {
+		switch (type.getOrdinal()) {
+		case ContentTypeId.ZIP:
+			return ZIP_SUFFIX;
+		case ContentTypeId.TAR:
+		case ContentTypeId.TBZ:
+		case ContentTypeId.TGZ:
+			return TAR_SUFFIX;
+		// for compatibility with older releases
+		default:
+			return ""; //$NON-NLS-1$
+		}
+	}
 
 	private PreferenceConstants() {
 	}

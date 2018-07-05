@@ -12,6 +12,7 @@ import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.SWT;
 
 import zipeditor.model.NodeProperty;
+import zipeditor.model.ZipContentDescriber.ContentTypeId;
 
 public class PreferenceInitializer extends AbstractPreferenceInitializer {
 
@@ -20,23 +21,57 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 	public void initializeDefaultPreferences() {
 		IPreferenceStore store = ZipEditorPlugin.getDefault().getPreferenceStore();
 
+		String defaultVisibleColumns = join(new Object[] {
+				new Integer(NodeProperty.NAME),
+				new Integer(NodeProperty.TYPE),
+				new Integer(NodeProperty.DATE),
+				new Integer(NodeProperty.SIZE),
+				new Integer(NodeProperty.PATH),
+		}, PreferenceConstants.COLUMNS_SEPARATOR);
+		String defaultSortBy = Integer.toString(NodeProperty.NAME);
+
+		String tarSuffix = PreferenceConstants.getPreferenceSuffix(ContentTypeId.TAR_FILE);
+		String zipSuffix = PreferenceConstants.getPreferenceSuffix(ContentTypeId.ZIP_FILE);
+
+		// migrate from older releases
+		String commonVisibleColumns = store.getString(PreferenceConstants.VISIBLE_COLUMNS);
+		String zipVisibleColumns = store.getString(PreferenceConstants.VISIBLE_COLUMNS + zipSuffix);
+		if (!defaultVisibleColumns.equals(commonVisibleColumns) && zipVisibleColumns.length() == 0) {
+			store.setValue(PreferenceConstants.VISIBLE_COLUMNS + zipSuffix, commonVisibleColumns);
+			store.setToDefault(PreferenceConstants.VISIBLE_COLUMNS);
+		}
+		String commonSortBy = store.getString(PreferenceConstants.SORT_BY);
+		String zipSortBy = store.getString(PreferenceConstants.SORT_BY + zipSuffix);
+		if (!defaultSortBy.equals(commonSortBy) && zipSortBy.length() == 0) {
+			store.setValue(PreferenceConstants.SORT_BY + zipSuffix, commonSortBy);
+			store.setToDefault(PreferenceConstants.SORT_BY);
+		}
+		for (int i = 1; i < 99; i++) {
+			String commonColumnWidth = store.getString(PreferenceConstants.SORT_COLUMN_WIDTH + i);
+			if (commonColumnWidth.length() > 0) {
+				String zipColumnWidth = store.getString(PreferenceConstants.SORT_COLUMN_WIDTH + zipSuffix + i);
+				if (zipColumnWidth.length() == 0) {
+					store.setValue(PreferenceConstants.SORT_COLUMN_WIDTH + zipSuffix + i, commonColumnWidth);
+				}
+			}
+		}
+		//
+
 		store.setDefault(PreferenceConstants.PREFIX_OUTLINE + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_TREE);
 		store.setDefault(PreferenceConstants.PREFIX_OUTLINE + PreferenceConstants.SORT_ENABLED, true);
 		store.setDefault(PreferenceConstants.PREFIX_NAVIGATOR + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_TREE);
 		store.setDefault(PreferenceConstants.PREFIX_NAVIGATOR + PreferenceConstants.SORT_ENABLED, true);
 		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER);
 		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SORT_ENABLED, true);
-		store.setDefault(PreferenceConstants.SORT_BY, NodeProperty.NAME);
+		store.setDefault(PreferenceConstants.SORT_BY, defaultSortBy);
 		store.setDefault(PreferenceConstants.SORT_DIRECTION, SWT.UP);
-		store.setDefault(PreferenceConstants.VISIBLE_COLUMNS, join(new Object[] {
-				new Integer(NodeProperty.NAME),
-				new Integer(NodeProperty.TYPE),
-				new Integer(NodeProperty.DATE),
-				new Integer(NodeProperty.SIZE),
-				new Integer(NodeProperty.PATH),
-		}, PreferenceConstants.COLUMNS_SEPARATOR));
-		store.setDefault(PreferenceConstants.VISIBLE_COLUMNS + PreferenceConstants.TAR_SUFFIX,
-				store.getDefaultString(PreferenceConstants.VISIBLE_COLUMNS));
+		store.setDefault(PreferenceConstants.VISIBLE_COLUMNS, defaultVisibleColumns);
+		store.setDefault(PreferenceConstants.SORT_BY + tarSuffix, defaultSortBy);
+		store.setDefault(PreferenceConstants.SORT_DIRECTION + tarSuffix, SWT.UP);
+		store.setDefault(PreferenceConstants.VISIBLE_COLUMNS + tarSuffix, defaultVisibleColumns);
+		store.setDefault(PreferenceConstants.SORT_BY + zipSuffix, defaultSortBy);
+		store.setDefault(PreferenceConstants.SORT_DIRECTION + zipSuffix, SWT.UP);
+		store.setDefault(PreferenceConstants.VISIBLE_COLUMNS + zipSuffix, defaultVisibleColumns);
 	}
 
 	public final static String join(Object array, String separator) {

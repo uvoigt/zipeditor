@@ -407,7 +407,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 					}
 				});
 			}
-			if (fZipViewer instanceof TableViewer && ZipModel.isTar(typeToSave) != root.getModel().isTar())
+			if (fZipViewer instanceof TableViewer &&
+					PreferenceConstants.getPreferenceSuffix(typeToSave) != PreferenceConstants.getPreferenceSuffix(root.getModel().getType()))
 				createColumns = true;
 			doRevert();
 		} catch (final Exception e) {
@@ -476,6 +477,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		};
 		try {
 			getSite().getWorkbenchWindow().run(true, true, op);
+			doFirePropertyChange(PROP_TITLE);
 		} catch (Exception e) {
 			fModel.logError(e);
 		}
@@ -922,7 +924,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	
 	private void createTableColumns(Table table) {
 		IPreferenceStore store = getPreferenceStore();
-		String suffix = fModel.isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
+		String suffix = PreferenceConstants.getPreferenceSuffix(fModel.getType());
 		int sortColumn = store.getInt(PreferenceConstants.SORT_BY + suffix);
 		int sortDirection = store.getInt(PreferenceConstants.SORT_DIRECTION + suffix);
 		Integer[] visibleColumns = (Integer[]) PreferenceInitializer.split(store.getString(PreferenceConstants.VISIBLE_COLUMNS + suffix),
@@ -962,7 +964,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			return;
 		Table table = ((TableViewer) fZipViewer).getTable();
 		IPreferenceStore store = getPreferenceStore();
-		String suffix = fModel.isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
+		String suffix = PreferenceConstants.getPreferenceSuffix(fModel.getType());
 		TableColumn[] columns = table.getColumns();
 		int[] order = table.getColumnOrder();
 		for (int i = 0; i < columns.length; i++) {
@@ -976,7 +978,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 
 	private void handleSortColumnSelected(TableColumn column) {
 		IPreferenceStore store = getPreferenceStore();
-		String suffix = fModel.isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
+		String suffix = PreferenceConstants.getPreferenceSuffix(fModel.getType());
 		int sortColumn = store.getInt(PreferenceConstants.SORT_BY + suffix);
 		int sortDirection = store.getInt(PreferenceConstants.SORT_DIRECTION + suffix);
 		

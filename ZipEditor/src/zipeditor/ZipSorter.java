@@ -11,11 +11,12 @@ import org.eclipse.swt.SWT;
 
 import zipeditor.model.Node;
 import zipeditor.model.NodeProperty;
+import zipeditor.model.ZipModel;
 import zipeditor.model.ZipNode;
 import zipeditor.model.ZipNodeProperty;
 
 public class ZipSorter extends ViewerSorter {
-	private int fSortBy;
+	private int fSortBy = -1;
 	private int fSortDirection;
 	private boolean fSortEnabled;
 	private int fMode;
@@ -27,10 +28,14 @@ public class ZipSorter extends ViewerSorter {
 	
 	public ZipSorter(String preferencePrefix) {
 		fPreferencePrefix = preferencePrefix;
-		update(); 
+		if (preferencePrefix != PreferenceConstants.PREFIX_EDITOR)
+			initProps(null);
 	}
 
 	public int compare(Viewer viewer, Object e1, Object e2) {
+		if (fSortBy == -1) {
+			initProps(e1 instanceof Node ? ((Node) e1).getModel() : null);
+		}
 		if (!fSortEnabled)
 			return 0;
 		if (e1 instanceof Node && e2 instanceof Node) {
@@ -63,6 +68,8 @@ public class ZipSorter extends ViewerSorter {
 			return z1 instanceof ZipNode && z2 instanceof ZipNode ? compare(((ZipNode) z1).getCrc(), ((ZipNode) z2).getCrc(), ascending) : 0;
 		case ZipNodeProperty.ATTR:
 			return 0;
+		case ZipNodeProperty.METHOD:
+			return z1 instanceof ZipNode && z2 instanceof ZipNode ? compare(((ZipNode) z1).getMethod(), ((ZipNode) z2).getMethod(), !ascending) : 0;
 		case NodeProperty.PATH:
 			return compare(z1.getPath(), z2.getPath(), ascending);
 		}
@@ -86,12 +93,17 @@ public class ZipSorter extends ViewerSorter {
 		return l1 < l2 ? ascending ? -1 : 1 : ascending ? 1 : -1;
 	}
 
-	public void update() {
+	private void initProps(ZipModel model) {
 		IPreferenceStore store = ZipEditorPlugin.getDefault().getPreferenceStore();
-		fSortBy = store.getInt(PreferenceConstants.SORT_BY);
-		fSortDirection = store.getInt(PreferenceConstants.SORT_DIRECTION);
+		String suffix = model != null ? PreferenceConstants.getPreferenceSuffix(model.getType()) : ""; //$NON-NLS-1$
+		fSortBy = store.getInt(PreferenceConstants.SORT_BY + suffix);
+		fSortDirection = store.getInt(PreferenceConstants.SORT_DIRECTION + suffix);
 		fSortEnabled = store.getBoolean(fPreferencePrefix + PreferenceConstants.SORT_ENABLED);
 		fMode = store.getInt(fPreferencePrefix + PreferenceConstants.VIEW_MODE);
+	}
+
+	public void update() {
+		fSortBy = -1;
 	}
 	
 }

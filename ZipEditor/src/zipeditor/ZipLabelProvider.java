@@ -120,6 +120,8 @@ public class ZipLabelProvider extends LabelProvider implements ITableLabelProvid
 			return Long.toHexString(node instanceof ZipNode ? ((ZipNode) node).getCrc() : 0);
 		case ZipNodeProperty.RATIO:
 			return formatLong(Math.max(Math.round(node instanceof ZipNode ? ((ZipNode) node).getRatio() : 0), 0)) + "%"; //$NON-NLS-1$
+		case ZipNodeProperty.METHOD:
+			return node instanceof ZipNode ? Messages.getString("MappingPropertyAccessor." + ((ZipNode) node).getMethod()) : ""; //$NON-NLS-1$ //$NON-NLS-2$
 		case TarNodeProperty.GROUP_ID:
 			return Long.toString(node instanceof TarNode ? ((TarNode) node).getGroupId() : 0);
 		case TarNodeProperty.GROUP_NAME:
@@ -135,7 +137,7 @@ public class ZipLabelProvider extends LabelProvider implements ITableLabelProvid
 
 	private int[] initializeOrder(ZipModel model) {
 		IPreferenceStore store = ZipEditorPlugin.getDefault().getPreferenceStore();
-		String suffix = model.isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
+		String suffix = PreferenceConstants.getPreferenceSuffix(model.getType());
 		int[] values = (int[]) PreferenceInitializer.split(store.getString(PreferenceConstants.VISIBLE_COLUMNS + suffix),
 				PreferenceConstants.COLUMNS_SEPARATOR, int.class);
 		return values;
