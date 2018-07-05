@@ -39,6 +39,7 @@ public abstract class Node extends PlatformObject {
 	private final static int FOLDER = 0x01;
 	private final static int MODIFIED = 0x02;
 	private final static int ADDED = 0x04;
+	final static int PERSISTED = 0x08;
 
 	public Node(ZipModel model, String name, boolean isFolder) {
 		if (model == null)
@@ -125,7 +126,18 @@ public abstract class Node extends PlatformObject {
 	public boolean isFolder() {
 		return (state & FOLDER) > 0;
 	}
-	
+
+	public boolean isPersistedFolder() {
+		return isFolder() && (state & PERSISTED) > 0;
+	}
+
+	public void setPersistedFolder(boolean persisted) {
+		if (persisted == isPersistedFolder())
+			return;
+		state = (persisted ? state | PERSISTED : state & -1 ^ PERSISTED);
+		setModified(true);
+	}
+
 	public boolean isModified() {
 		return (state & MODIFIED) > 0;
 	}

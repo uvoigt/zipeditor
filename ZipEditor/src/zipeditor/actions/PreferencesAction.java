@@ -16,7 +16,6 @@ import zipeditor.ZipEditor;
 import zipeditor.ZipEditorPlugin;
 import zipeditor.model.NodeProperty;
 import zipeditor.model.TarNodeProperty;
-import zipeditor.model.ZipContentDescriber.ContentTypeId;
 import zipeditor.model.ZipNodeProperty;
 
 public class PreferencesAction extends EditorAction {
@@ -26,7 +25,7 @@ public class PreferencesAction extends EditorAction {
 
 		private ColumnAction(NodeProperty nodeProperty) {
 			super(nodeProperty.toString());
-			String suffix = fEditor.getModel().isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
+			String suffix = PreferenceConstants.getPreferenceSuffix(fEditor.getModel().getType());
 			fColumnsState = (Integer[]) PreferenceInitializer.split(
 					fEditor.getPreferenceStore().getString(PreferenceConstants.VISIBLE_COLUMNS + suffix),
 					PreferenceConstants.COLUMNS_SEPARATOR, Integer.class);
@@ -61,7 +60,7 @@ public class PreferencesAction extends EditorAction {
 		public void run() {
 			fEditor.storeTableColumnPreferences();
 			IPreferenceStore store = fEditor.getPreferenceStore();
-			String suffix = fEditor.getModel().isTar() ? PreferenceConstants.TAR_SUFFIX : ""; //$NON-NLS-1$
+			String suffix = PreferenceConstants.getPreferenceSuffix(fEditor.getModel().getType());
 			fColumnsState = update(fColumnsState, isChecked());
 			String newValue = PreferenceInitializer.join(fColumnsState, PreferenceConstants.COLUMNS_SEPARATOR);
 			store.setValue(PreferenceConstants.VISIBLE_COLUMNS + suffix, newValue);
@@ -98,7 +97,6 @@ public class PreferencesAction extends EditorAction {
 		manager.add(folders);
 		fillFoldersMenu(folders);
 		manager.add(new Separator());
-		manager.add(new ToggleStoreFoldersAction(fEditor));
 	}
 
 	private void fillColumnsMenu(MenuManager manager) {
@@ -107,17 +105,18 @@ public class PreferencesAction extends EditorAction {
 		manager.add(new ColumnAction(NodeProperty.PDATE));
 		manager.add(new ColumnAction(NodeProperty.PSIZE));
 		manager.add(new ColumnAction(NodeProperty.PPATH));
-		if (fEditor.getModel().isTar()) {
+		if (PreferenceConstants.getPreferenceSuffix(fEditor.getModel().getType()) == PreferenceConstants.TAR_SUFFIX) {
 			manager.add(new ColumnAction(TarNodeProperty.PUSER_ID));
 			manager.add(new ColumnAction(TarNodeProperty.PUSER_NAME));
 			manager.add(new ColumnAction(TarNodeProperty.PGROUP_ID));
 			manager.add(new ColumnAction(TarNodeProperty.PGROUP_NAME));
 			manager.add(new ColumnAction(TarNodeProperty.PMODE));
-		} else if (fEditor.getModel().getType() == ContentTypeId.ZIP_FILE) {
+		} else if (PreferenceConstants.getPreferenceSuffix(fEditor.getModel().getType()) == PreferenceConstants.ZIP_SUFFIX) {
 			manager.add(new ColumnAction(ZipNodeProperty.PPACKED_SIZE));
 			manager.add(new ColumnAction(ZipNodeProperty.PRATIO));
 			manager.add(new ColumnAction(ZipNodeProperty.PCRC));
 			manager.add(new ColumnAction(ZipNodeProperty.PATTR));
+			manager.add(new ColumnAction(ZipNodeProperty.PMETHOD));
 		}
 	}
 	

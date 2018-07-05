@@ -33,13 +33,7 @@ public class ZipNode extends Node {
 
 	public ZipNode(ZipModel model, ZipEntry entry, String name, boolean isFolder) {
 		this(model, name, isFolder);
-		zipEntry = entry;
-		if (entry != null) {
-			time = entry.getTime();
-			size = entry.getSize();
-			comment = entry.getComment();
-			method = entry.getMethod();
-		}
+		update(entry);
 	}
 	
 	public ZipNode(ZipModel model, String name, boolean isFolder) {
@@ -106,10 +100,13 @@ public class ZipNode extends Node {
 	}
 	
 	public void update(Object entry) {
-		if (!(entry instanceof ZipEntry))
-			return;
-		ZipEntry zipEntry = (ZipEntry) entry;
-		time = zipEntry.getTime();
+		if (entry instanceof ZipEntry) {
+			zipEntry = (ZipEntry) entry;
+			time = zipEntry.getTime();
+			size = zipEntry.getSize();
+			comment = zipEntry.getComment();
+			method = zipEntry.getMethod();
+		}
 	}
 	
 	public Node create(ZipModel model, String name, boolean isFolder) {

@@ -10,6 +10,8 @@ import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Group;
@@ -47,6 +49,7 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 	private Text fName;
 	private Text fPath;
 	private Text fType;
+	private TriStateCheckbox fPersisted;
 	private Text fDate;
 	private Text fSize;
 	
@@ -59,14 +62,35 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 		createLabel(control, NodeProperty.PNAME.toString(), 1);
 		fName = createText(control, 30, 1, true);
 		setFieldText(fName, accessor.getAccessor("name")); //$NON-NLS-1$
-		createLabel(control, NodeProperty.PTYPE.toString(), 1);
-		fType = createText(control, 30, 1, false);
 
+		createLabel(control, NodeProperty.PTYPE.toString(), 1);
+		Composite group = new Composite(control, SWT.NONE);
+		GridLayout layout = new GridLayout(2, false);
+		layout.marginWidth = layout.marginHeight = 0;
+		group.setLayout(layout);
+		GridData data = new GridData(GridData.FILL_HORIZONTAL);
+		data.widthHint = convertWidthInCharsToPixels(30);
+		group.setLayoutData(data);
+		fType = createText(group, 10, 1, false);
 		setFieldText(fType, new PropertyAccessor() {
 			public Object getPropertyValue(Object object) {
 				return ZipLabelProvider.getTypeLabel((Node) object);
 			}
 		});
+		Button button = createCheckbox(group);
+		fPersisted = new TriStateCheckbox(button);
+		fPersisted.setText(NodeProperty.PPERSISTED.toString());
+		select(fPersisted, accessor.getAccessor("persistedFolder")); //$NON-NLS-1$
+		Node[] nodes = getNodes();
+		boolean allFolders = true;
+		for (int i = 0; i < nodes.length; i++) {
+			if (nodes[i].isFolder())
+				continue;
+			allFolders = false;
+			break;
+		}
+		fPersisted.setEnabled(allFolders);
+
 		createLabel(control, NodeProperty.PPATH.toString(), 1);
 		fPath = createText(control, 30, 1, false);
 		setFieldText(fPath, accessor.getAccessor("path")); //$NON-NLS-1$
@@ -124,7 +148,22 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 		text.setEditable(editable);
 		return text;
 	}
-	
+
+	protected Combo createCombo(Composite parent, int width, int hspan) {
+		Combo combo = new Combo(parent, SWT.DROP_DOWN | SWT.READ_ONLY);
+		GridData data = new GridData(GridData.FILL_HORIZONTAL);
+		data.horizontalSpan = hspan;
+		data.widthHint = convertWidthInCharsToPixels(width);
+		combo.setLayoutData(data);
+		combo.add(nonEqualStringLabel);
+		return combo;
+	}
+
+	protected Button createCheckbox(Composite parent) {
+		Button box = new Button(parent, SWT.CHECK);
+		return box;
+	}
+
 	public boolean performOk() {
 		Node[] nodes = getNodes();
 		String name = fName.getText();
@@ -140,11 +179,15 @@ public abstract class NodePropertyPage extends MultiElementPropertyPage {
 				return false;
 			}
 		}
+		int persisted = fPersisted.getState();
 		for (int i = 0; i < nodes.length; i++) {
+			Node node = nodes[i];
 			if (!nonEqualStringLabel.equals(name))
-				nodes[i].setName(name);
+				node.setName(name);
 			if (time != null)
-				nodes[i].setTime(time.longValue());
+				node.setTime(time.longValue());
+			if (node.isFolder() && (persisted == TriStateCheckbox.SELECTED || persisted == TriStateCheckbox.UNSELECTED))
+				node.setPersistedFolder(persisted == TriStateCheckbox.SELECTED);
 		}
 		return true;
 	}

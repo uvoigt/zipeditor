@@ -37,7 +37,6 @@ import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
 
 import zipeditor.Messages;
-import zipeditor.PreferenceConstants;
 import zipeditor.Utils;
 import zipeditor.ZipEditorPlugin;
 import zipeditor.model.IModelListener.ModelChangeEvent;
@@ -54,22 +53,19 @@ public class ZipModel {
 
 		private OutputStream out;
 		private ContentTypeId type;
-		private boolean storeFolders;
 		private IProgressMonitor monitor;
 
-		SaveVisitor(OutputStream out, ContentTypeId type, boolean storeFolders, IProgressMonitor monitor) {
+		SaveVisitor(OutputStream out, ContentTypeId type, IProgressMonitor monitor) {
 			this.out = out;
 			this.type = type;
-			this.storeFolders = storeFolders;
 			this.monitor = monitor;
 		}
 
 		public Object visit(Node node, Object argument) {
 			try {
-				saveNode(out, node, type, storeFolders, monitor);
+				saveNode(out, node, type, monitor);
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				logError(e);
 			}
 			return null;
 		}
@@ -159,17 +155,6 @@ public class ZipModel {
 		}
 	}
 
-	public static boolean isTar(ContentTypeId type) {
-		switch (type.getOrdinal()) {
-		default:
-			return false;
-		case ContentTypeId.TAR:
-		case ContentTypeId.TBZ:
-		case ContentTypeId.TGZ:
-			return true;
-		}
-	}
-
 	private static boolean isTarArchive(InputStream bzip) throws IOException {
 		byte[] tarEntryHeader = new byte[TAR_MAGIC_OFFSET + TarConstants.MAGICLEN];
 		bzip.read(tarEntryHeader);
@@ -197,7 +182,6 @@ public class ZipModel {
 	private ContentTypeId type;
 	private File tempDir;
 	private final boolean readonly;
-	private Boolean storeFolders;
 	private final ListenerList listenerList = new ListenerList();
 	private final IErrorReporter errorReporter;
 	private InputStream inputStream;
@@ -365,13 +349,14 @@ public class ZipModel {
 			}
 			boolean isFolder = entryName.endsWith("/") || entryName.endsWith("\\") || //$NON-NLS-1$ //$NON-NLS-2$
 					(zipEntry != null && zipEntry.isDirectory() || tarEntry != null && tarEntry.isDirectory() || rpmEntry != null && rpmEntry.isDirectory());
-			if (isFolder && storeFolders == null)
-				storeFolders = Boolean.TRUE;
 			if (node == null)
 				node = root;
 			Node existingNode = n == -1 ? null : node.getChildByName(names[n], false);
 			if (existingNode != null) {
+				closeEntry(zipStream);
 				existingNode.update(zipEntry != null ? (Object) zipEntry : tarEntry != null ? (Object) tarEntry : rpmEntry);
+				if (isFolder)
+					existingNode.state |= Node.PERSISTED;
 			} else {
 				String name = n >= 0 ? names[n] : "/"; //$NON-NLS-1$
 				Node newChild = zipEntry != null ? new ZipNode(this, zipEntry, name, isFolder)
@@ -379,6 +364,8 @@ public class ZipModel {
 						: rpmEntry != null ? (Node) new RpmNode(this, rpmEntry, name, isFolder)
 								: zipStream instanceof CBZip2InputStream ? (Node) new Bzip2Node(
 										this, name, isFolder) : new GzipNode(this, name, isFolder);
+				if (isFolder)
+					newChild.state |= Node.PERSISTED;
 				node.add(newChild, null);
 				long entrySize = 0;
 				ByteArrayOutputStream out = null;
@@ -406,19 +393,23 @@ public class ZipModel {
 				if (participant != null) {
 					participant.streamAvailable(zipStream, newChild);
 				}
-				if (zipStream instanceof ZipInputStream) {
-					try {
-						((ZipInputStream) zipStream).closeEntry();
-					} catch (Exception e) {
-						logError(e);
-					}
-				}
+				closeEntry(zipStream);
 				newChild.setSize(zipEntry != null ? zipEntry.getSize()
 						: tarEntry != null ? tarEntry.getSize() : rpmEntry != null ? rpmEntry.getSize() : entrySize);
 				if (isStopNode)
 					break;
 			}
 			state &= -1 ^ INIT_STARTED;
+		}
+	}
+
+	private void closeEntry(InputStream zipStream) {
+		if (zipStream instanceof ZipInputStream) {
+			try {
+				((ZipInputStream) zipStream).closeEntry();
+			} catch (Exception e) {
+				logError(e);
+			}
 		}
 	}
 
@@ -481,13 +472,13 @@ public class ZipModel {
 				out.write(new byte[] { 'B', 'Z' });
 				out = new CBZip2OutputStream(out);
 				break;
+			case ContentTypeId.RPM:
+				throw new IllegalStateException("RPM files cannot be saved with that version of ZipEditor"); //$NON-NLS-1$
 			}
 			if (out instanceof TarOutputStream)
 				((TarOutputStream) out).setLongFileMode(TarOutputStream.LONGFILE_GNU);
-			root.accept(new SaveVisitor(out, type, isStoreFolders(), monitor), null);
+			root.accept(new SaveVisitor(out, type, monitor), null);
 //			setDirty(false);
-		} catch (Exception e) {
-			logError(e);
 		} finally {
 			out.close();
 			if (ZipEditorPlugin.DEBUG)
@@ -496,13 +487,13 @@ public class ZipModel {
 		return new FileInputStream(tmpFile);
 	}
 
-	private void saveNode(OutputStream out, Node node, ContentTypeId type, boolean storeFolders, IProgressMonitor monitor) throws IOException {
+	private void saveNode(OutputStream out, Node node, ContentTypeId type, IProgressMonitor monitor) throws IOException {
 		if (node instanceof RootNode || monitor.isCanceled())
 			return;
 
 		String entryName = node.getPath() + node.getName();
 		if (node.isFolder()) {
-			if (!storeFolders)
+			if (!node.isPersistedFolder())
 				return;
 			entryName = node.getPath();
 		}
@@ -611,9 +602,11 @@ public class ZipModel {
 	
 	protected void notifyListeners() {
 		Object[] listeners = listenerList.getListeners();
-		ModelChangeEvent event = new ModelChangeEvent(this);
-		for (int i = 0; i < listeners.length; i++) {
-			((IModelListener) listeners[i]).modelChanged(event);
+		if (listeners.length > 0) {
+			ModelChangeEvent event = new ModelChangeEvent(this);
+			for (int i = 0; i < listeners.length; i++) {
+				((IModelListener) listeners[i]).modelChanged(event);
+			}
 		}
 	}
 
@@ -688,10 +681,6 @@ public class ZipModel {
 		return type;
 	}
 	
-	public boolean isTar() {
-		return isTar(type);
-	}
-	
 	int getState() {
 		return state;
 	}
@@ -728,18 +717,5 @@ public class ZipModel {
 			node = node.getChildByName(names[i], false);
 		}
 		return node;
-	}
-
-	public boolean isStoreFolders() {
-		return storeFolders != null ? storeFolders.booleanValue() : ZipEditorPlugin.getDefault()
-				.getPreferenceStore().getBoolean(PreferenceConstants.STORE_FOLDERS_IN_ARCHIVES);
-	}
-
-	public void setStoreFolders(boolean store) {
-		if (storeFolders == null || storeFolders.booleanValue() != store) {
-			setDirty(true);
-			notifyListeners();
-		}
-		storeFolders = store ? Boolean.TRUE : Boolean.FALSE;
 	}
 }
