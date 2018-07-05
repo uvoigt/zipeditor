@@ -9,13 +9,15 @@ import java.io.InputStream;
 import org.junit.Before;
 import org.junit.Test;
 
+import zipeditor.model.ZipContentDescriber.ContentTypeId;
+
 public abstract class AbstractModelTest {
 
 	private ZipModel model;
 
 	public abstract String getArchiveName();
 
-	public abstract int getArchiveType();
+	public abstract ContentTypeId getArchiveType();
 
 	@Before
 	public void before() throws Exception {

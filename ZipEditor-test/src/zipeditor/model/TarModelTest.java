@@ -1,5 +1,6 @@
 package zipeditor.model;
 
+import zipeditor.model.ZipContentDescriber.ContentTypeId;
 
 public class TarModelTest extends AbstractModelTest {
 
@@ -9,8 +10,8 @@ public class TarModelTest extends AbstractModelTest {
 	}
 
 	@Override
-	public int getArchiveType() {
-		return ZipModel.TAR;
+	public ContentTypeId getArchiveType() {
+		return ContentTypeId.TAR_FILE;
 	}
 
 }

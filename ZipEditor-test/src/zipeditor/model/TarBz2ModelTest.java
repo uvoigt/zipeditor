@@ -1,5 +1,6 @@
 package zipeditor.model;
 
+import zipeditor.model.ZipContentDescriber.ContentTypeId;
 
 public class TarBz2ModelTest extends AbstractModelTest {
 
@@ -9,8 +10,8 @@ public class TarBz2ModelTest extends AbstractModelTest {
 	}
 
 	@Override
-	public int getArchiveType() {
-		return ZipModel.TARBZ2;
+	public ContentTypeId getArchiveType() {
+		return ContentTypeId.TBZ_FILE;
 	}
 
 }
