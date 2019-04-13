@@ -62,7 +62,8 @@ public class NavigatorZipContentProvider extends ZipContentProvider {
 			String contentTypeId = contentDescription.getContentType().getId();
 			return ZipContentDescriber.isForUs(contentTypeId);
 		} catch (CoreException e) {
-			ZipEditorPlugin.log(e);
+			// Don't care: file is either out of date or deleted or whatever,
+			// so it is not for us and we should not spam the log with errors about it
 			return false;
 		}
 	}
