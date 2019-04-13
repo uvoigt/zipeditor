@@ -3,7 +3,7 @@
    <description url="ZipEditor Updates">
       ZipEditor list of features
    </description>
-   <feature url="features/zipeditor_1.1.5.qualifier.jar" id="zipeditor" version="1.1.5.qualifier">
+   <feature url="features/zipeditor_1.1.6.qualifier.jar" id="zipeditor" version="1.1.6.qualifier">
       <category name="ZipEditor"/>
    </feature>
    <category-def name="ZipEditor" label="Eclipse ZipEditor">
