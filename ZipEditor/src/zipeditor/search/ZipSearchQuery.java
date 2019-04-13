@@ -5,8 +5,6 @@
 package zipeditor.search;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -102,12 +100,8 @@ public class ZipSearchQuery implements ISearchQuery {
 					List files = expandToFiles((File) element, new ArrayList(), fileNames, fileExtensions, monitor);
 					for (int i = 0; i < files.size(); i++) {
 						File file = (File) files.get(i);
-						try {
-							ZipModel model = new ZipModel(file, new FileInputStream(file));
-							models.add(model);
-						} catch (FileNotFoundException e) {
-							ZipEditorPlugin.log(e);
-						}
+						ZipModel model = new ZipModel(file, null);
+						models.add(model);
 					}
 				} else if (element instanceof IResource) {
 					getModelsFromResource(monitor, archiveContentType, models, (IResource) element);
@@ -151,7 +145,7 @@ public class ZipSearchQuery implements ISearchQuery {
 		IContentType contentType = description != null ? description.getContentType() : null;
 		IContentType baseType = contentType != null ? contentType.getBaseType() : null;
 		if (baseType != null && baseType.equals(archiveContentType)) {
-			ZipModel model = new ZipModel(file.getLocation().toFile(), file.getContents());
+			ZipModel model = new ZipModel(file.getLocation().toFile(), null);
 			models.add(model);
 		}
 	}
