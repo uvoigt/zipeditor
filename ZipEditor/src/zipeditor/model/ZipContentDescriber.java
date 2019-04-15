@@ -40,6 +40,8 @@ public class ZipContentDescriber implements IContentDescriber {
 		public final static ContentTypeId TBZ_FILE = add("tarbz2file", ContentTypeId.TBZ); //$NON-NLS-1$
 		public final static ContentTypeId RPM_FILE = add("rpmfile", ContentTypeId.RPM); //$NON-NLS-1$
 
+		private static void init() {}
+
 		private String id;
 		private int ordinal;
 		private ContentTypeId(String id, int ordinal) {
@@ -60,6 +62,11 @@ public class ZipContentDescriber implements IContentDescriber {
 	private final static Set STRINGS = new HashSet();
 
 	private static IContentType fArchiveContentType;
+	
+	static {
+		// force loading the class
+		ContentTypeId.init();
+	}
 
 	public static String[] getAllContentTypeIds() {
 		return (String[]) STRINGS.toArray(new String[STRINGS.size()]);
