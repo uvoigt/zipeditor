@@ -4,9 +4,9 @@
  */
 package zipeditor.actions;
 
+import org.eclipse.core.runtime.Assert;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
@@ -16,7 +16,6 @@ import org.eclipse.jface.action.IContributionItem;
 import org.eclipse.jface.action.IContributionManager;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
-import org.eclipse.jface.util.Assert;
 import org.eclipse.swt.widgets.Display;
 
 public class DeferredMenuManager extends MenuManager {
@@ -129,7 +128,7 @@ public class DeferredMenuManager extends MenuManager {
 	}
 
 	private static DeferredMenuManager getMenuFromRunningJob(Object jobFamily, Object propertyValue) {
-		Job[] jobs = Platform.getJobManager().find(jobFamily);
+		Job[] jobs = Job.getJobManager().find(jobFamily);
 		DeferredMenuManager menuFromRunningJob = null;
 		for (int i = 0; i < jobs.length; i++) {
 			Object property = jobs[i].getProperty(ID_PROPERTY_NAME);
