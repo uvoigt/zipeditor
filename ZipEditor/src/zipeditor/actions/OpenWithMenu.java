@@ -39,7 +39,7 @@ import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.TableViewer;
-import org.eclipse.jface.viewers.ViewerSorter;
+import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -373,7 +373,7 @@ public class OpenWithMenu extends ContributionItem {
 			TableViewer viewer = new TableViewer(parent, SWT.SINGLE | SWT.BORDER);
 			viewer.setContentProvider(new ArrayContentProvider());
 			viewer.setLabelProvider(new EditorDescriptorLabelProvider());
-			viewer.setSorter(new ViewerSorter());
+			viewer.setComparator(new ViewerComparator());
 			GridData data = new GridData(GridData.FILL_BOTH);
 			data.heightHint = convertHeightInCharsToPixels(14);
 			data.widthHint = convertWidthInCharsToPixels(45);

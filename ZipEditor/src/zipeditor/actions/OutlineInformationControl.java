@@ -206,7 +206,7 @@ public class OutlineInformationControl implements IInformationControl,
 		// with the lazy provider, filtering is bypassed
 		viewer.setContentProvider(new ZipContentProvider(PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER));
 		viewer.setLabelProvider(new ZipLabelProvider());
-		viewer.setSorter(new ZipSorter(PREFERENCE_SORTER));
+		viewer.setComparator(new ZipSorter(PREFERENCE_SORTER));
 		viewer.setComparer(comparer);
 		
 		viewer.getTable().addSelectionListener(new SelectionAdapter() {

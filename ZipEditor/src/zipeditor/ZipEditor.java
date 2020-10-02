@@ -28,9 +28,8 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Platform;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuListener;
@@ -166,7 +165,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			if (event.isInitializing() && !event.isInitStarted() && !event.isInitFinished())
 				scheduleTime = 2000;
 			if (event.isInitFinished()) {
-				Job[] jobs = Platform.getJobManager().find(jobFamily);
+				Job[] jobs = Job.getJobManager().find(jobFamily);
 				if (jobs != null) {
 					for (int i = 0; i < jobs.length; i++) {
 						jobs[i].cancel();
@@ -375,7 +374,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		monitor.beginTask(Messages.getString("ZipEditor.3"), 100); //$NON-NLS-1$
 		monitor.worked(1);
 		int totalWork = Utils.computeTotalNumber(root.getChildren(), monitor);
-		SubProgressMonitor subMonitor = new SubProgressMonitor(monitor, 99);
+		SubMonitor subMonitor = SubMonitor.convert(monitor, 99);
 		monitor.setTaskName(Messages.getString("ZipEditor.2")); //$NON-NLS-1$
 		monitor.subTask(locationPath.lastSegment());
 		subMonitor.beginTask(Messages.getString("ZipEditor.2") + locationPath, totalWork); //$NON-NLS-1$
@@ -712,7 +711,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		
 		viewer.setContentProvider(new LazyZipContentProvider(mode));
 		viewer.setLabelProvider(new ZipLabelProvider());
-		viewer.setSorter(new ZipSorter(PreferenceConstants.PREFIX_EDITOR));
+		viewer.setComparator(new ZipSorter(PreferenceConstants.PREFIX_EDITOR));
 		viewer.setComparer(new NodeComparer());
 		viewer.getControl().setLayoutData(new GridData(GridData.FILL_BOTH));
 		MenuManager manager = new MenuManager();
@@ -996,7 +995,7 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		}
 		store.setValue(PreferenceConstants.SORT_DIRECTION + suffix, sortDirection);
 		store.setValue(PreferenceConstants.SORT_BY + suffix, sortColumn);
-		((ZipSorter) fZipViewer.getSorter()).update();
+		((ZipSorter) fZipViewer.getComparator()).update();
 		fZipViewer.refresh();
 	}
 

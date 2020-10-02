@@ -74,7 +74,7 @@ public class ZipOutlinePage extends ContentOutlinePage {
 		super.createControl(parent);
 		getTreeViewer().setContentProvider(new ZipContentProvider(PreferenceConstants.VIEW_MODE_TREE));
 		getTreeViewer().setLabelProvider(new ZipLabelProvider());
-		getTreeViewer().setSorter(new ZipSorter(PreferenceConstants.PREFIX_OUTLINE));
+		getTreeViewer().setComparator(new ZipSorter(PreferenceConstants.PREFIX_OUTLINE));
 		getTreeViewer().setComparer(new NodeComparer());
 
 		createActions();

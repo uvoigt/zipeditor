@@ -6,7 +6,7 @@ package zipeditor;
 
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.viewers.Viewer;
-import org.eclipse.jface.viewers.ViewerSorter;
+import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 
 import zipeditor.model.Node;
@@ -15,7 +15,7 @@ import zipeditor.model.ZipModel;
 import zipeditor.model.ZipNode;
 import zipeditor.model.ZipNodeProperty;
 
-public class ZipSorter extends ViewerSorter {
+public class ZipSorter extends ViewerComparator {
 	private int fSortBy = -1;
 	private int fSortDirection;
 	private boolean fSortEnabled;

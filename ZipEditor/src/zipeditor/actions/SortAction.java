@@ -27,7 +27,7 @@ public class SortAction extends ViewerAction {
 	public void run() {
 		IPreferenceStore store = ZipEditorPlugin.getDefault().getPreferenceStore();
 		store.setValue(fPreferenceKey, !store.getBoolean(fPreferenceKey));
-		((ZipSorter) getViewer().getSorter()).update();
+		((ZipSorter) getViewer().getComparator()).update();
 
 		refreshViewer();
 		

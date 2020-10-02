@@ -9,7 +9,7 @@ import java.io.File;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.ui.progress.UIJob;
@@ -39,7 +39,7 @@ public class AddOperation {
 			monitor.worked(1);
 			int totalWork = Utils.computeTotalNumber(fFilesNames, monitor);
 			monitor.setTaskName(Messages.getString("AddOperation.2")); //$NON-NLS-1$
-			SubProgressMonitor subMonitor = new SubProgressMonitor(monitor, 99);
+			SubMonitor subMonitor = SubMonitor.convert(monitor, 99);
 			subMonitor.beginTask(Messages.getString("AddOperation.2"), totalWork); //$NON-NLS-1$
 			try {
 				boolean oneAdded = false;
