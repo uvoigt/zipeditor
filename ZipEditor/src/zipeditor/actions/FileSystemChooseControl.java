@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -496,9 +497,13 @@ public class FileSystemChooseControl extends Composite implements ISelectionProv
 			return ((IStructuredSelection) fTable.getSelection()).toList();
 		if (!fTree.getSelection().isEmpty())
 			return ((IStructuredSelection) fTree.getSelection()).toList();
+		return ignoreTextField ? Collections.EMPTY_LIST : getFileSelectionFromTextField();
+	}
+
+	public List getFileSelectionFromTextField() {
 		List list = new ArrayList(1);
 		String text = fText.getText();
-		if (!ignoreTextField && !fText.fEmptyText.equals(text)) {
+		if (!fText.fEmptyText.equals(text)) {
 			if (fUseWorkspace)
 				list.add(ResourcesPlugin.getWorkspace().getRoot().findMember(fText.getText()));
 			else

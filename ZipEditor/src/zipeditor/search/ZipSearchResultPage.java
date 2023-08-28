@@ -37,6 +37,11 @@ import org.eclipse.search.ui.IContextMenuConstants;
 import org.eclipse.search.ui.NewSearchUI;
 import org.eclipse.search.ui.text.AbstractTextSearchViewPage;
 import org.eclipse.search.ui.text.Match;
+import org.eclipse.swt.dnd.DND;
+import org.eclipse.swt.dnd.DragSourceAdapter;
+import org.eclipse.swt.dnd.DragSourceEvent;
+import org.eclipse.swt.dnd.FileTransfer;
+import org.eclipse.swt.dnd.Transfer;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IPageLayout;
 import org.eclipse.ui.IWorkbenchActionConstants;
@@ -48,6 +53,7 @@ import org.eclipse.ui.dialogs.PropertyDialogAction;
 import org.eclipse.ui.part.IShowInSource;
 import org.eclipse.ui.part.IShowInTargetList;
 import org.eclipse.ui.part.MultiPageEditorPart;
+import org.eclipse.ui.part.ResourceTransfer;
 import org.eclipse.ui.part.ShowInContext;
 import org.eclipse.ui.texteditor.ITextEditor;
 
@@ -78,7 +84,48 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 		}
 	}
 
-	private static final String[] SHOW_IN_TARGETS = new String[] { IPageLayout.ID_RES_NAV };
+	private class SearchResultDragAdapter extends DragSourceAdapter {
+		private ISelectionProvider fSelectionProvider;
+
+		public SearchResultDragAdapter(ISelectionProvider selectionProvider) {
+			fSelectionProvider = selectionProvider;
+		}
+
+		public void dragStart(DragSourceEvent event) {
+			ISelection selection = fSelectionProvider.getSelection();
+			Object[] objects = selection instanceof IStructuredSelection ? ((IStructuredSelection) selection).toArray() : null;
+			if (objects == null || objects.length == 0) {
+				event.doit = false;
+				return;
+			}
+			for (int i = 0; i < objects.length; i++) {
+				Object object = objects[i];
+				if (!(object instanceof PlainNode) && !(object instanceof Element)) {
+					event.doit = false;
+					return;
+				}
+			}
+		}
+
+		public void dragSetData(DragSourceEvent event) {
+			ISelection selection = fSelectionProvider.getSelection();
+			Object[] objects = selection instanceof IStructuredSelection ? ((IStructuredSelection) selection).toArray() : null;
+			String[] paths = new String[objects.length];
+			for (int i = 0; i < objects.length; i++) {
+				Object object = objects[i];
+				if (object instanceof PlainNode) {
+					paths[i] = ((PlainNode) object).getModel().getZipPath().getAbsolutePath();
+				} else if (object instanceof Element) {
+					IFile file = findIFileFromNode(object);
+					paths[i] = file != null ? file.getLocation().toFile().getAbsolutePath() : ((Element) object).getPath();
+				}
+			}
+			event.data = paths;
+		}
+
+	}
+
+	private static final String[] SHOW_IN_TARGETS = new String[] { IPageLayout.ID_PROJECT_EXPLORER };
 	private  static final IShowInTargetList SHOW_IN_TARGET_LIST = new IShowInTargetList() {
 		public String[] getShowInTargetIds() {
 			return SHOW_IN_TARGETS;
@@ -112,10 +159,17 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 	private void configureViewer(StructuredViewer viewer) {
 		viewer.setContentProvider(fContentProvider);
 		viewer.setLabelProvider(new ZipSearchLabelProvider(this));
+		addDragSupport(viewer);
 		fOpenActionGroup = new OpenActionGroup(viewer);
 		if (fPropertiesAction == null) {
 			fPropertiesAction = new PropertyDialogAction(getSite().getWorkbenchWindow(), getSite().getSelectionProvider());
-			fPropertiesAction.setActionDefinitionId(IWorkbenchCommandConstants.FILE_PROPERTIES);		}
+			fPropertiesAction.setActionDefinitionId(IWorkbenchCommandConstants.FILE_PROPERTIES);
+		}
+	}
+
+	private void addDragSupport(StructuredViewer viewer) {
+		Transfer[] transfers = new Transfer[] { FileTransfer.getInstance(), ResourceTransfer.getInstance() };
+		viewer.addDragSupport(DND.DROP_COPY | DND.DROP_LINK, transfers, new SearchResultDragAdapter(viewer));
 	}
 
 	protected void elementsChanged(Object[] input) {
@@ -141,9 +195,10 @@ public class ZipSearchResultPage extends AbstractTextSearchViewPage implements I
 		if (structuredSelection != null && structuredSelection.size() == 1) {
 			mgr.prependToGroup(IContextMenuConstants.GROUP_OPEN, new Separator());
 			Object[] fileAndNode = findFileFromNode(structuredSelection.getFirstElement());
-			
-			mgr.prependToGroup(IContextMenuConstants.GROUP_OPEN, new OpenArchiveAction(
-					getSite().getPage(), (File) fileAndNode[0], (Node) fileAndNode[1]));
+			if (!(fileAndNode[1] instanceof PlainNode)) {
+				mgr.prependToGroup(IContextMenuConstants.GROUP_OPEN, new OpenArchiveAction(
+						getSite().getPage(), (File) fileAndNode[0], (Node) fileAndNode[1]));
+			}
 		}
 		mgr.appendToGroup(IWorkbenchActionConstants.MB_ADDITIONS, fPropertiesAction);
 	}

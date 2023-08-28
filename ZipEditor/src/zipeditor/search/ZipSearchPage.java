@@ -53,6 +53,7 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 	private Button fRadioWorkspace;
 	private Button fRadioSelected;
 	private Button fRadioFileSystem;
+	private Button fCheckNonArchives;
 	private FileSystemChooseControl fFileSystemChooser;
 
 	private final String fDefaultEncoding = WorkbenchEncoding.getWorkbenchDefaultEncoding();
@@ -144,6 +145,9 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 		fRadioFileSystem = new Button(group, SWT.RADIO);
 		fRadioFileSystem.setText(SearchMessages.getString("ZipSearchPage.4")); //$NON-NLS-1$
 
+		fCheckNonArchives = new Button(parent, SWT.CHECK);
+		fCheckNonArchives.setText(SearchMessages.getString("ZipSearchPage.7")); //$NON-NLS-1$
+
 		fFileSystemChooser = new FileSystemChooseControl(group, false, true, true);
 		fFileSystemChooser.setLayoutData(new GridData(GridData.FILL, SWT.FILL, true, true, 3, 1));
 
@@ -163,6 +167,7 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 		fNodeNamePatterns.setText(options.getNodeNamePattern() != null ? options.getNodeNamePattern() : ""); //$NON-NLS-1$
 		fEncodingCombo.setText(options.getEncoding() != null ? options.getEncoding() : fDefaultEncoding);
 		fCaseSensitiveButton.setSelection(options.isCaseSensitive());
+		fCheckNonArchives.setSelection(options.isNonArchives());
 
 		if (fRadioSelected.isEnabled())
 			fRadioSelected.setSelection(options.getScope() == ZipSearchOptions.SCOPE_SELECTED);
@@ -176,7 +181,7 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 		String encoding = fEncodingCombo.getText();
 		if (encoding.length() == 0)
 			encoding = fDefaultEncoding;
-		ZipSearchOptions options = new ZipSearchOptions(fNodeNamePatterns.getText(), fSearchText.getText(), encoding, fCaseSensitiveButton.getSelection(), scope);
+		ZipSearchOptions options = new ZipSearchOptions(fNodeNamePatterns.getText(), fSearchText.getText(), encoding, fCaseSensitiveButton.getSelection(), scope, fCheckNonArchives.getSelection());
 
 		List elements = new ArrayList();
 		if (scope == ZipSearchOptions.SCOPE_WORKSPACE) {
@@ -192,7 +197,7 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 			}
 			options.setElements(elements);
 		} else if (scope == ZipSearchOptions.SCOPE_FILESYSTEM) {
-			final List fileSelection = fFileSystemChooser.getFileSelection(false);
+			final List fileSelection = fFileSystemChooser.getFileSelectionFromTextField();
 			options.setPath(fileSelection);
 			options.setElements(fileSelection);
 			elements.addAll(fileSelection);
@@ -251,7 +256,8 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 				String encoding = h.get("encoding"); //$NON-NLS-1$
 				int scope = h.getInt("scope"); //$NON-NLS-1$
 				String[] path = h.getArray("path"); //$NON-NLS-1$
-				options = new ZipSearchOptions(nodeNamePattern, pattern, encoding, caseSensitive, scope);
+				boolean nonArchives = h.getBoolean("nonArchives"); //$NON-NLS-1$
+				options = new ZipSearchOptions(nodeNamePattern, pattern, encoding, caseSensitive, scope, nonArchives);
 				if (path != null) {
 					List files = new ArrayList();
 					for (int i = 0; i < path.length; i++) {
@@ -270,7 +276,7 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 		fNodeNamePatterns.setItems((String[]) namePatterns.toArray(new String[namePatterns.size()]));
 		fEncodingCombo.setItems((String[]) encodings.toArray(new String[encodings.size()]));
 		if (options == null)
-			options = new ZipSearchOptions(null, "", null, false, ZipSearchOptions.SCOPE_WORKSPACE); //$NON-NLS-1$
+			options = new ZipSearchOptions(null, "", null, false, ZipSearchOptions.SCOPE_WORKSPACE, false); //$NON-NLS-1$
 
 		boolean isScopeSelectedPossible = isScopeSelectedPossible();
 		if (options.getScope() == ZipSearchOptions.SCOPE_SELECTED && !isScopeSelectedPossible)
@@ -313,6 +319,8 @@ public class ZipSearchPage extends DialogPage implements ISearchPage {
 				h.put("encoding", options.getEncoding()); //$NON-NLS-1$
 			if (options.isCaseSensitive())
 				h.put("case", true); //$NON-NLS-1$
+			if (options.isNonArchives())
+				h.put("nonArchives", true); //$NON-NLS-1$
 			h.put("scope", options.getScope()); //$NON-NLS-1$
 			List files = options.getPath();
 			if (files != null) {

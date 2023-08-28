@@ -30,7 +30,7 @@ public class ZipSearchResultCollector {
 	}
 
 	public void accept(List parentNodes, Node node, boolean onNodeName, int offset, int length) {
-		if (node.getParentNodes() == null)
+		if (!(node instanceof PlainNode) && node.getParentNodes() == null)
 			node.setParentNodes(new ArrayList(parentNodes));
 		fResult.addMatch(new ZipMatch(node, onNodeName, offset, length));
 	}

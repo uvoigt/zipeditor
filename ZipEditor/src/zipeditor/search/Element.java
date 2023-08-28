@@ -10,18 +10,24 @@ import org.eclipse.ui.model.WorkbenchAdapter;
 
 public class Element extends WorkbenchAdapter implements IAdaptable {
 
+	public static final int UNKNOWN = 0;
+	public static final int ZIP = 1;
+	public static final int FOLDER = 2;
+
 	private final Object fParent;
 	private final String fPath;
 	private final String fFileName;
 	private final Long fSize;
 	private final Long fLastModified;
+	private final int fType;
 
-	public Element(Object parent, String path, String fileName, Long size, Long lastModified) {
+	public Element(Object parent, String path, String fileName, Long size, Long lastModified, int type) {
 		fParent = parent;
 		fPath = path;
 		fFileName = fileName;
 		fSize = size;
 		fLastModified = lastModified;
+		fType = type;
 	}
 
 	public String getFileName() {
@@ -44,9 +50,15 @@ public class Element extends WorkbenchAdapter implements IAdaptable {
 		return fLastModified;
 	}
 
+	public int getType() {
+		return fType;
+	}
+
 	public Object getAdapter(Class adapter) {
-		if (adapter == IWorkbenchAdapter.class)
+		if (adapter == IWorkbenchAdapter.class || adapter == Element.class)
 			return this;
+		if (adapter == Integer.class)
+			return Integer.valueOf(fType);
 		return null;
 	}
 

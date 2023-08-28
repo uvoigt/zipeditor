@@ -6,16 +6,21 @@ package zipeditor.search;
 
 import java.io.File;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.core.filesystem.EFS;
 import org.eclipse.core.filesystem.IFileInfo;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TreeViewer;
@@ -31,9 +36,10 @@ public class ZipSearchContentProvider extends ZipContentProvider {
 	private StructuredViewer fViewer;
 	private Map fElementsToFiles = new HashMap();
 	private Map fTreeChildren = new HashMap();
+	private Set fModels = new HashSet();
 
 	public ZipSearchContentProvider(int viewMode) {
-		super(viewMode, true);
+		super(viewMode);
 	}
 
 	public void elementsChanged(Object[] elements) {
@@ -45,10 +51,13 @@ public class ZipSearchContentProvider extends ZipContentProvider {
 				} else {
 					if (fViewer instanceof TableViewer) {
 						((TableViewer) fViewer).add(element);
+						if (element instanceof Node && !(element instanceof PlainNode))
+							fModels.add(((Node) element).getModel());
 					} else if (fViewer instanceof TreeViewer) {
 						Node node = (Node) element;
 						element = createTreeElement(node);
-						((TreeViewer) fViewer).add(fViewer.getInput(), element);
+						if (element != null)
+							((TreeViewer) fViewer).add(fViewer.getInput(), element);
 					}
 				}
 			} else {
@@ -67,39 +76,45 @@ public class ZipSearchContentProvider extends ZipContentProvider {
 		if (parentElement instanceof ZipSearchResult) {
 			ZipSearchResult result = (ZipSearchResult) parentElement;
 			if (fViewer instanceof TreeViewer) {
-				List children = (List) fTreeChildren.get(parentElement);
-				return children != null ? children.toArray() : new Object[0];
+				Map children = (Map) fTreeChildren.get(parentElement);
+				return children != null ? children.keySet().toArray() : new Object[0];
 			} else {
 				return result.getElements();
 			}
 		} else if (parentElement instanceof Element) {
-			List children = (List) fTreeChildren.get(parentElement);
-			return children != null ? children.toArray() : new Object[0];
+			Map children = (Map) fTreeChildren.get(parentElement);
+			return children != null ? children.keySet().toArray() : new Object[0];
 		} else {
 			return super.getChildren(parentElement);
 		}
 	}
 
-	private Element createTreeElement(Node node) {
+	protected Object[] getNodeChildren(Node node) {
+		if (!(node instanceof PlainNode))
+			fModels.add(node.getModel());
+		return super.getNodeChildren(node);
+	}
+
+	private Object createTreeElement(Node node) {
 		Element root = null;
+		int elementType = node instanceof PlainNode ? Element.FOLDER : Element.ZIP;
 		List parentNodes = node.getParentNodes();
-		if (parentNodes.size() > 0) {
+		if (parentNodes != null && parentNodes.size() > 0) {
 			ZipModel model = ((Node) parentNodes.get(0)).getModel();
 			File file = model.getZipPath();
 			root = (Element) fElementsToFiles.get(file);
 			if (root == null) {
-				root = createRootElement(file);
+				root = createRootElement(file, elementType);
 				fElementsToFiles.put(file, root);
 			}
 			Element element = root;
 			for (int j = 0; j < parentNodes.size(); j++) {
 				Node parentNode = (Node) parentNodes.get(j);
 				Element child = new Element(element, parentNode.getPath(), parentNode.getName(),
-						Long.valueOf(parentNode.getSize()), Long.valueOf(parentNode.getTime()));
-				List children = (List) fTreeChildren.get(element);
-				int childIndex = children != null ? children.indexOf(child) : -1;
-				if (childIndex != -1)
-					child = (Element) children.get(childIndex);
+						Long.valueOf(parentNode.getSize()), Long.valueOf(parentNode.getTime()), Element.ZIP);
+				Map children = (Map) fTreeChildren.get(element);
+				if (children != null && children.containsKey(child))
+					child = (Element) children.get(child);
 				else
 					addChild(element, child);
 				element = child;
@@ -109,17 +124,22 @@ public class ZipSearchContentProvider extends ZipContentProvider {
 		if (root == null) {
 			File file = node.getModel().getZipPath();
 			root = (Element) fElementsToFiles.get(file);
-			if (root == null) {
-				root = createRootElement(file);
+			boolean rootWasNull = root == null;
+			if (rootWasNull) {
+				root = createRootElement(file, elementType);
 				fElementsToFiles.put(file, root);
 			}
 			addChild(root, node);
+			if (!rootWasNull)
+				return null;
 		}
 		return root;
 	}
 
-	private Element createRootElement(File file) {
+	private Element createRootElement(File file, int type) {
 		Element root = null;
+		List path = ((ZipSearchQuery) fSearchResult.getQuery()).getOptions().getPath();
+		IPath searchPath = path != null && !path.isEmpty() ? Path.fromPortableString(((File) path.get(0)).getAbsolutePath()) : null;
 		if (((ZipSearchQuery) fSearchResult.getQuery()).getOptions().getScope() != ZipSearchOptions.SCOPE_FILESYSTEM) {
 			URI fileLocation = file.toURI();
 			IFile[] workspaceFiles = ResourcesPlugin.getWorkspace().getRoot().findFilesForLocationURI(fileLocation);
@@ -133,11 +153,18 @@ public class ZipSearchContentProvider extends ZipContentProvider {
 					lastModified = Long.valueOf(info.getLastModified());
 				} catch (CoreException e) {
 				}
-				root = new Element(fSearchResult, wsFile.getFullPath().toString(), wsFile.getName(), size, lastModified);
+				root = new Element(fSearchResult, wsFile.getFullPath().toString(), wsFile.getName(), size, lastModified, type);
 			}
 		}
-		if (root == null)
-			root = new Element(fSearchResult, file.getAbsolutePath(), file.getName(), Long.valueOf(file.length()), Long.valueOf(file.lastModified()));
+		if (root == null) {
+			if (type == Element.FOLDER) {
+				File folder = file.getParentFile();
+				IPath relativeTo = Path.fromPortableString(folder.getAbsolutePath()).makeRelativeTo(searchPath);
+				root = new Element(fSearchResult, folder.getAbsolutePath(), relativeTo.toString(), null, Long.valueOf(folder.lastModified()), type);
+			} else {
+				root = new Element(fSearchResult, file.getAbsolutePath(), file.getName(), Long.valueOf(file.length()), Long.valueOf(file.lastModified()), type);
+			}
+		}
 		addChild(fSearchResult, root);
 		return root;
 	}
@@ -160,6 +187,14 @@ public class ZipSearchContentProvider extends ZipContentProvider {
 		fViewer.refresh();
 	}
 
+	protected void disposeModels() {
+		for (Iterator it = fModels.iterator(); it.hasNext();) {
+			ZipModel model = (ZipModel) it.next();
+			model.dispose();
+		}
+		fModels.clear();
+	}
+
 	private void initTree() {
 		Object[] elements = fSearchResult.getElements();
 		for (int i = 0; i < elements.length; i++) {
@@ -169,14 +204,14 @@ public class ZipSearchContentProvider extends ZipContentProvider {
 	}
 
 	private void addChild(Object parent, Object child) {
-		List children = (List) fTreeChildren.get(parent);
+		Map children = (Map) fTreeChildren.get(parent);
 		if (children == null) {
-			children = new ArrayList();
+			children = new LinkedHashMap();
 			fTreeChildren.put(parent, children);
 		}
 		if (child instanceof Node)
 			((Node) child).setProperty("parent", parent); //$NON-NLS-1$
-		children.add(child);
+		children.put(child, child);
 	}
 
 	private void removeChild(Object child) {
@@ -186,7 +221,7 @@ public class ZipSearchContentProvider extends ZipContentProvider {
 		} else if (child instanceof Element) {
 			parent = ((Element) child).getParent(null);
 		}
-		List siblings = (List) fTreeChildren.get(parent);
+		Map siblings = (Map) fTreeChildren.get(parent);
 		if (siblings != null) {
 			siblings.remove(child);
 			if (siblings.isEmpty()) {

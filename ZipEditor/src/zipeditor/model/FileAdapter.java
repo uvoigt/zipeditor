@@ -8,6 +8,7 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 
 import zipeditor.Utils;
 import zipeditor.operations.ExtractOperation;
+import zipeditor.search.PlainNode;
 
 public class FileAdapter implements IAdaptable {
 	private Node fNode;
@@ -43,7 +44,9 @@ public class FileAdapter implements IAdaptable {
 
 	private IFileStore extractNode() {
 		ExtractOperation operation = new ExtractOperation();
-		File path = operation.extract(fNode, fNode.getModel().getTempDir(), true, new NullProgressMonitor());
+		File path = fNode instanceof PlainNode
+				? fNode.getModel().getZipPath().getAbsoluteFile()
+				: operation.extract(fNode, fNode.getModel().getTempDir(), true, new NullProgressMonitor());
 		return Utils.getFileStore(path);
 	}
 

@@ -4,17 +4,29 @@
  */
 package zipeditor.search;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
+import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.IResourceVisitor;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.content.IContentDescription;
+import org.eclipse.core.runtime.content.IContentType;
 
+import zipeditor.ZipEditorPlugin;
 import zipeditor.actions.StringMatcher;
 import zipeditor.model.IModelInitParticipant;
 import zipeditor.model.Node;
@@ -28,13 +40,14 @@ public class ZipSearchEngine implements IModelInitParticipant {
 	private String fEncoding;
 	private StringMatcher[] fNodeNameMatchers;
 	private boolean fCaseSensitive;
+	private boolean fNonArchives;
 	private ZipSearchResultCollector fCollector;
 	private IProgressMonitor fMonitor;
 	private final List fParentNodes = new ArrayList();
 
-	public IStatus search(ZipSearchOptions options, ZipModel[] models, ZipSearchResultCollector collector) {
+	public IStatus search(ZipSearchOptions options, List elements, ZipSearchResultCollector collector) {
 		IProgressMonitor monitor = collector.getfMonitor();
-		monitor.beginTask("", models.length); //$NON-NLS-1$
+		monitor.beginTask("", IProgressMonitor.UNKNOWN); //$NON-NLS-1$
 
 		if (options.getNodeNamePattern() != null && options.getNodeNamePattern().length() > 0) {
 			String[] patterns = options.getNodeNamePattern().split(","); //$NON-NLS-1$
@@ -44,23 +57,100 @@ public class ZipSearchEngine implements IModelInitParticipant {
 			}
 		}
 		fCaseSensitive = options.isCaseSensitive();
+		fNonArchives = options.isNonArchives();
 		String pattern = fCaseSensitive ? options.getPattern() : options.getPattern().toLowerCase();
 		fPattern = pattern.toCharArray();
 		fEncoding = options.getEncoding();
 		fCollector = collector;
 		fMonitor = monitor;
 
-		for (int i = 0; i < models.length; i++) {
-			Object[] args = { models[i].getZipPath().getName() };
-			String taskName = MessageFormat.format(SearchMessages.getString("ZipSearchEngine.0"), args); //$NON-NLS-1$
-			monitor.setTaskName(taskName);
-			searchZipModel(models[i]);
-			if (monitor.isCanceled())
-				break;
-			monitor.worked(1);
+		final IContentType archiveContentType = ZipContentDescriber.getArchiveContentType();
+
+		for (Iterator it = elements.iterator(); it.hasNext();) {
+			Object element = it.next();
+			ZipModel model = null;
+
+			try {
+				if (element instanceof IFile) {
+					model = createModelForFile((IFile) element, options.isNonArchives(), archiveContentType);
+				} else if (element instanceof File) {
+					searchPlainFile((File) element, options.isNonArchives(), monitor);
+				} else if (element instanceof IResource) {
+					searchResource((IResource) element, options.isNonArchives(), archiveContentType, monitor);
+				} else if (element instanceof IAdaptable) {
+					element = ((IAdaptable) element).getAdapter(IResource.class);
+					if (element instanceof IResource)
+						searchResource((IResource) element, options.isNonArchives(), archiveContentType, monitor);
+				} else if (element instanceof Node) {
+					Node node = (Node) element;
+					if (node.getModel().getZipPath() != null)
+						model = node.getModel();
+				}
+			} catch (CoreException e) {
+				ZipEditorPlugin.log(e);
+			}
+			internalSearch(model, monitor);
 		}
 		monitor.done();
 		return monitor.isCanceled() ? Status.CANCEL_STATUS : Status.OK_STATUS;
+	}
+
+	private ZipModel createModelForFile(IFile file, boolean nonArchives, IContentType archiveContentType) throws CoreException {
+		IContentDescription description = file.getContentDescription();
+		IContentType contentType = description != null ? description.getContentType() : null;
+		IContentType baseType = contentType != null ? contentType.getBaseType() : null;
+		if (baseType != null && baseType.equals(archiveContentType)) {
+			return new ZipModel(file.getLocation().toFile(), null);
+		} else if (nonArchives) {
+			return new PlainModel(file.getLocation().toFile(), null);
+		}
+		return null;
+	}
+
+	private void searchPlainFile(File file, boolean nonArchives, IProgressMonitor monitor) {
+		if (file.isDirectory()) {
+			File[] children = file.listFiles();
+			if (children != null) {
+				String taskName = MessageFormat.format(SearchMessages.getString("ZipSearchEngine.1"), new Object[] {file.getName()}); //$NON-NLS-1$
+				monitor.setTaskName(taskName);
+				for (int i = 0; i < children.length; i++) {
+					if (monitor.isCanceled())
+						break;
+					searchPlainFile(children[i], nonArchives, monitor);
+				}
+			}
+		} else if (file.isFile() && ZipContentDescriber.matchesFileSpec(file.getName(), fFileNames, fFileExtensions)) {
+			internalSearch(new ZipModel(file, null), monitor);
+		} else if (file.isFile() && nonArchives) {
+			internalSearch(new PlainModel(file, null), monitor);
+		}
+	}
+
+	private void searchResource(IResource resource, final boolean nonArchives, final IContentType archiveContentType, final IProgressMonitor monitor) throws CoreException {
+		resource.accept(new IResourceVisitor() {
+			public boolean visit(IResource resource) throws CoreException {
+				if (monitor.isCanceled())
+					throw new OperationCanceledException();
+
+				if (resource instanceof IContainer) {
+					monitor.subTask(resource.getFullPath().toString());
+				} else if (resource instanceof IFile) {
+					internalSearch(createModelForFile((IFile) resource, nonArchives, archiveContentType), monitor);
+				}
+				return true;
+			}
+		}, IResource.DEPTH_INFINITE, false);
+	}
+
+	private void internalSearch(ZipModel zipModel, IProgressMonitor monitor) {
+		if (zipModel != null) {
+			if (!(zipModel instanceof PlainModel)) {
+				String taskName = MessageFormat.format(SearchMessages.getString("ZipSearchEngine.0"), new Object[] {zipModel.getZipPath().getName()}); //$NON-NLS-1$
+				monitor.setTaskName(taskName);
+			}
+			searchZipModel(zipModel);
+			monitor.worked(1);
+		}
 	}
 
 	private void searchZipModel(ZipModel model) {
@@ -68,10 +158,10 @@ public class ZipSearchEngine implements IModelInitParticipant {
 	}
 
 	private void searchNode(List parentNodes, Node node, InputStream inputStream, StringMatcher[] nodeNameMatchers, char[] pattern,
-			String encoding, boolean caseSensitive, ZipSearchResultCollector collector, IProgressMonitor monitor) {
+			String encoding, boolean caseSensitive, boolean nonArchives, ZipSearchResultCollector collector, IProgressMonitor monitor) {
 		if (!monitor.isCanceled() && !node.isFolder()) {
 			try {
-				searchNodeContent(parentNodes, node, inputStream, nodeNameMatchers, pattern, encoding, caseSensitive, collector);
+				searchNodeContent(parentNodes, node, inputStream, nodeNameMatchers, pattern, encoding, caseSensitive, nonArchives, collector);
 			} catch (IOException e) {
 				node.getModel().logError(e);
 			}
@@ -79,9 +169,9 @@ public class ZipSearchEngine implements IModelInitParticipant {
 	}
 
 	private void searchNodeContent(List parentNodes, Node node, InputStream in, StringMatcher[] nodeNameMatchers,
-			char pattern[], String encoding, boolean caseSensitive, ZipSearchResultCollector collector) throws IOException {
+			char pattern[], String encoding, boolean caseSensitive, boolean nonArchives, ZipSearchResultCollector collector) throws IOException {
 
-		if (ZipContentDescriber.matchesFileSpec(node.getName(), fFileNames, fFileExtensions)) {
+		if (!nonArchives && ZipContentDescriber.matchesFileSpec(node.getName(), fFileNames, fFileExtensions)) {
 			ZipModel model = new ZipModel(null, in);
 			parentNodes.add(node);
 			searchZipModel(model);
@@ -159,7 +249,7 @@ public class ZipSearchEngine implements IModelInitParticipant {
 	}
 
 	public void streamAvailable(InputStream inputStream, Node node) {
-		searchNode(fParentNodes, node, inputStream, fNodeNameMatchers, fPattern, fEncoding, fCaseSensitive, fCollector, fMonitor);
+		searchNode(fParentNodes, node, inputStream, fNodeNameMatchers, fPattern, fEncoding, fCaseSensitive, fNonArchives, fCollector, fMonitor);
 	}
 
 	public List getParentNodes() {

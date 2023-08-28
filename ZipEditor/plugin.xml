@@ -205,9 +205,31 @@
             objectClass="zipeditor.model.TarNode"/>
       <page
             class="zipeditor.search.ElementPropertyPage"
-            id="zipeditor.search.ElementPropertyPage"
+            id="zipeditor.search.ArchivePropertyPage"
             name="%page.name.2"
-            objectClass="zipeditor.search.Element"/>
+            objectClass="zipeditor.search.Element">
+            <enabledWhen>
+               <adapt type="java.lang.Integer">
+                  <equals value="1"/>
+               </adapt>
+            </enabledWhen>
+      </page>
+      <page
+            class="zipeditor.search.ElementPropertyPage"
+            id="zipeditor.search.FolderPropertyPage"
+            name="%page.name.4"
+            objectClass="zipeditor.search.Element">
+            <enabledWhen>
+               <adapt type="java.lang.Integer">
+                  <equals value="2"/>
+               </adapt>
+            </enabledWhen>
+      </page>
+      <page
+            class="zipeditor.search.ElementPropertyPage"
+            id="zipeditor.search.NodePropertyPage"
+            name="%page.name.5"
+            objectClass="zipeditor.search.PlainNode"/>
       <page
             class="zipeditor.RpmNodePropertyPage"
             id="zipeditor.RpmNodePropertyPage"

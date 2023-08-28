@@ -6,13 +6,17 @@ package zipeditor.search;
 
 import java.io.InputStream;
 
+import org.eclipse.core.filesystem.EFS;
+import org.eclipse.core.filesystem.IFileStore;
 import org.eclipse.core.resources.IStorage;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.ui.IPersistableElement;
 import org.eclipse.ui.IStorageEditorInput;
 
+import zipeditor.model.FileAdapter;
 import zipeditor.model.Node;
 
 public class ResultEditorInput implements IStorageEditorInput {
@@ -35,15 +39,18 @@ public class ResultEditorInput implements IStorageEditorInput {
 		}
 		
 		public InputStream getContents() throws CoreException {
-			return fNode.getContent();
+			IFileStore file = (IFileStore) fFileAdapter.getAdapter(IFileStore.class);
+			return file != null ? file.openInputStream(EFS.NONE, new NullProgressMonitor()) : fNode.getContent();
 		}
 	};
 	private final Node fNode;
 	private final String fEncoding;
+	private final FileAdapter fFileAdapter;
 
 	ResultEditorInput(Node node, String encoding) {
 		fNode = node;
 		fEncoding = encoding;
+		fFileAdapter = new FileAdapter(node);
 	}
 
 	public boolean equals(Object obj) {
@@ -57,7 +64,7 @@ public class ResultEditorInput implements IStorageEditorInput {
 	}
 
 	public String getToolTipText() {
-		return ZipSearchLabelProvider.getNodeText(fNode, fNode.getParentNodes(), 0);
+		return fNode instanceof PlainNode ? fNode.getModel().getZipPath().getAbsolutePath() : ZipSearchLabelProvider.getNodeText(fNode, fNode.getParentNodes(), 0);
 	}
 
 	public IPersistableElement getPersistable() {

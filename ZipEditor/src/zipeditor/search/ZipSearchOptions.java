@@ -18,13 +18,15 @@ public class ZipSearchOptions {
 	private int fScope;
 	private List fPath;
 	private List fElements;
+	private boolean fNonArchives;
 
-	public ZipSearchOptions(String nodeNamePattern, String pattern, String encoding, boolean caseSensitive, int scope) {
+	public ZipSearchOptions(String nodeNamePattern, String pattern, String encoding, boolean caseSensitive, int scope, boolean nonArchives) {
 		fNodeNamePattern = nodeNamePattern;
 		fPattern = pattern;
 		fEncoding = encoding;
 		fCaseSensitive = caseSensitive;
 		fScope = scope;
+		fNonArchives = nonArchives;
 	}
 
 	public String getNodeNamePattern() {
@@ -81,6 +83,14 @@ public class ZipSearchOptions {
 
 	public void setElements(List elements) {
 		fElements = elements;
+	}
+
+	public boolean isNonArchives() {
+		return fNonArchives;
+	}
+
+	public void setNonArchives(boolean nonArchives) {
+		fNonArchives = nonArchives;
 	}
 
 	public int hashCode() {

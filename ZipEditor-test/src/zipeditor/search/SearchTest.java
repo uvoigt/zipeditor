@@ -55,12 +55,37 @@ public class SearchTest {
 	}
 
 	@Test
+	public void searchZipAndOtherFiles() {
+		File path = new File("resources");
+		List<File> files = new ArrayList<File>();
+		files.add(path);
+
+		ZipSearchOptions options = new ZipSearchOptions("", "Uwe Voigt", "Cp1252", false, ZipSearchOptions.SCOPE_FILESYSTEM, true);
+		ZipSearchQuery query = new ZipSearchQuery(options, files);
+		IStatus status = query.run(new NullProgressMonitor());
+
+		Assert.assertNotNull(status);
+		Assert.assertEquals(IStatus.OK, status.getCode());
+
+		ZipSearchResult result = (ZipSearchResult) query.getSearchResult();
+
+		Assert.assertNotNull(result);
+		int archives = 3 * 2 * 6;
+		int gz = 9;
+		int large = 1;
+		int plain = 2 * 3;
+		Assert.assertEquals(archives + gz + plain + large, result.getMatchCount());
+		Object[] elements = result.getElements();
+		Assert.assertEquals(16, elements.length);
+	}
+
+	@Test
 	public void largeSearch() throws Exception {
 		File path = new File("resources/large.zip");
 		List<File> files = new ArrayList<File>();
 		files.add(path);
 
-		ZipSearchOptions options = new ZipSearchOptions("", "Uwe Voigt", "Cp1252", true, ZipSearchOptions.SCOPE_WORKSPACE);
+		ZipSearchOptions options = new ZipSearchOptions("", "Uwe Voigt", "Cp1252", true, ZipSearchOptions.SCOPE_WORKSPACE, false);
 		ZipSearchQuery query = new ZipSearchQuery(options, files);
 		IStatus status = query.run(new NullProgressMonitor());
 
@@ -86,7 +111,7 @@ public class SearchTest {
 		List<File> files = new ArrayList<File>();
 		files.add(path);
 
-		ZipSearchOptions options = new ZipSearchOptions("", new String(new byte[] {(byte) 0xe8, (byte)0xa1, (byte)0x8b}, "UTF8"), "UTF8", false, ZipSearchOptions.SCOPE_WORKSPACE);
+		ZipSearchOptions options = new ZipSearchOptions("", new String(new byte[] {(byte) 0xe8, (byte)0xa1, (byte)0x8b}, "UTF8"), "UTF8", false, ZipSearchOptions.SCOPE_WORKSPACE, false);
 		ZipSearchQuery query = new ZipSearchQuery(options, files);
 		IStatus status = query.run(new NullProgressMonitor());
 
@@ -108,7 +133,7 @@ public class SearchTest {
 		List<File> files = new ArrayList<File>();
 		files.add(path);
 
-		ZipSearchOptions options = new ZipSearchOptions("", "Uwe Voigt", "Cp1252", false, ZipSearchOptions.SCOPE_WORKSPACE);
+		ZipSearchOptions options = new ZipSearchOptions("", "Uwe Voigt", "Cp1252", false, ZipSearchOptions.SCOPE_WORKSPACE, false);
 		ZipSearchQuery query = new ZipSearchQuery(options, files);
 		IStatus status = query.run(new NullProgressMonitor());
 

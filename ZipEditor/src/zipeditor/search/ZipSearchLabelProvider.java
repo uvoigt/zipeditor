@@ -10,6 +10,8 @@ import org.eclipse.search.ui.text.AbstractTextSearchResult;
 import org.eclipse.search.ui.text.AbstractTextSearchViewPage;
 import org.eclipse.search.ui.text.Match;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.ui.ISharedImages;
+import org.eclipse.ui.PlatformUI;
 
 import zipeditor.ZipEditorPlugin;
 import zipeditor.ZipLabelProvider;
@@ -67,7 +69,14 @@ public class ZipSearchLabelProvider extends ZipLabelProvider {
 
 	public Image getImage(Object element) {
 		if (element instanceof Element) {
-			return ZipEditorPlugin.getImage("icons/zipicon.gif"); //$NON-NLS-1$
+			switch (((Element) element).getType()) {
+			case Element.FOLDER:
+				return PlatformUI.getWorkbench().getSharedImages().getImage(ISharedImages.IMG_OBJ_FOLDER);
+			case Element.ZIP:
+				return ZipEditorPlugin.getImage("icons/zipicon.gif"); //$NON-NLS-1$
+			default:
+				throw new IllegalArgumentException();
+			}
 		} else {
 			return super.getImage(element);
 		}

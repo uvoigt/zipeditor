@@ -30,7 +30,7 @@ public class ElementPropertyPage extends PropertyPage {
 		Composite control = new Composite(parent, SWT.NONE);
 		control.setLayout(new GridLayout(2, false));
 
-		Element element = (Element) getElement();
+		Element element = (Element) getElement().getAdapter(Element.class);
 
 		Label label = new Label(control, SWT.LEFT);
 		label.setText(SearchMessages.getString("ElementPropertyPage.0")); //$NON-NLS-1$
@@ -55,7 +55,9 @@ public class ElementPropertyPage extends PropertyPage {
 		label.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false));
 		fType = new StyledText(control, SWT.LEFT | SWT.READ_ONLY);
 		IContentType contentType = Platform.getContentTypeManager().findContentTypeFor(element.getFileName());
-		fType.setText(contentType.getName());
+		fType.setText(contentType != null ? contentType.getName() :
+			element.getType() == Element.FOLDER ? SearchMessages.getString("ElementPropertyPage.7") //$NON-NLS-1$
+			: SearchMessages.getString("ElementPropertyPage.6")); //$NON-NLS-1$
 		fType.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
 		fType.setBackground(control.getBackground());
 
