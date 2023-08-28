@@ -2,7 +2,7 @@
 <feature
       id="zipeditor"
       label="%featureName"
-      version="1.1.8.qualifier"
+      version="1.1.9.qualifier"
       provider-name="%providerName">
 
    <description url="%descriptionUrl">
