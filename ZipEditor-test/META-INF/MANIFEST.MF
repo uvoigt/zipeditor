@@ -9,6 +9,7 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.core.filesystem,
  org.eclipse.search,
  ZipEditor,
- org.junit
+ org.junit,
+ org.apache.commons.commons-compress
 Eclipse-LazyStart: false
 Bundle-Vendor: %Bundle-Vendor.0

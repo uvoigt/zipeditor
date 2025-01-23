@@ -14,12 +14,14 @@ public class NodeProperty {
 	public static final int SIZE = 4;
 	public static final int PATH = 9;
 	public static final int PERSISTED = 12;
+	public static final int METHOD = 13;
 	public static final NodeProperty PNAME = new NodeProperty(NAME);
 	public static final NodeProperty PTYPE = new NodeProperty(TYPE);
 	public static final NodeProperty PDATE = new NodeProperty(DATE);
 	public static final NodeProperty PSIZE = new NodeProperty(SIZE);
 	public static final NodeProperty PPATH = new NodeProperty(PATH);
 	public static final NodeProperty PPERSISTED = new NodeProperty(PERSISTED);
+	public static final NodeProperty PMETHOD = new NodeProperty(METHOD);
 	protected int type;
 
 	protected NodeProperty(int type) {

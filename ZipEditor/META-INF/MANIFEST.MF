@@ -2,9 +2,12 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Automatic-Module-Name: %Bundle-Name.0
 Bundle-Name: %Bundle-Name.0
+Bundle-RequiredExecutionEnvironment: JavaSE-21
 Bundle-SymbolicName: ZipEditor;singleton:=true
 Bundle-Version: 1.1.9.qualifier
 Bundle-Activator: zipeditor.ZipEditorPlugin
+Bundle-ClassPath: .,
+ lib/aircompressor-0.27.jar
 Bundle-Localization: plugin
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.core.resources,
@@ -18,8 +21,9 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.search,
  org.apache.ant,
  org.apache.commons.commons-io,
- org.apache.commons.commons-compress;bundle-version="1.27.1",
- org.apache.commons.lang3;bundle-version="3.17.0"
+ org.apache.commons.lang3;bundle-version="3.17.0",
+ org.apache.commons.commons-compress;bundle-version="1.28.0",
+ wrapped.io.airlift.aircompressor;bundle-version="2.0.2"
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: %Bundle-Vendor.0
 Export-Package: zipeditor,

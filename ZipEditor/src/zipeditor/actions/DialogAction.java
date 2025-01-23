@@ -19,7 +19,10 @@ import org.eclipse.jface.viewers.StructuredViewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Label;
@@ -30,6 +33,8 @@ import zipeditor.ZipEditorPlugin;
 
 public abstract class DialogAction extends ViewerAction {
 
+	private boolean zstdCompression = false;
+	
 	private class FileDialog extends Dialog implements ISelectionChangedListener {
 		private FileSystemChooseControl fWorkspaceViewer;
 		private FileSystemChooseControl fFileSystemViewer;
@@ -40,9 +45,11 @@ public abstract class DialogAction extends ViewerAction {
 		private boolean fMultiSelection;
 		private boolean fShowFiles;
 		private File fInitialSelection;
+		private boolean fAllowZstd;
 
-		private FileDialog(String text) {
+		private FileDialog(String text, boolean allowZstd) {
 			super(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell());
+			fAllowZstd = allowZstd;
 			setShellStyle(getShellStyle() | SWT.SHELL_TRIM);
 			fText = text;
 		}
@@ -68,6 +75,19 @@ public abstract class DialogAction extends ViewerAction {
 			fStatusLabel = new Label(control, SWT.LEFT | SWT.WRAP);
 			fStatusLabel.setLayoutData(new GridData(GridData.FILL, SWT.END, true, false));
 			
+			if (fAllowZstd) {
+				Button useZstdCheckbox = new Button(control, SWT.CHECK);
+				useZstdCheckbox.setText("Use Zstd Compression"); //$NON-NLS-1$
+				useZstdCheckbox.setSelection(zstdCompression);
+				useZstdCheckbox.addSelectionListener(new SelectionAdapter() {
+					
+					@Override
+					public void widgetSelected(SelectionEvent e) {
+						zstdCompression = useZstdCheckbox.getSelection();			
+					}
+					
+				});
+			}
 			applyDialogFont(control);
 			return control;
 		}
@@ -168,12 +188,16 @@ public abstract class DialogAction extends ViewerAction {
 		super(text, viewer);
 	}
 
-	protected File[] openDialog(String text, File path, boolean multiSelection, boolean showFiles) {
-		FileDialog dialog = new FileDialog(text);
+	protected File[] openDialog(String text, File path, boolean multiSelection, boolean showFiles, boolean allowZstd) {
+		FileDialog dialog = new FileDialog(text, allowZstd);
 		dialog.setMultiSelection(multiSelection);
 		dialog.setShowFiles(showFiles);
 		dialog.setSelection(path);
 		int result = dialog.open();
 		return result == Window.OK ? dialog.getFiles() : null;
+	}
+	
+	public boolean isZstdCompression() {
+		return zstdCompression;
 	}
 }

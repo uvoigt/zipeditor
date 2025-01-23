@@ -5,6 +5,9 @@
 package zipeditor.model;
 
 import org.apache.commons.compress.archivers.zip.ZipFile;
+
+import io.airlift.compress.zstd.ZstdInputStream;
+
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import java.io.IOException;
 import java.io.InputStream;
@@ -85,7 +88,7 @@ public class ZipNode extends Node {
 		if (in != null)
 			return in;
 		if (zipEntry != null) {
-			return model.getZipPath() != null ? new EntryStream(zipEntry, ZipFile.builder().setFile(model.getZipPath()).get()) : null;
+			return model.getZipPath() != null ? new EntryStream(zipEntry, ZipFile.builder().setZstdInputStreamFactory(ZstdInputStream::new).setFile(model.getZipPath()).get()) : null;
 		}
 		return null;
 	}

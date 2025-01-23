@@ -25,13 +25,15 @@ public class AddOperation {
 		private Node fParentNode;
 		private Node fBeforeSibling;
 		private UIJob fRefreshJob;
+		private boolean fUseZstdCompression;
 
-		public AddFilesJob(File[] filesNames, Node parentNode, Node beforeSibling, UIJob refreshJob) {
+		public AddFilesJob(File[] filesNames, Node parentNode, Node beforeSibling, UIJob refreshJob, boolean useZstdCompression) {
 			super(Messages.getString("AddOperation.1")); //$NON-NLS-1$
 			fFilesNames = filesNames;
 			fParentNode = parentNode;
 			fBeforeSibling = beforeSibling;
 			fRefreshJob = refreshJob;
+			fUseZstdCompression = useZstdCompression;
 		}
 
 		public IStatus run(IProgressMonitor monitor) {
@@ -47,7 +49,7 @@ public class AddOperation {
 					if (subMonitor.isCanceled())
 						break;
 					try {
-						fParentNode.add(fFilesNames[i], fBeforeSibling, subMonitor);
+						fParentNode.add(fFilesNames[i], fBeforeSibling, subMonitor, fUseZstdCompression);
 						oneAdded = true;
 					} catch (Exception e) {
 						return ZipEditorPlugin.createErrorStatus(Messages.getString("AddOperation.0"), e); //$NON-NLS-1$
@@ -82,14 +84,14 @@ public class AddOperation {
 	};
 
 	public void execute(String[] fileNames, Node parentNode, Node beforeSibling, StructuredViewer viewer) {
-		execute(getFilesFromNames(fileNames), parentNode, beforeSibling, viewer);
+		execute(getFilesFromNames(fileNames), parentNode, beforeSibling, viewer, false);
 	}
 
-	public void execute(File[] fileNames, Node parentNode, Node beforeSibling, StructuredViewer viewer) {
+	public void execute(File[] fileNames, Node parentNode, Node beforeSibling, StructuredViewer viewer, boolean useZstdCompression) {
 		
 		while (parentNode != null && !parentNode.isFolder())
 			parentNode = parentNode.getParent();
-		AddFilesJob addFilesJob = new AddFilesJob(fileNames, parentNode, beforeSibling, new RefreshJob(viewer));
+		AddFilesJob addFilesJob = new AddFilesJob(fileNames, parentNode, beforeSibling, new RefreshJob(viewer), useZstdCompression);
 		addFilesJob.schedule();
 	}
 
