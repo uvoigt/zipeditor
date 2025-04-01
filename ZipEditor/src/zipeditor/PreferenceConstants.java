@@ -26,6 +26,10 @@ public class PreferenceConstants {
 
 	public final static String SORT_ENABLED = "SORT_ENABLED"; //$NON-NLS-1$
 
+	public final static String ACTIVATE_ZSTD_LIB = "ACTIVE_ZSTD"; //$NON-NLS-1$
+	
+	public static final String SELECTED_ZSTD_LIB = "selectedZstdLib"; //$NON-NLS-1$
+
 	public final static String EXTERNAL_EDITORS = "EXTERNAL_EDITORS"; //$NON-NLS-1$
 	
 	public final static String PREFIX_EDITOR = "editor"; //$NON-NLS-1$

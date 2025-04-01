@@ -5,8 +5,11 @@
 package zipeditor.model;
 
 import org.apache.commons.compress.archivers.zip.ZipFile;
+import org.apache.commons.compress.compressors.zstandard.ZstdUtils;
 
 import io.airlift.compress.zstd.ZstdInputStream;
+import zipeditor.Utils;
+import zipeditor.preferences.PreferenceUtils;
 
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import java.io.IOException;
@@ -88,7 +91,20 @@ public class ZipNode extends Node {
 		if (in != null)
 			return in;
 		if (zipEntry != null) {
-			return model.getZipPath() != null ? new EntryStream(zipEntry, ZipFile.builder().setZstdInputStreamFactory(ZstdInputStream::new).setFile(model.getZipPath()).get()) : null;
+			if (!PreferenceUtils.isZstdActive()) {
+				throw new IOException("Support for zstd is deactivated. Please check the zip editor settings."); //$NON-NLS-1$
+			}
+			if (PreferenceUtils.isAircompressorSelected()) {
+				if (!Utils.isAircompressorAvailable()) {
+					throw new IOException("Aircompressor is selected, but its not available."); //$NON-NLS-1$
+				}
+				return model.getZipPath() != null ? new EntryStream(zipEntry, ZipFile.builder().setZstdInputStreamFactory(ZstdInputStream::new).setFile(model.getZipPath()).get()) : null;
+			} else if (PreferenceUtils.isJNIZstdSelected()) {
+				if (!ZstdUtils.isZstdCompressionAvailable()) {
+					throw new IOException("zstd-jni is selected, but its not available."); //$NON-NLS-1$
+				}
+				return model.getZipPath() != null ? new EntryStream(zipEntry, ZipFile.builder().setFile(model.getZipPath()).get()) : null;
+			}
 		}
 		return null;
 	}

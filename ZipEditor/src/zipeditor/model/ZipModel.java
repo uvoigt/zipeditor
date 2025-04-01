@@ -24,6 +24,7 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.apache.commons.compress.archivers.zip.ZipMethod;
+import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStream;
 import org.apache.tools.bzip2.CBZip2InputStream;
 import org.apache.tools.bzip2.CBZip2OutputStream;
 import org.apache.tools.tar.TarConstants;
@@ -45,6 +46,7 @@ import zipeditor.Utils;
 import zipeditor.ZipEditorPlugin;
 import zipeditor.model.IModelListener.ModelChangeEvent;
 import zipeditor.model.ZipContentDescriber.ContentTypeId;
+import zipeditor.preferences.PreferenceUtils;
 import zipeditor.rpm.RpmEntry;
 import zipeditor.rpm.RpmInputStream;
 
@@ -550,7 +552,15 @@ public class ZipModel {
 		else if (out instanceof TarOutputStream)
 			((TarOutputStream) out).putNextEntry(tarEntry);
 		if (node instanceof ZipNode && ((ZipNode)node).getMethod() == ZipMethod.ZSTD.getCode()) {
-			ZstdOutputStream zstdOutput = new ZstdOutputStream(noClose(out));
+			OutputStream zstdOutput = null;
+			if (!PreferenceUtils.isZstdActive()) {
+				throw new IOException("ZSTD Compression was selected, but its not active");
+			}
+			if (PreferenceUtils.isAircompressorSelected()) {
+				zstdOutput = new ZstdOutputStream(noClose(out));
+			} else if (PreferenceUtils.isJNIZstdSelected()) {
+				zstdOutput = new ZstdCompressorOutputStream(noClose(out));
+			}
 			Utils.readAndWrite(node.getContent(), zstdOutput, false);
 			zstdOutput.flush();
 			zstdOutput.close();

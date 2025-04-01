@@ -38,6 +38,7 @@ public class ZipNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 		fMethod = createCombo(control, 30, 1);
 		fMethod.add(Messages.getString("MappingPropertyAccessor.8")); //$NON-NLS-1$
 		fMethod.add(Messages.getString("MappingPropertyAccessor.0")); //$NON-NLS-1$
+		fMethod.add(Messages.getString("MappingPropertyAccessor.93")); //$NON-NLS-1$
 		select(fMethod, new MappingPropertyAccessor(ZipNode.class).getAccessor("method")); //$NON-NLS-1$
 		createLabel(control, ZipNodeProperty.PPACKED_SIZE.toString(), 1);
 		fPackedSize = createText(control, 30, 1, false);

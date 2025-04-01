@@ -10,6 +10,9 @@ Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.search,
  ZipEditor,
  org.junit,
- org.apache.commons.commons-compress
+ org.apache.commons.commons-compress,
+ org.apache.commons.commons-io;bundle-version="2.16.1",
+ wrapped.io.airlift.aircompressor,
+ org.eclipse.ui;bundle-version="3.206.0"
 Eclipse-LazyStart: false
 Bundle-Vendor: %Bundle-Vendor.0

@@ -311,6 +311,22 @@ public class Utils {
 		return null;
 	}
 
+	private static boolean hasAircompressor;
+	private static boolean checked;
+	public static boolean isAircompressorAvailable() {
+		if (checked) 
+			return hasAircompressor;
+
+		checked = true;
+		try {
+			Class.forName("io.airlift.compress.zstd.ZstdInputStream"); //$NON-NLS-1$
+			hasAircompressor = true;
+		} catch (ClassNotFoundException e) {
+			hasAircompressor = true;
+		}
+		return hasAircompressor;
+	}
+
 	private Utils() {
 	}
 }

@@ -23,9 +23,12 @@ Require-Bundle: org.eclipse.core.runtime,
  org.apache.commons.commons-io,
  org.apache.commons.lang3;bundle-version="3.17.0",
  org.apache.commons.commons-compress;bundle-version="1.28.0",
- wrapped.io.airlift.aircompressor;bundle-version="2.0.2"
+ com.github.luben.zstd-jni;bundle-version="1.5.7";resolution:=optional
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: %Bundle-Vendor.0
 Export-Package: zipeditor,
  zipeditor.model,
+ zipeditor.preferences,
  zipeditor.search
+Import-Package: io.airlift.compress;version="[2.0.0,3.0.0)";resolution:=optional,
+ io.airlift.compress.zstd;version="[2.0.0,3.0.0)";resolution:=optional
