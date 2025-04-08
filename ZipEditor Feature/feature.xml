@@ -2,7 +2,7 @@
 <feature
       id="zipeditor"
       label="%featureName"
-      version="1.1.9.qualifier"
+      version="1.2.0.qualifier"
       provider-name="%providerName">
 
    <description url="%descriptionUrl">
@@ -23,9 +23,6 @@
 
    <plugin
          id="ZipEditor"
-         download-size="304"
-         install-size="570"
-         version="0.0.0"
-         unpack="false"/>
+         version="0.0.0"/>
 
 </feature>
