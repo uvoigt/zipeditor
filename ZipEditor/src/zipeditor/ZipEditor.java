@@ -131,6 +131,7 @@ import zipeditor.model.Node;
 import zipeditor.model.NodeProperty;
 import zipeditor.model.ZipContentDescriber;
 import zipeditor.model.ZipContentDescriber.ContentTypeId;
+import zipeditor.model.ZipEditorZstdException;
 import zipeditor.model.ZipModel;
 import zipeditor.model.ZipModel.IErrorReporter;
 import zipeditor.model.ZipNodeProperty;
@@ -569,6 +570,9 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	
 	public void reportError(IStatus message) {
 		ZipEditorActionBarContributor contributor = (ZipEditorActionBarContributor) getEditorSite().getActionBarContributor();
+		if (message.getException() instanceof ZipEditorZstdException) {
+			doShowErrorDialog(message.getException());
+		}
 		contributor.reportError(this, message);
 	}
 	

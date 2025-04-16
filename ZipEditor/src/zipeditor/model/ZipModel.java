@@ -24,7 +24,6 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.apache.commons.compress.archivers.zip.ZipMethod;
-import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStream;
 import org.apache.tools.bzip2.CBZip2InputStream;
 import org.apache.tools.bzip2.CBZip2OutputStream;
 import org.apache.tools.tar.TarConstants;
@@ -38,15 +37,15 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.ListenerList;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.dialogs.ErrorDialog;
+import org.eclipse.swt.widgets.Display;
 
-import io.airlift.compress.zstd.ZstdInputStream;
-import io.airlift.compress.zstd.ZstdOutputStream;
 import zipeditor.Messages;
 import zipeditor.Utils;
 import zipeditor.ZipEditorPlugin;
 import zipeditor.model.IModelListener.ModelChangeEvent;
 import zipeditor.model.ZipContentDescriber.ContentTypeId;
-import zipeditor.preferences.PreferenceUtils;
+import zipeditor.model.zstd.ZstdUtilities;
 import zipeditor.rpm.RpmEntry;
 import zipeditor.rpm.RpmInputStream;
 
@@ -113,7 +112,7 @@ public class ZipModel {
 					
 					@Override
 					protected InputStream createZstdInputStream(InputStream in) throws IOException {
-						return new ZstdInputStream(in);
+						return ZstdUtilities.getInputStream(in);
 					}
 					
 				};
@@ -122,6 +121,9 @@ public class ZipModel {
 					return ContentTypeId.ZIP_FILE;
 				}
 			} catch (IOException ioe) {
+				if (ioe instanceof ZipEditorZstdException) {
+					throw ioe;
+				}
 				// thrown in getNextEntry() method if, if file is not a zip file.
 			}
 			contents.reset();
@@ -168,6 +170,10 @@ public class ZipModel {
 			return ContentTypeId.TAR_FILE;
 
 		} catch (IOException e) {
+			if (e instanceof ZipEditorZstdException) {
+				ErrorDialog.openError(Display.getDefault().getActiveShell(), "Zstd in Zip File Detected", e.getMessage(), ZipEditorPlugin.log(e));;
+				return ContentTypeId.INVAILD;
+			}
 			throw new IllegalStateException(e);
 		}
 	}
@@ -319,11 +325,13 @@ public class ZipModel {
 				else if (zipStream instanceof RpmInputStream)
 					rpmEntry = ((RpmInputStream) zipStream).getNextEntry();
 			} catch (Exception e) {
-				String message = "Error reading archive"; //$NON-NLS-1$
-				if (zipPath != null)
-					message += " " + zipPath.getAbsolutePath(); //$NON-NLS-1$
-				logError(ZipEditorPlugin.createErrorStatus(message, e));
-				break;
+				if (!(e instanceof ZipEditorZstdException)) {
+					String message = "Error reading archive"; //$NON-NLS-1$
+					if (zipPath != null)
+						message += " " + zipPath.getAbsolutePath(); //$NON-NLS-1$
+					logError(ZipEditorPlugin.createErrorStatus(message, e));
+					break;
+				}
 			}
 			if ((!isNoEntry && zipEntry == null && tarEntry == null && rpmEntry == null) || (isNoEntry && root.children != null)) {
 				state &= -1 ^ DIRTY;
@@ -448,7 +456,7 @@ public class ZipModel {
 			return new ZipArchiveInputStream(in) {
 				@Override
 				protected InputStream createZstdInputStream(InputStream in) throws IOException {
-					return new ZstdInputStream(in);
+					return ZstdUtilities.getInputStream(in);
 				}
 			};
 		case ContentTypeId.TAR:
@@ -552,15 +560,7 @@ public class ZipModel {
 		else if (out instanceof TarOutputStream)
 			((TarOutputStream) out).putNextEntry(tarEntry);
 		if (node instanceof ZipNode && ((ZipNode)node).getMethod() == ZipMethod.ZSTD.getCode()) {
-			OutputStream zstdOutput = null;
-			if (!PreferenceUtils.isZstdActive()) {
-				throw new IOException("ZSTD Compression was selected, but its not active");
-			}
-			if (PreferenceUtils.isAircompressorSelected()) {
-				zstdOutput = new ZstdOutputStream(noClose(out));
-			} else if (PreferenceUtils.isJNIZstdSelected()) {
-				zstdOutput = new ZstdCompressorOutputStream(noClose(out));
-			}
+			OutputStream zstdOutput = ZstdUtilities.getOutputStream(out);
 			Utils.readAndWrite(node.getContent(), zstdOutput, false);
 			zstdOutput.flush();
 			zstdOutput.close();
@@ -576,25 +576,6 @@ public class ZipModel {
 		if (tarEntry != null)
 			((TarOutputStream) out).closeEntry();
 		monitor.worked(1);
-	}
-
-	private OutputStream noClose(OutputStream out) {
-		return new OutputStream() {
-			@Override
-			public void write(byte[] b) throws IOException {
-				out.write(b);
-			}
-			
-			@Override
-			public void write(int b) throws IOException {
-				out.write(b);
-			}
-			
-			@Override
-			public void write(byte[] b, int off, int len) throws IOException {
-				out.write(b, off, len);
-			}
-		};
 	}
 
 	private void handleCrc(Node child, String entryName, ZipArchiveEntry zipEntry) throws IOException {
