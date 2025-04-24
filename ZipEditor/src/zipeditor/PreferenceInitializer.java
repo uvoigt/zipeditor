@@ -64,8 +64,7 @@ public class PreferenceInitializer extends AbstractPreferenceInitializer {
 		store.setDefault(PreferenceConstants.PREFIX_NAVIGATOR + PreferenceConstants.SORT_ENABLED, true);
 		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.VIEW_MODE, PreferenceConstants.VIEW_MODE_FOLDERS_ONE_LAYER);
 		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SORT_ENABLED, true);
-		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.ACTIVATE_ZSTD_LIB, true);
-		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SELECTED_ZSTD_LIB, PreferenceUtils.AIRCOMPRESSOR); //$NON-NLS-1$
+		store.setDefault(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.ACTIVATE_ZSTD_LIB, false);
 		store.setDefault(PreferenceConstants.SORT_BY, defaultSortBy);
 		store.setDefault(PreferenceConstants.SORT_DIRECTION, SWT.UP);
 		store.setDefault(PreferenceConstants.VISIBLE_COLUMNS, defaultVisibleColumns);

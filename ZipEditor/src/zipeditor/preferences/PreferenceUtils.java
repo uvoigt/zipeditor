@@ -1,9 +1,14 @@
 package zipeditor.preferences;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.eclipse.jface.preference.IPreferenceStore;
 
 import zipeditor.PreferenceConstants;
 import zipeditor.ZipEditorPlugin;
+import zipeditor.model.zstd.ZstdUtilities;
 
 public class PreferenceUtils {
 
@@ -27,9 +32,26 @@ public class PreferenceUtils {
 	}
 
 	/**
+	 * Returns the available libraries. its a two dimensional array as the libs above but contains only the available ones.
+	 * @return the array of available libraries.
+	 */
+	public static String[][] getAvailableLibraries() {
+		List<String[]> availableLibs = new ArrayList<String[]>();
+		List<String[]> asList = Arrays.asList(libs);
+		for (String[] libData : asList) {
+			if (libData[1].equals(JNI_LIBRARY) && ZstdUtilities.isZstdJniCompressionAvailable()) {
+				availableLibs.add(libData);
+			} else if (libData[1].equals(AIRCOMPRESSOR) && ZstdUtilities.isAircompressorAvailable()) {
+				availableLibs.add(libData);
+			}
+		}
+		return availableLibs.toArray(new String[0][]);
+	}
+
+	/**
 	 * @return true, if the zstd handling is active.
 	 */
-	public static boolean isZstdActive() {
+	static boolean isZstdActive() {
 		IPreferenceStore preferenceStore = ZipEditorPlugin.getDefault().getPreferenceStore();
 		return preferenceStore.getBoolean(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.ACTIVATE_ZSTD_LIB);
 	}
@@ -50,5 +72,35 @@ public class PreferenceUtils {
 		String selectedLib = getSelectedZstdLib();
 
 		return AIRCOMPRESSOR.equals(selectedLib);
+	}
+
+	/**
+	 * Checks if any zstd library is available and the zstd active pref is true.
+	 * 
+	 * @return
+	 */
+	public static boolean isZstdAvailableAndActive() {
+		return isZstdActive() && getAvailableLibraries().length > 0;
+	}
+
+	/**
+	 * Checks if the selected library is available and returns it. 
+	 * If the selected library is not available it returns the available one.
+	 * 
+	 * @return the selected or available library.
+	 */
+	public static String getSelectedOrAvailableLibrary() {
+		String[][] availableLibraries = getAvailableLibraries();
+		if (availableLibraries.length == 0) {
+			return null;
+		}
+		String selectedZstdLib = getSelectedZstdLib();
+		for (String[] strings : availableLibraries) {
+			if (selectedZstdLib.equals(strings[1])) {
+				return strings[1];
+			}
+		}
+		
+		return availableLibraries[0][1];
 	}
 }

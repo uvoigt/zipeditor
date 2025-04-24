@@ -13,4 +13,9 @@ public class Messages extends NLS {
 
 	private Messages() {
 	}
+
+	public static String ZipEditorPreferencePage_ActivateZstdSupport;
+	public static String ZipEditorPreferencePage_HintNoLibraries;
+	public static String ZipEditorPreferencePage_ZstdLibrary;
+	public static String ZipEditorPreferencePage_ZstdSettingsGroupTitle;
 }

@@ -12,38 +12,26 @@ import zipeditor.preferences.PreferenceUtils;
 public class ZstdUtilities {
 
 	public static InputStream getInputStream(InputStream in) throws IOException {
-		if (!PreferenceUtils.isZstdActive()) {
+		if (!PreferenceUtils.isZstdAvailableAndActive()) {
 			throw new ZipEditorZstdException(Messages.ZstdHandler_notActive);
+		}
+		String library = PreferenceUtils.getSelectedOrAvailableLibrary();
+		if (PreferenceUtils.JNI_LIBRARY.equals(library)) {
+			return new JniZstdLibCompressorHandler().createInputStream(in);
 		} else {
-			if (PreferenceUtils.isJNIZstdSelected()) {
-				if (!ZstdUtils.isZstdCompressionAvailable()) {
-					throw new ZipEditorZstdException(Messages.ZstdHandler_jniLibNotAvailable);
-				}
-				return new JniZstdLibCompressorHandler().createInputStream(in);
-			} else {
-				if (!isAircompressorAvailable()) {
-					throw new ZipEditorZstdException(Messages.ZstdHandler_aircompLibNotAvailable);
-				}
-				return new AircompressorHandler().createInputStream(in);
-			}
+			return new AircompressorHandler().createInputStream(in);
 		}
 	}
 
 	public static OutputStream getOutputStream(OutputStream out) throws IOException {
-		if (!PreferenceUtils.isZstdActive()) {
+		if (!PreferenceUtils.isZstdAvailableAndActive()) {
 			throw new ZipEditorZstdException(Messages.ZstdHandler_notActive);
+		}
+		String library = PreferenceUtils.getSelectedOrAvailableLibrary();
+		if (PreferenceUtils.JNI_LIBRARY.equals(library)) {
+			return new JniZstdLibCompressorHandler().createOutputStream(out);
 		} else {
-			if (PreferenceUtils.isJNIZstdSelected()) {
-				if (!ZstdUtils.isZstdCompressionAvailable()) {
-					throw new ZipEditorZstdException(Messages.ZstdHandler_jniLibNotAvailable);
-				}
-				return new JniZstdLibCompressorHandler().createOutputStream(out);
-			} else {
-				if (!isAircompressorAvailable()) {
-					throw new ZipEditorZstdException(Messages.ZstdHandler_aircompLibNotAvailable);
-				}
-				return new AircompressorHandler().createOutputStream(out);
-			}
+			return new AircompressorHandler().createOutputStream(out);
 		}
 	}
 
@@ -64,18 +52,13 @@ public class ZstdUtilities {
 	}
 
 	public static Builder getZipFileBuilder() throws ZipEditorZstdException {
-		if (!PreferenceUtils.isZstdActive()) {
+		if (!PreferenceUtils.isZstdAvailableAndActive()) {
 			throw new ZipEditorZstdException(Messages.ZstdHandler_notActive);
 		}
-		if (PreferenceUtils.isJNIZstdSelected()) {
-			if (!ZstdUtils.isZstdCompressionAvailable()) {
-				throw new ZipEditorZstdException(Messages.ZstdHandler_jniLibNotAvailable);
-			}
+		String library = PreferenceUtils.getSelectedOrAvailableLibrary();
+		if (PreferenceUtils.JNI_LIBRARY.equals(library)) {
 			return ZipFile.builder(); 
 		} else {
-			if (!isAircompressorAvailable()) {
-				throw new ZipEditorZstdException(Messages.ZstdHandler_aircompLibNotAvailable);
-			}
 			return ZipFile.builder().setZstdInputStreamFactory(new AircompressorHandler().getIOFunction());
 		}
 	}

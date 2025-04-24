@@ -24,7 +24,6 @@ import zipeditor.ZipEditorPlugin;
 public class ZipContentDescriber implements IContentDescriber {
 	public static class ContentTypeId {
 
-		public final static int INVALID = -1;
 		public final static int ZIP = 1;
 		public final static int GZ = 2;
 		public final static int TAR = 3;
@@ -40,7 +39,8 @@ public class ZipContentDescriber implements IContentDescriber {
 		public final static ContentTypeId BZ2_FILE = add("bz2file", ContentTypeId.BZ2); //$NON-NLS-1$
 		public final static ContentTypeId TBZ_FILE = add("tarbz2file", ContentTypeId.TBZ); //$NON-NLS-1$
 		public final static ContentTypeId RPM_FILE = add("rpmfile", ContentTypeId.RPM); //$NON-NLS-1$
-		public static final ContentTypeId INVAILD = add("invalid", ContentTypeId.INVALID); //$NON-NLS-1$
+		// Avoid handling as file, due this is a dummy for invalid file contents.
+		public final static ContentTypeId INVALID = new ContentTypeId("invalid", -1); // $NON-NLS-1$
 
 		private static void init() {}
 

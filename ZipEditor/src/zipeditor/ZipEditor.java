@@ -31,7 +31,9 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IAction;
+import org.eclipse.jface.action.IContributionItem;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
@@ -41,6 +43,8 @@ import org.eclipse.jface.action.ToolBarManager;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.IDialogSettings;
 import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.layout.GridDataFactory;
+import org.eclipse.jface.layout.GridLayoutFactory;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.resource.ImageDescriptor;
@@ -64,6 +68,7 @@ import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.window.Window;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.dnd.DND;
 import org.eclipse.swt.dnd.FileTransfer;
 import org.eclipse.swt.dnd.Transfer;
@@ -77,10 +82,12 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Shell;
@@ -100,8 +107,10 @@ import org.eclipse.ui.IViewSite;
 import org.eclipse.ui.IWorkbenchActionConstants;
 import org.eclipse.ui.IWorkbenchPartSite;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionContext;
 import org.eclipse.ui.actions.ActionFactory;
+import org.eclipse.ui.dialogs.PreferencesUtil;
 import org.eclipse.ui.dialogs.SaveAsDialog;
 import org.eclipse.ui.part.EditorPart;
 import org.eclipse.ui.part.FileEditorInput;
@@ -113,7 +122,6 @@ import org.eclipse.ui.views.framelist.FrameList;
 import org.eclipse.ui.views.framelist.GoIntoAction;
 import org.eclipse.ui.views.framelist.UpAction;
 
-import zipeditor.actions.ActionMessages;
 import zipeditor.actions.CollapseAllAction;
 import zipeditor.actions.NewFolderAction;
 import zipeditor.actions.OpenActionGroup;
@@ -357,6 +365,9 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	public final static String ACTION_GO_INTO = "GoInto"; //$NON-NLS-1$
 	public final static String ACTION_RENAME = "Rename"; //$NON-NLS-1$
 	public final static String ACTION_QUICK_OUTLINE = "QuickOutline"; //$NON-NLS-1$
+	private Composite fControl;
+	private Composite fInvalidContent;
+	private StackLayout fStackLayout;
 	
 	public void doSave(IProgressMonitor monitor) {
 		IEditorInput input = doGetEditorInput();
@@ -643,11 +654,11 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	}
 
 	public void createPartControl(Composite parent) {
-		Composite control = new Composite(parent, SWT.NONE);
+		fControl = new Composite(parent, SWT.NONE);
 		GridLayout layout = new GridLayout();
 		layout.marginWidth = layout.marginHeight = 0;
-		control.setLayout(layout);
-		createContent(control, getMode());
+		fControl.setLayout(layout);
+		createContent(fControl, getMode());
 	}
 	
 	private void createContent(Composite parent, int mode) {
@@ -660,9 +671,65 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	
 	private void createControls(Composite parent, int mode) {
 		fToolBar = createToolBar(parent);
-		fZipViewer = createZipViewer(parent, mode);
+		fStackLayout = new StackLayout();
+		
+		Composite composite = new Composite(parent, SWT.NONE);
+		composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
+		composite.setLayout(fStackLayout);
+		
+		fZipViewer = createZipViewer(composite, mode);
+		fInvalidContent = createErrorHint(composite);
+		
+		handleStackLayout();
+	}
+
+	private void handleStackLayout() {
+		if (fModel.getType() == ContentTypeId.INVALID) {
+			fStackLayout.topControl = fInvalidContent;
+			fControl.layout();
+			setEnablementOfUI(false);
+			
+			setEnabledOfControls(true, fInvalidContent);
+		} else {
+			fStackLayout.topControl = getViewer().getControl();
+			fControl.layout();
+			setEnablementOfUI(true);
+		}
 	}
 	
+	private Composite createErrorHint(Composite composite) {
+		Composite fErrorHintComposite = new Composite(composite, SWT.NONE);
+		GridDataFactory.fillDefaults().grab(true, true).align(SWT.FILL, SWT.FILL).applyTo(fErrorHintComposite);
+		GridLayoutFactory.fillDefaults().applyTo(fErrorHintComposite);
+		
+		Label label = new Label(fErrorHintComposite, SWT.WRAP | SWT.CENTER);
+		GridDataFactory.fillDefaults().align(SWT.CENTER, SWT.CENTER).grab(true, true).applyTo(label);
+		label.setText(Messages.getString("ZipEditor.15")); //$NON-NLS-1$
+		
+		Button button = new Button(fErrorHintComposite, SWT.PUSH);
+		GridDataFactory.fillDefaults().align(SWT.CENTER, SWT.TOP).grab(true, true).applyTo(button);
+		button.setText(Messages.getString("ZipEditor.16")); //$NON-NLS-1$
+		button.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				openZipEditorPrefPage();
+			}
+		});
+		
+		return fErrorHintComposite;
+	}
+
+	public void openZipEditorPrefPage() {
+		Window dialog = PreferencesUtil.createPreferenceDialogOn(
+			PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
+			"zipeditor.preferences.ZipEditorPreferencePage", //$NON-NLS-1$
+			null,
+			null);
+		if (dialog != null) {
+			dialog.open();
+		}
+	}
+
 	private ToolBarManager createToolBar(Composite parent) {
 		ToolBarManager bar = new ToolBarManager(SWT.HORIZONTAL | SWT.FLAT);
 		Control control = bar.createControl(parent);
@@ -687,22 +754,36 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			bar.add(getAction(ACTION_COLLAPSE_ALL));
 		}
 		bar.update(false);
+		if (fModel.getType() == ContentTypeId.INVALID) {
+			IContributionItem[] items = bar.getItems();
+			for (IContributionItem iContributionItem : items) {
+				if (iContributionItem instanceof ActionContributionItem aci) {
+					aci.getAction().setEnabled(false);
+				}
+			}
+		}
 	}
 
 	public void updateView(int mode, boolean savePreferences) {
-		Composite parent = fZipViewer.getControl().getParent();
+		Composite parent = fZipViewer.getControl().getParent().getParent();
 		ISelection selection = fZipViewer.getSelection();
 		((ZipContentProvider) fZipViewer.getContentProvider()).disposeModel(false);
 		Control[] children = parent.getChildren();
+		// Attention: The dispose listener is attached to the viewer control and has to be removed directly from it
+		// due the change from getParent() to getParent().getParent() it wasn't possible to remove the listener from 
+		// children arrays controls.
+		if (!savePreferences)
+			fZipViewer.getControl().removeDisposeListener(fTableDisposeListener);
+		
 		for (int i = 0; i < children.length; i++) {
-			if (!savePreferences)
-				children[i].removeDisposeListener(fTableDisposeListener);
 			children[i].dispose();
 		}
 		createContent(parent, mode);
 		fZipViewer.setSelection(selection);
 		fZipViewer.getControl().setFocus();
 		((ZipContentProvider) fZipViewer.getContentProvider()).disposeModel(true);
+		
+		handleStackLayout();
 	}
 	
 	private StructuredViewer createZipViewer(Composite parent, int mode) {
@@ -798,6 +879,10 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		} else {
 			input = fModel.getRoot();
 		}
+		if (fModel.getType() == ContentTypeId.INVALID) {
+			return;
+		}
+		
 		if (input != null) {
 			if (Utils.isUIThread()) {
 				doSetViewerInput(viewer, input);
@@ -819,6 +904,31 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 						setViewerInputAgain(viewer);
 					}
 				});
+			}
+		}
+	}
+
+	private void setEnablementOfUI(boolean enabled) {
+		Composite composite = fControl;
+		if (Utils.isUIThread()) {
+			setEnabledOfControls(enabled, composite);
+		} else {
+			Display.getDefault().syncExec(new Runnable() {
+				
+				@Override
+				public void run() {
+					setEnabledOfControls(enabled, composite);
+				}
+			});
+		}
+	}
+
+	private void setEnabledOfControls(boolean enabled, Composite composite) {
+		for (Control control : composite.getChildren()) {
+			if (control instanceof Composite childComposite) {
+				setEnabledOfControls(enabled, childComposite);
+			} else {
+				control.setEnabled(enabled);
 			}
 		}
 	}
@@ -965,6 +1075,9 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	public void storeTableColumnPreferences() {
 		if (!(fZipViewer instanceof TableViewer))
 			return;
+		if (fModel.getType() == ContentTypeId.INVALID) {
+			return;
+		}
 		Table table = ((TableViewer) fZipViewer).getTable();
 		IPreferenceStore store = getPreferenceStore();
 		String suffix = PreferenceConstants.getPreferenceSuffix(fModel.getType());
@@ -1020,8 +1133,8 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 		fZipActionGroup = new ZipActionGroup(this);
 		fOpenActionGroup = new OpenActionGroup(getViewer());
 		setAction(ACTION_NEW_FOLDER, new NewFolderAction(getViewer()));
-		ToggleViewModeAction toggleViewModeAction = new ToggleViewModeAction(this, ActionMessages.getString("ToggleViewModeAction.0"), PreferenceConstants.PREFIX_EDITOR, PreferenceConstants.VIEW_MODE_TREE); //$NON-NLS-1$
-		toggleViewModeAction.setToolTipText(ActionMessages.getString("ToggleViewModeAction.1")); //$NON-NLS-1$
+		ToggleViewModeAction toggleViewModeAction = new ToggleViewModeAction(this, "", PreferenceConstants.PREFIX_EDITOR, PreferenceConstants.VIEW_MODE_TREE); //$NON-NLS-1$
+		toggleViewModeAction.setToolTipText(""); //$NON-NLS-1$
 		toggleViewModeAction.setImageDescriptor(ZipEditorPlugin.getImageDescriptor("icons/togglemode.gif")); //$NON-NLS-1$
 		setAction(ACTION_TOGGLE_MODE, toggleViewModeAction);
 
@@ -1122,7 +1235,9 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 			}
 			getEditorSite().getShell().getDisplay().asyncExec(new Runnable() {
 				public void run() {
-					fOutlinePage.setInput(fModel.getRoot());
+					if(fOutlinePage != null && fModel != null) {
+						fOutlinePage.setInput(fModel.getRoot());
+					}
 				}
 			});
 			return fOutlinePage;
@@ -1219,8 +1334,22 @@ public class ZipEditor extends EditorPart implements IPropertyChangeListener, IE
 	}
 	
 	public void propertyChange(PropertyChangeEvent event) {
-		if ((PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SORT_ENABLED + SortAction.SORTING_CHANGED).equals(event.getProperty()))
+		if ((PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SORT_ENABLED + SortAction.SORTING_CHANGED).equals(event.getProperty())) {
 			updateView(getMode(), true);
+		} else if ((PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.ACTIVATE_ZSTD_LIB).equals(event.getProperty())) {
+			fModel = null;
+			setViewerInput(fZipViewer);
+			getAdapter(IContentOutlinePage.class);
+
+			updateView(getMode(), true);
+			
+		} else if ((PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SELECTED_ZSTD_LIB).equals(event.getProperty())) {
+			fModel = null;
+			setViewerInput(fZipViewer);
+			getAdapter(IContentOutlinePage.class);
+
+			updateView(getMode(), true);
+		}
 	}
 	
 	public void saveState(IMemento memento) {

@@ -37,8 +37,7 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.ListenerList;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
-import org.eclipse.jface.dialogs.ErrorDialog;
-import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.statushandlers.StatusManager;
 
 import zipeditor.Messages;
 import zipeditor.Utils;
@@ -122,7 +121,7 @@ public class ZipModel {
 				}
 			} catch (IOException ioe) {
 				if (ioe instanceof ZipEditorZstdException) {
-					throw ioe;
+					return ContentTypeId.INVALID;
 				}
 				// thrown in getNextEntry() method if, if file is not a zip file.
 			}
@@ -171,8 +170,9 @@ public class ZipModel {
 
 		} catch (IOException e) {
 			if (e instanceof ZipEditorZstdException) {
-				ErrorDialog.openError(Display.getDefault().getActiveShell(), "Zstd in Zip File Detected", e.getMessage(), ZipEditorPlugin.log(e));;
-				return ContentTypeId.INVAILD;
+				StatusManager.getManager().handle(ZipEditorPlugin.createErrorStatus("Error reading zip archive with Zstd encoding", e), StatusManager.SHOW | StatusManager.LOG); //$NON-NLS-1$
+
+				return ContentTypeId.INVALID;
 			}
 			throw new IllegalStateException(e);
 		}
@@ -274,6 +274,9 @@ public class ZipModel {
 		InputStream zipStream = inputStream;
 		try {
 			zipStream = detectStream(inputStream);
+			if (ContentTypeId.INVALID == type) {
+				return;
+			}
 			root = getRoot(zipStream);
 			readStream(zipStream, participant, stopNode);
 		} catch (IOException e) {
@@ -325,13 +328,11 @@ public class ZipModel {
 				else if (zipStream instanceof RpmInputStream)
 					rpmEntry = ((RpmInputStream) zipStream).getNextEntry();
 			} catch (Exception e) {
-				if (!(e instanceof ZipEditorZstdException)) {
-					String message = "Error reading archive"; //$NON-NLS-1$
-					if (zipPath != null)
-						message += " " + zipPath.getAbsolutePath(); //$NON-NLS-1$
-					logError(ZipEditorPlugin.createErrorStatus(message, e));
-					break;
-				}
+				String message = "Error reading archive"; //$NON-NLS-1$
+				if (zipPath != null)
+					message += " " + zipPath.getAbsolutePath(); //$NON-NLS-1$
+				logError(ZipEditorPlugin.createErrorStatus(message, e));
+				break;
 			}
 			if ((!isNoEntry && zipEntry == null && tarEntry == null && rpmEntry == null) || (isNoEntry && root.children != null)) {
 				state &= -1 ^ DIRTY;
@@ -560,10 +561,10 @@ public class ZipModel {
 		else if (out instanceof TarOutputStream)
 			((TarOutputStream) out).putNextEntry(tarEntry);
 		if (node instanceof ZipNode && ((ZipNode)node).getMethod() == ZipMethod.ZSTD.getCode()) {
-			OutputStream zstdOutput = ZstdUtilities.getOutputStream(out);
-			Utils.readAndWrite(node.getContent(), zstdOutput, false);
-			zstdOutput.flush();
-			zstdOutput.close();
+			try (OutputStream zstdOutput = ZstdUtilities.getOutputStream(out)) {
+				Utils.readAndWrite(node.getContent(), zstdOutput, false);
+				zstdOutput.flush();
+			}
 	    } else {
 			Utils.readAndWrite(node.getContent(), out, false);
 		}

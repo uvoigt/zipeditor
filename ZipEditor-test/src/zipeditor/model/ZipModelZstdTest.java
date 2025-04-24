@@ -13,6 +13,7 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.commons.compress.archivers.zip.ZipMethod;
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.junit.Test;
 
 import zipeditor.PreferenceConstants;
@@ -73,6 +74,9 @@ public class ZipModelZstdTest extends AbstractModelTest {
 		String[] split = string.split("\n");
 		assertEquals("<?xml version=\"1.0\" encoding=\"UTF-8\"?>", split[0]);
 		assertEquals(23, split.length);
+		
+		ZipEditorPlugin.getDefault().getPreferenceStore()
+		.setValue(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SELECTED_ZSTD_LIB, PreferenceUtils.AIRCOMPRESSOR);
 
 		assertTrue(PreferenceUtils.isAircompressorSelected());
 		assertFalse(PreferenceUtils.isJNIZstdSelected());

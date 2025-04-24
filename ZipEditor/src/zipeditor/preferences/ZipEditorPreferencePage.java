@@ -6,15 +6,14 @@ import org.eclipse.jface.preference.*;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Display;
+import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.IWorkbench;
 import zipeditor.PreferenceConstants;
 import zipeditor.ZipEditorPlugin;
-import zipeditor.model.zstd.ZstdUtilities;
 
 /**
  * This is the Preference Page for changing the zstd library for reading / writing a zstd compressed stream.
@@ -25,74 +24,75 @@ public class ZipEditorPreferencePage
 	implements IWorkbenchPreferencePage, IPropertyChangeListener {
 
 	private ComboFieldEditor zstdLibComboFieldEditor;
-	private Label fLibValidationLabel;
 	private Composite fZstdLibSelectionComposite;
 	private BooleanFieldEditor zstdStateFieldEditor;
 
 	public ZipEditorPreferencePage() {
 		super(GRID);
 		setPreferenceStore(ZipEditorPlugin.getDefault().getPreferenceStore());
-		setDescription("Generic Zip Editor Settings"); //$NON-NLS-1$
 	}
 	
 	public void createFieldEditors() {
-		zstdStateFieldEditor = new BooleanFieldEditor(
-				PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.ACTIVATE_ZSTD_LIB,
-				"Activate Zstd Support", //$NON-NLS-1$
-				getFieldEditorParent());
-		addField(zstdStateFieldEditor);
-		zstdStateFieldEditor.load();
+		Group group = new Group(getFieldEditorParent(), SWT.NONE);
+		group.setText(Messages.ZipEditorPreferencePage_ZstdSettingsGroupTitle);
 		
-		fZstdLibSelectionComposite = new Composite(getFieldEditorParent(), SWT.NONE);
-		GridDataFactory.fillDefaults().grab(true, true).applyTo(fZstdLibSelectionComposite);
-		GridLayoutFactory.fillDefaults().numColumns(2).applyTo(fZstdLibSelectionComposite);
+		GridDataFactory.fillDefaults().grab(true, true).align(SWT.FILL, SWT.FILL).applyTo(group);
+		GridLayoutFactory.fillDefaults().numColumns(1).spacing(5, 5).margins(5, 5).applyTo(group);
 		
-		zstdLibComboFieldEditor = new ComboFieldEditor(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SELECTED_ZSTD_LIB, "Zstd Library", PreferenceUtils.libs, fZstdLibSelectionComposite); //$NON-NLS-1$
-		addField(zstdLibComboFieldEditor);
-		zstdLibComboFieldEditor.setEnabled(PreferenceUtils.isZstdActive(), fZstdLibSelectionComposite);
-		
-		
-		GridDataFactory.fillDefaults().grab(true, false).applyTo(new Label(fZstdLibSelectionComposite, SWT.WRAP));
+		String[][] availableLibraries = PreferenceUtils.getAvailableLibraries();
+		if (availableLibraries.length >= 1) {
+			Composite composite = new Composite(group, SWT.NONE);
+			GridDataFactory.fillDefaults().grab(true, true).align(SWT.FILL, SWT.FILL).applyTo(composite);
+			GridLayoutFactory.fillDefaults().numColumns(2).applyTo(composite);
+			
+			zstdStateFieldEditor = new BooleanFieldEditor(
+					PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.ACTIVATE_ZSTD_LIB,
+					Messages.ZipEditorPreferencePage_ActivateZstdSupport,
+					composite);
+			addField(zstdStateFieldEditor);
+			zstdStateFieldEditor.load();
+			
+			fZstdLibSelectionComposite = new Composite(composite, SWT.NONE);
+			GridDataFactory.fillDefaults().grab(true, true).applyTo(fZstdLibSelectionComposite);
+			GridLayoutFactory.fillDefaults().numColumns(2).applyTo(fZstdLibSelectionComposite);
 
-		fLibValidationLabel = new Label(fZstdLibSelectionComposite, SWT.WRAP);
-		GridDataFactory.fillDefaults().grab(true, true).applyTo(fLibValidationLabel);
-
-		String selectedLib = getPreferenceStore().getString(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SELECTED_ZSTD_LIB);
-		updateValidationLabel(selectedLib);
-		getPreferenceStore().addPropertyChangeListener(this);
-		
-	}
-
-	private void updateValidationLabel(String selectedLib) {
-		if (zstdStateFieldEditor.getBooleanValue()) {
-			if (PreferenceUtils.JNI_LIBRARY.equals(selectedLib)) {
-				setValidationLabel(ZstdUtilities.isZstdJniCompressionAvailable());
+			if (availableLibraries.length == 1) {
+				Label lLibField = new Label(fZstdLibSelectionComposite, SWT.NONE);
+				lLibField.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false));
+				lLibField.setText(Messages.ZipEditorPreferencePage_ZstdLibrary);
+				
+				Label lLibraryName = new Label(fZstdLibSelectionComposite, SWT.NONE);
+				lLibraryName.setLayoutData(new GridData(SWT.BEGINNING, SWT.CENTER, false, false));
+				lLibraryName.setText(availableLibraries[0][0]);
 			} else {
-				setValidationLabel(ZstdUtilities.isAircompressorAvailable());
+				zstdLibComboFieldEditor = new ComboFieldEditor(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SELECTED_ZSTD_LIB, Messages.ZipEditorPreferencePage_ZstdLibrary, PreferenceUtils.libs, fZstdLibSelectionComposite);
+				addField(zstdLibComboFieldEditor);
+				zstdLibComboFieldEditor.setEnabled(PreferenceUtils.isZstdActive(), fZstdLibSelectionComposite);
+				
+				GridDataFactory.fillDefaults().grab(true, false).applyTo(new Label(fZstdLibSelectionComposite, SWT.WRAP));
+		
+				getPreferenceStore().addPropertyChangeListener(this);
 			}
+		} else {
+			Composite composite = new Composite(group, SWT.NONE);
+			GridDataFactory.fillDefaults().grab(true, true).align(SWT.FILL, SWT.FILL).applyTo(composite);
+			GridLayoutFactory.fillDefaults().margins(5, 5).applyTo(composite);
+
+			Label lHint = new Label(composite, SWT.WRAP);
+			GridDataFactory.fillDefaults().align(SWT.FILL, SWT.FILL).grab(true, true).applyTo(lHint);
+			lHint.setText(Messages.ZipEditorPreferencePage_HintNoLibraries);
 		}
+		group.pack();
+		group.layout(true);
 	}
 
-	private void setValidationLabel(boolean compressionLibAvailable) {
-		String lMessage = compressionLibAvailable ? Messages.ZipEditorPreferencePage_LibAvailable : Messages.ZipEditorPreferencePage_LibNotAvailable;
-		Color lColor = compressionLibAvailable ? Display.getDefault().getSystemColor(SWT.COLOR_BLACK) : Display.getDefault().getSystemColor(SWT.COLOR_RED);
-
-		fLibValidationLabel.setText(lMessage);
-		fLibValidationLabel.setForeground(lColor);
-	}
-	
 	@Override
 	public void propertyChange(PropertyChangeEvent event) {
 		super.propertyChange(event);
 
-		if (event.getSource() instanceof BooleanFieldEditor booleanFieldEditor) {
+		if (zstdLibComboFieldEditor != null && event.getSource() instanceof BooleanFieldEditor booleanFieldEditor) {
 			if ((PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.ACTIVATE_ZSTD_LIB).equals(booleanFieldEditor.getPreferenceName())) {
 				zstdLibComboFieldEditor.setEnabled((boolean) event.getNewValue(), fZstdLibSelectionComposite);
-				fLibValidationLabel.setVisible((boolean) event.getNewValue());
-			}
-		} else if (event.getSource() instanceof ComboFieldEditor comboFieldEditor) {
-			if ((PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.SELECTED_ZSTD_LIB).equals(comboFieldEditor.getPreferenceName())) {
-				updateValidationLabel((String) event.getNewValue());
 			}
 		}
 	}
@@ -106,6 +106,7 @@ public class ZipEditorPreferencePage
 
 	@Override
 	public void init(IWorkbench workbench) {
+		// nothing to do..
 	}
 	
 }

@@ -84,11 +84,11 @@ public class AddOperation {
 	};
 
 	public void execute(String[] fileNames, Node parentNode, Node beforeSibling, StructuredViewer viewer) {
+		// The default case is disabled zstd compressoin. This is done to not disturb all other cases. 
 		execute(getFilesFromNames(fileNames), parentNode, beforeSibling, viewer, false);
 	}
 
 	public void execute(File[] fileNames, Node parentNode, Node beforeSibling, StructuredViewer viewer, boolean useZstdCompression) {
-		
 		while (parentNode != null && !parentNode.isFolder())
 			parentNode = parentNode.getParent();
 		AddFilesJob addFilesJob = new AddFilesJob(fileNames, parentNode, beforeSibling, new RefreshJob(viewer), useZstdCompression);

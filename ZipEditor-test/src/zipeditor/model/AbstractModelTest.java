@@ -6,9 +6,12 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.junit.Before;
 import org.junit.Test;
 
+import zipeditor.PreferenceConstants;
+import zipeditor.ZipEditorPlugin;
 import zipeditor.model.ZipContentDescriber.ContentTypeId;
 
 public abstract class AbstractModelTest {
@@ -21,6 +24,9 @@ public abstract class AbstractModelTest {
 
 	@Before
 	public void before() throws Exception {
+		IPreferenceStore preferenceStore = ZipEditorPlugin.getDefault().getPreferenceStore();
+		preferenceStore.setValue(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.ACTIVATE_ZSTD_LIB, true);
+
 		File path = new File("resources/" + getArchiveName());
 		InputStream inputStream = new FileInputStream(path);
 		boolean readonly = false;
