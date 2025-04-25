@@ -1,7 +1,6 @@
 package zipeditor.preferences;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.eclipse.jface.preference.IPreferenceStore;
@@ -12,6 +11,12 @@ import zipeditor.model.zstd.ZstdUtilities;
 
 public class PreferenceUtils {
 
+	public record ZstdLibrary(String label, String identifier) {
+		public ZstdLibrary(String label, String identifier) {
+			this.label = label;
+			this.identifier = identifier;
+		}
+	}
 	/**
 	 * Preference value for the aircompressor library.
 	 */
@@ -22,8 +27,12 @@ public class PreferenceUtils {
 	 */
 	public static final String JNI_LIBRARY = "jniLibrary"; //$NON-NLS-1$
 
-	public static final String[][] libs = { { "JNI Library", JNI_LIBRARY }, { "Aircompressor", AIRCOMPRESSOR } }; //$NON-NLS-1$//$NON-NLS-2$
-
+	public static final List<ZstdLibrary> libraries = new ArrayList<PreferenceUtils.ZstdLibrary>();
+	static {
+		libraries.add(new ZstdLibrary(Messages.PreferenceUtils_ZSTDJniLibraryLabel, JNI_LIBRARY));
+		libraries.add(new ZstdLibrary(Messages.PreferenceUtils_AircompressorLabel, AIRCOMPRESSOR));
+	}
+	
 	private static String getSelectedZstdLib() {
 		IPreferenceStore preferenceStore = ZipEditorPlugin.getDefault().getPreferenceStore();
 		String selectedLib = preferenceStore
@@ -32,20 +41,33 @@ public class PreferenceUtils {
 	}
 
 	/**
-	 * Returns the available libraries. its a two dimensional array as the libs above but contains only the available ones.
-	 * @return the array of available libraries.
+	 * Returns the available libraries.
+	 * @return a {@link List} of available {@link ZstdLibrary} objects.
 	 */
-	public static String[][] getAvailableLibraries() {
-		List<String[]> availableLibs = new ArrayList<String[]>();
-		List<String[]> asList = Arrays.asList(libs);
-		for (String[] libData : asList) {
-			if (libData[1].equals(JNI_LIBRARY) && ZstdUtilities.isZstdJniCompressionAvailable()) {
+	public static List<ZstdLibrary> getAvailableLibraries() {
+		List<ZstdLibrary> availableLibs = new ArrayList<ZstdLibrary>();
+		for (ZstdLibrary libData : libraries) {
+			if (libData.identifier.equals(JNI_LIBRARY) && ZstdUtilities.isZstdJniCompressionAvailable()) {
 				availableLibs.add(libData);
-			} else if (libData[1].equals(AIRCOMPRESSOR) && ZstdUtilities.isAircompressorAvailable()) {
+			} else if (libData.identifier.equals(AIRCOMPRESSOR) && ZstdUtilities.isAircompressorAvailable()) {
 				availableLibs.add(libData);
 			}
 		}
-		return availableLibs.toArray(new String[0][]);
+		return availableLibs;
+	}
+	
+	/**
+	 * Returns the available libraries.
+	 * @return a {@link List} of available {@link ZstdLibrary} objects.
+	 */
+	public static String[][] getAvailableLibrariesForPreferenceUI() {
+		List<ZstdLibrary> availableLibraries = getAvailableLibraries();
+		String[][] libs = new String[availableLibraries.size()][2];
+		for (int i = 0; i < availableLibraries.size(); i++) {
+			ZstdLibrary zstdLibrary = availableLibraries.get(i);
+			libs[i] = new String[] { zstdLibrary.label, zstdLibrary.identifier };
+		}
+		return libs;
 	}
 
 	/**
@@ -80,7 +102,12 @@ public class PreferenceUtils {
 	 * @return
 	 */
 	public static boolean isZstdAvailableAndActive() {
-		return isZstdActive() && getAvailableLibraries().length > 0;
+		return isZstdActive() && getAvailableLibraries().size() > 0;
+	}
+	
+	public static boolean isZstdDefaultCompression() {
+		IPreferenceStore preferenceStore = ZipEditorPlugin.getDefault().getPreferenceStore();
+		return preferenceStore.getBoolean(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.USE_ZSTD_AS_DEFAULT);
 	}
 
 	/**
@@ -88,19 +115,21 @@ public class PreferenceUtils {
 	 * If the selected library is not available it returns the available one.
 	 * 
 	 * @return the selected or available library.
+	 * 			identifier of the library which is written in the constants JNI_LIBRARY or AIRCOMPRESSOR 
+	 * 			or null if there is no library available.
 	 */
 	public static String getSelectedOrAvailableLibrary() {
-		String[][] availableLibraries = getAvailableLibraries();
-		if (availableLibraries.length == 0) {
+		List<ZstdLibrary> availableLibraries = getAvailableLibraries();
+		if (availableLibraries.size() == 0) {
 			return null;
 		}
-		String selectedZstdLib = getSelectedZstdLib();
-		for (String[] strings : availableLibraries) {
-			if (selectedZstdLib.equals(strings[1])) {
-				return strings[1];
+		String selectedZstdLibIdentifier = getSelectedZstdLib();
+		for (ZstdLibrary library : availableLibraries) {
+			if (selectedZstdLibIdentifier.equals(library.identifier)) {
+				return selectedZstdLibIdentifier;
 			}
 		}
 		
-		return availableLibraries[0][1];
+		return availableLibraries.get(0).identifier;
 	}
 }

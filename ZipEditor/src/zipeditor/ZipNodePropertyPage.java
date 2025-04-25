@@ -2,6 +2,7 @@ package zipeditor;
 
 import java.util.zip.ZipEntry;
 
+import org.apache.commons.compress.archivers.zip.ZipMethod;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
@@ -11,6 +12,7 @@ import org.eclipse.ui.IWorkbenchPropertyPage;
 import zipeditor.model.Node;
 import zipeditor.model.ZipNode;
 import zipeditor.model.ZipNodeProperty;
+import zipeditor.preferences.PreferenceUtils;
 
 public class ZipNodePropertyPage extends NodePropertyPage implements IWorkbenchPropertyPage {
 	private class MappingPropertyAccessor extends MultiplePropertyAccessor {
@@ -38,7 +40,9 @@ public class ZipNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 		fMethod = createCombo(control, 30, 1);
 		fMethod.add(Messages.getString("MappingPropertyAccessor.8")); //$NON-NLS-1$
 		fMethod.add(Messages.getString("MappingPropertyAccessor.0")); //$NON-NLS-1$
-		fMethod.add(Messages.getString("MappingPropertyAccessor.93")); //$NON-NLS-1$
+		if (PreferenceUtils.isZstdAvailableAndActive()) {
+			fMethod.add(Messages.getString("MappingPropertyAccessor.93")); //$NON-NLS-1$
+		}
 		select(fMethod, new MappingPropertyAccessor(ZipNode.class).getAccessor("method")); //$NON-NLS-1$
 		createLabel(control, ZipNodeProperty.PPACKED_SIZE.toString(), 1);
 		fPackedSize = createText(control, 30, 1, false);
@@ -91,6 +95,8 @@ public class ZipNodePropertyPage extends NodePropertyPage implements IWorkbenchP
 				zipNode.setMethod(ZipEntry.DEFLATED);
 			else if (method == 2)
 				zipNode.setMethod(ZipEntry.STORED);
+			else if (method == 3)
+				zipNode.setMethod(ZipMethod.ZSTD.getCode());
 		}
 		return true;
 	}

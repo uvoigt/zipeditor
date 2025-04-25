@@ -107,23 +107,18 @@ public class ZipModel {
 			if (count == -1)
 				return null;
 			try {
-				ZipArchiveInputStream zip = new ZipArchiveInputStream(contents) {
-					
-					@Override
-					protected InputStream createZstdInputStream(InputStream in) throws IOException {
-						return ZstdUtilities.getInputStream(in);
-					}
-					
-				};
+				ZipArchiveInputStream zip = new ZstdAwareZipArchiveInputStream(contents);
 				if (zip.getNextEntry() != null) {
 					contents.reset();
 					return ContentTypeId.ZIP_FILE;
 				}
 			} catch (IOException ioe) {
 				if (ioe instanceof ZipEditorZstdException) {
+					// thrown if zstd support is not active or library is missing
+					// we can close further actions with this zip file.
 					return ContentTypeId.INVALID;
 				}
-				// thrown in getNextEntry() method if, if file is not a zip file.
+				// thrown in getNextEntry() method, if file is not a zip file.
 			}
 			contents.reset();
 			try {
@@ -169,11 +164,6 @@ public class ZipModel {
 			return ContentTypeId.TAR_FILE;
 
 		} catch (IOException e) {
-			if (e instanceof ZipEditorZstdException) {
-				StatusManager.getManager().handle(ZipEditorPlugin.createErrorStatus("Error reading zip archive with Zstd encoding", e), StatusManager.SHOW | StatusManager.LOG); //$NON-NLS-1$
-
-				return ContentTypeId.INVALID;
-			}
 			throw new IllegalStateException(e);
 		}
 	}
@@ -454,12 +444,7 @@ public class ZipModel {
 		default:
 			return in;
 		case ContentTypeId.ZIP:
-			return new ZipArchiveInputStream(in) {
-				@Override
-				protected InputStream createZstdInputStream(InputStream in) throws IOException {
-					return ZstdUtilities.getInputStream(in);
-				}
-			};
+			return new ZstdAwareZipArchiveInputStream(in);
 		case ContentTypeId.TAR:
 			return new TarInputStream(in);
 		case ContentTypeId.GZ:

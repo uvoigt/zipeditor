@@ -11,6 +11,7 @@ import org.eclipse.jface.viewers.StructuredViewer;
 import zipeditor.ZipEditorPlugin;
 import zipeditor.model.Node;
 import zipeditor.model.ZipContentDescriber.ContentTypeId;
+import zipeditor.model.zstd.ZstdUtilities;
 import zipeditor.operations.AddOperation;
 import zipeditor.preferences.PreferenceUtils;
 
@@ -28,7 +29,7 @@ public class AddAction extends DialogAction {
 		if (paths == null || paths.length == 0)
 			return;
 		AddOperation operation = new AddOperation();
-		operation.execute(paths, targetNode, null, getViewer(), isZstdCompression());
+		operation.execute(paths, targetNode, null, getViewer(), ZstdUtilities.useZstdCompression(targetNode.getModel().getRoot()));
 	}
 
 }

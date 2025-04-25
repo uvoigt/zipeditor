@@ -30,6 +30,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import zipeditor.ZipEditorPlugin;
+import zipeditor.preferences.PreferenceUtils;
 
 public abstract class DialogAction extends ViewerAction {
 
@@ -78,6 +79,7 @@ public abstract class DialogAction extends ViewerAction {
 			if (fAllowZstd) {
 				Button useZstdCheckbox = new Button(control, SWT.CHECK);
 				useZstdCheckbox.setText("Use Zstd Compression"); //$NON-NLS-1$
+				zstdCompression = PreferenceUtils.isZstdDefaultCompression();
 				useZstdCheckbox.setSelection(zstdCompression);
 				useZstdCheckbox.addSelectionListener(new SelectionAdapter() {
 					

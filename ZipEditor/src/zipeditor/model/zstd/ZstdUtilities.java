@@ -4,9 +4,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import org.apache.commons.compress.archivers.zip.ZipFile;
+import org.apache.commons.compress.archivers.zip.ZipMethod;
 import org.apache.commons.compress.archivers.zip.ZipFile.Builder;
 import org.apache.commons.compress.compressors.zstandard.ZstdUtils;
+
+import zipeditor.model.Node;
+import zipeditor.model.RootNode;
 import zipeditor.model.ZipEditorZstdException;
+import zipeditor.model.ZipRootNode;
 import zipeditor.preferences.PreferenceUtils;
 
 public class ZstdUtilities {
@@ -65,5 +70,14 @@ public class ZstdUtilities {
 
 	public static boolean isZstdJniCompressionAvailable() {
 		return ZstdUtils.isZstdCompressionAvailable();
+	}
+	
+	public static boolean useZstdCompression(Node parentNode) {
+		boolean useZstdCompression = PreferenceUtils.isZstdAvailableAndActive() && PreferenceUtils.isZstdDefaultCompression();
+		RootNode root = parentNode.getModel().getRoot();
+		if (useZstdCompression && root instanceof ZipRootNode zipRootNode) {
+			useZstdCompression = zipRootNode.getChildren().length == 0 || zipRootNode.hasContentWithCompression(ZipMethod.ZSTD.getCode());
+		}
+		return useZstdCompression;
 	}
 }

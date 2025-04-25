@@ -13,6 +13,7 @@ import org.eclipse.swt.dnd.TransferData;
 import org.eclipse.ui.part.PluginDropAdapter;
 
 import zipeditor.model.Node;
+import zipeditor.model.zstd.ZstdUtilities;
 import zipeditor.operations.AddOperation;
 
 public class ZipEditorDropAdapter extends PluginDropAdapter {
@@ -49,8 +50,8 @@ public class ZipEditorDropAdapter extends PluginDropAdapter {
 			parentNode = parentNode.getParent();
 		String[] names = (String[]) data;
 		AddOperation operation = new AddOperation();
-		operation.execute(names, parentNode, selectedNode, (StructuredViewer) getViewer());
+		boolean useZstdCompression = ZstdUtilities.useZstdCompression(parentNode);
+		operation.execute(names, parentNode, selectedNode, (StructuredViewer) getViewer(), useZstdCompression);
 		return true;
 	}
-
 }

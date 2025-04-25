@@ -84,16 +84,23 @@ public class ZipNode extends Node {
 
 	protected InputStream doGetContent() throws IOException {
 		InputStream in = super.doGetContent();
-		if (in != null)
+		if (in != null) {
 			return in;
-		if (zipEntry != null) {
-			if (zipEntry.getMethod() == ZipMethod.ZSTD.getCode() || zipEntry.getMethod() == ZipMethod.ZSTD_DEPRECATED.getCode()) {
-				return model.getZipPath() != null ? new EntryStream(zipEntry, ZstdUtilities.getZipFileBuilder().setFile(model.getZipPath()).get()) : null;
+		}
+		if (zipEntry != null && model.getZipPath() != null) {
+			ZipFile zipFile;
+			if (isZstdEncoded(zipEntry)) {
+				zipFile = ZstdUtilities.getZipFileBuilder().setFile(model.getZipPath()).get();
 			} else {
-				return model.getZipPath() != null ? new EntryStream(zipEntry, ZipFile.builder().setFile(model.getZipPath()).get()) : null;
+				zipFile = ZipFile.builder().setFile(model.getZipPath()).get();
 			}
+			return new EntryStream(zipEntry, zipFile);
 		}
 		return null;
+	}
+	
+	private static boolean isZstdEncoded(ZipArchiveEntry zipEntry) {
+		return zipEntry.getMethod() == ZipMethod.ZSTD.getCode() || zipEntry.getMethod() == ZipMethod.ZSTD_DEPRECATED.getCode();
 	}
 	
 	public void reset() {

@@ -21,6 +21,9 @@ public class LazyZipContentProvider extends ZipContentProvider implements IIndex
 	}
 
 	public int findElement(Object element) {
+		if (fTableViewer == null) {
+			return -1;
+		}
 		IElementComparer comparer = fTableViewer.getComparer();
 		for (int i = 0; i < fRootChildren.length; i++) {
 			if (comparer.equals(fRootChildren[i], element))

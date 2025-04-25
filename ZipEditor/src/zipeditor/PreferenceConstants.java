@@ -50,6 +50,8 @@ public class PreferenceConstants {
 
 	public final static String STORE_FOLDERS_IN_ARCHIVES = "storeFoldersInArchives"; //$NON-NLS-1$
 
+	public static final String USE_ZSTD_AS_DEFAULT = "useZstdDefault"; //$NON-NLS-1$
+
 	public static String getPreferenceSuffix(ContentTypeId type) {
 		switch (type.getOrdinal()) {
 		case ContentTypeId.ZIP:
