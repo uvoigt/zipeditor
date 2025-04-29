@@ -270,6 +270,9 @@ public class ZipModel {
 			root = getRoot(zipStream);
 			readStream(zipStream, participant, stopNode);
 		} catch (IOException e) {
+			if (e instanceof ZipEditorZstdException) {
+				type = ContentTypeId.INVALID;
+			}
 			// ignore
 		} finally {
 			if (zipStream != null && participant == null) {
@@ -318,6 +321,11 @@ public class ZipModel {
 				else if (zipStream instanceof RpmInputStream)
 					rpmEntry = ((RpmInputStream) zipStream).getNextEntry();
 			} catch (Exception e) {
+				if (e instanceof ZipEditorZstdException) {
+					type = ContentTypeId.INVALID;
+					// No log no error dialog necessary.. Editor will deactivate itself with a hint.
+					return;
+				}
 				String message = "Error reading archive"; //$NON-NLS-1$
 				if (zipPath != null)
 					message += " " + zipPath.getAbsolutePath(); //$NON-NLS-1$
