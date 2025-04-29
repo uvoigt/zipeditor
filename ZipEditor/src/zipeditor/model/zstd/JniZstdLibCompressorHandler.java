@@ -8,6 +8,8 @@ import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStre
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStream;
 import org.apache.commons.io.function.IOFunction;
 
+import zipeditor.preferences.PreferenceUtils;
+
 public class JniZstdLibCompressorHandler implements ZstdImplementationHandler {
 
 	@Override
@@ -17,7 +19,7 @@ public class JniZstdLibCompressorHandler implements ZstdImplementationHandler {
 
 	@Override
 	public OutputStream createOutputStream(OutputStream output) throws IOException {
-		return new ZstdCompressorOutputStream(noClose(output));
+		return new ZstdCompressorOutputStream(noClose(output), PreferenceUtils.getCompressionLevel());
 	}
 
 	@Override

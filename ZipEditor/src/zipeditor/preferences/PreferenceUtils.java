@@ -105,11 +105,26 @@ public class PreferenceUtils {
 		return isZstdActive() && getAvailableLibraries().size() > 0;
 	}
 	
+	/**
+	 * Returns the preference value for default zstd compression
+	 * 
+	 * @return true if zstd can be used as default or it returns false.
+	 */
 	public static boolean isZstdDefaultCompression() {
 		IPreferenceStore preferenceStore = ZipEditorPlugin.getDefault().getPreferenceStore();
 		return preferenceStore.getBoolean(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.USE_ZSTD_AS_DEFAULT);
 	}
 
+	/**
+	 * Returns the preference value for the zstd compression level.
+	 * 
+	 * @return the value of the compression level preference.
+	 */
+	public static int getCompressionLevel() {
+		IPreferenceStore preferenceStore = ZipEditorPlugin.getDefault().getPreferenceStore();
+		return preferenceStore.getInt(PreferenceConstants.PREFIX_EDITOR + PreferenceConstants.COMPRESSION_LEVEL);
+	}
+	
 	/**
 	 * Checks if the selected library is available and returns it. 
 	 * If the selected library is not available it returns the available one.

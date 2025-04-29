@@ -52,6 +52,8 @@ public class PreferenceConstants {
 
 	public static final String USE_ZSTD_AS_DEFAULT = "useZstdDefault"; //$NON-NLS-1$
 
+	public static final String COMPRESSION_LEVEL = "compressionLevel"; //$NON-NLS-1$
+
 	public static String getPreferenceSuffix(ContentTypeId type) {
 		switch (type.getOrdinal()) {
 		case ContentTypeId.ZIP:
