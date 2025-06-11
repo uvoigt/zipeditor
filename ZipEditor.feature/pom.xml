@@ -1,0 +1,72 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<artifactId>ZipEditor.feature</artifactId>
+	<packaging>eclipse-feature</packaging>
+	<version>1.2.1-SNAPSHOT</version>
+	<parent>
+		<relativePath>..</relativePath>
+		<artifactId>ZipEditor.parent</artifactId>
+		<groupId>com.github</groupId>
+		<version>1.0.0-SNAPSHOT</version>
+	</parent>
+	<name>Zip Editor Feature</name>
+	<description>This is the feature of the Zip editor</description>
+
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-packaging-plugin</artifactId>
+				<version>${tycho.version}</version>
+				<executions>
+					<execution>
+						<id>default-validate-id</id>
+						<phase>none</phase>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-maven-plugin</artifactId>
+				<extensions>true</extensions>
+			</plugin>
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-packaging-plugin</artifactId>
+				<version>${tycho-version}</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>package-feature</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<repositories>
+		<repository>
+			<id>localtarget</id>
+			<url>file:/${project.basedir}/../maven-bnd/site/target/repository/</url>
+			<layout>p2</layout>
+		</repository>
+		<repository>
+			<id>eclipse 2025-06</id>
+			<url>http://download.eclipse.org/releases/2025-06</url>
+			<layout>p2</layout>
+		</repository>
+		<repository>
+			<id>apache-repository</id>
+			<url>https://repository.apache.org/content/repositories/snapshots</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
+</project>

@@ -61,6 +61,10 @@ public class ZipEditorPreferencePage
 						zstdCompressionLevelFieldEditor.getScaleControl().setVisible(isVisible);
 						zstdCompressionLevelFieldEditor.getLabelControl(getFieldEditorParent()).setVisible(isVisible);
 						fLScaleValue.setVisible(isVisible);
+						
+						zstdCompressionLevelFieldEditor.getScaleControl().setEnabled(isVisible);
+						zstdCompressionLevelFieldEditor.getLabelControl(getFieldEditorParent()).setEnabled(isVisible);
+						fLScaleValue.setEnabled(isVisible);
 					}
 				};
 				addField(zstdLibComboFieldEditor);
@@ -107,6 +111,14 @@ public class ZipEditorPreferencePage
 		zstdCompressionLevelFieldEditor.getScaleControl().setVisible(PreferenceUtils.isJNIZstdSelected());
 		zstdCompressionLevelFieldEditor.getLabelControl(getFieldEditorParent()).setVisible(PreferenceUtils.isJNIZstdSelected());
 		fLScaleValue.setVisible(PreferenceUtils.isJNIZstdSelected());
+		
+		if (PreferenceUtils.isJNIZstdSelected()) {
+			boolean isVisible = PreferenceUtils.isZstdAvailableAndActive();
+			
+			zstdCompressionLevelFieldEditor.getScaleControl().setEnabled(isVisible);
+			zstdCompressionLevelFieldEditor.getLabelControl(getFieldEditorParent()).setEnabled(isVisible);
+			fLScaleValue.setEnabled(isVisible);
+		}
 	}
 
 	@Override
@@ -121,6 +133,9 @@ public class ZipEditorPreferencePage
 				} 
 				if (zstdCompressionLevelFieldEditor != null) {
 					zstdCompressionLevelFieldEditor.setEnabled(isEnabled, getFieldEditorParent());
+				}
+				if (fLScaleValue != null) {
+					fLScaleValue.setEnabled(isEnabled);
 				}
 				if (fBooleanFieldEditor != null) {
 					fBooleanFieldEditor.setEnabled(isEnabled, getFieldEditorParent());

@@ -4,7 +4,7 @@ Automatic-Module-Name: %Bundle-Name.0
 Bundle-Name: %Bundle-Name.0
 Bundle-RequiredExecutionEnvironment: JavaSE-21
 Bundle-SymbolicName: ZipEditor;singleton:=true
-Bundle-Version: 1.2.0.qualifier
+Bundle-Version: 1.2.1.qualifier
 Bundle-Activator: zipeditor.ZipEditorPlugin
 Bundle-ClassPath: .
 Bundle-Localization: plugin

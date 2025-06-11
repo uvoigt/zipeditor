@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?pde version="3.8"?>
+<target name="Zip Editor Latest">
+	<locations>
+		<location path="${eclipse_home}" type="Profile"/>
+		<location path="${project_loc}/../ZipEditor.UpdateSite/target/repository" type="Directory"/>
+	</locations>
+	<environment>
+		<arch>x86_64</arch>
+		<os>linux</os>
+		<ws>gtk</ws>
+		<nl>en_US</nl>
+	</environment>
+	<launcherArgs>
+		<vmArgs>-Declipse.p2.max.threads=10 -Doomph.update.url=https://download.eclipse.org/oomph/updates/milestone/latest -Doomph.redirection.index.redirection=index:/-&gt;https://raw.githubusercontent.com/eclipse-oomph/oomph/master/setups/ -XX:CompileCommand=exclude org.eclipse.jdt.internal.core.dom.rewrite.ASTRewriteAnalyzer::getExtendedRange -Dorg.eclipse.ecf.provider.filetransfer.excludeContributors=org.eclipse.ecf.provider.filetransfer.httpclientjava -Dosgi.requiredJavaVersion=21 -Dosgi.instance.area.default=@user.home/eclipse-workspace -Dosgi.dataAreaRequiresExplicitInit=true -Dorg.eclipse.swt.graphics.Resource.reportNonDisposed=true -Declipse.e4.inject.javax.warning=false -Dorg.slf4j.simpleLogger.defaultLogLevel=off -Dsun.java.command=Eclipse -XX:+UseG1GC -XX:+UseStringDeduplication --add-modules=ALL-SYSTEM -Doomph.redirection.orbit.simrel.setup=https://raw.githubusercontent.com/eclipse-orbit/orbit-simrel/main/OrbitSimRel.setup-&gt;file:/home/mkaraman/eclipse/committers-2025-06/git/orbit-simrel/OrbitSimRel.setup -Xmx2048m</vmArgs>
+	</launcherArgs>
+</target>

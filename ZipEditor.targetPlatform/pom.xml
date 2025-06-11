@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2023 Eclipse contributors and others.
+  All rights reserved. This program and the accompanying materials
+  are made available under the terms of the Eclipse Public License v2.0
+  which accompanies this distribution, and is available at
+  http://www.eclipse.org/legal/epl-v20.html
+-->
+<project
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.github</groupId>
+		<artifactId>ZipEditor.parent</artifactId>
+		<version>1.0.0-SNAPSHOT</version>
+		<relativePath>..</relativePath>
+	</parent>
+	<artifactId>ZipEditor.targetPlatform</artifactId>
+	<packaging>eclipse-target-definition</packaging>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-maven-plugin</artifactId>
+				<extensions>true</extensions>
+			</plugin>
+		</plugins>
+	</build>
+
+	<pluginRepositories>
+		<pluginRepository>
+			<id>tycho-snapshots</id>
+			<url>https://repo.eclipse.org/content/repositories/tycho-snapshots</url>
+		</pluginRepository>
+
+		<pluginRepository>
+			<id>eclipse-maven-releases</id>
+			<url>https://repo.eclipse.org/content/repositories/releases</url>
+		</pluginRepository>
+
+		<pluginRepository>
+			<id>eclipse-cbi-releases</id>
+			<url>https://repo.eclipse.org/content/repositories/cbi-releases</url>
+		</pluginRepository>
+		<pluginRepository>
+			<id>maven-repository</id>
+			<url>https://repo1.maven.org/maven2</url>
+		</pluginRepository>
+		<pluginRepository>
+			<id>apache-repository</id>
+			<url>https://repository.apache.org/content/repositories/snapshots</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</pluginRepository>
+	</pluginRepositories>
+</project>
