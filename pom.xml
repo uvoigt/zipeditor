@@ -16,7 +16,7 @@
 	<modules>
 		<module>maven-bnd</module>
 		<module>ZipEditor</module>
-		<module>ZipEditor.feature</module>
+		<module>zipeditor.feature</module>
 		<module>ZipEditor.targetPlatform</module>
 		<module>ZipEditor.UpdateSite</module>
 	</modules>
