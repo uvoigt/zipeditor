@@ -108,16 +108,18 @@ public class ZipEditorPreferencePage
 		zstdCompressionLevelFieldEditor.load();
 		fLScaleValue.setText(Messages.ZipEditorPreferencePage_ScaleValueCompressionLevel + PreferenceUtils.getCompressionLevel());
 		
-		zstdCompressionLevelFieldEditor.getScaleControl().setVisible(PreferenceUtils.isJNIZstdSelected());
-		zstdCompressionLevelFieldEditor.getLabelControl(getFieldEditorParent()).setVisible(PreferenceUtils.isJNIZstdSelected());
-		fLScaleValue.setVisible(PreferenceUtils.isJNIZstdSelected());
+		boolean aircompNotSelected = !PreferenceUtils.isAircompressorSelected();
 		
-		if (PreferenceUtils.isJNIZstdSelected()) {
-			boolean isVisible = PreferenceUtils.isZstdAvailableAndActive();
+		zstdCompressionLevelFieldEditor.getScaleControl().setVisible(aircompNotSelected);
+		zstdCompressionLevelFieldEditor.getLabelControl(getFieldEditorParent()).setVisible(aircompNotSelected);
+		fLScaleValue.setVisible(aircompNotSelected);
+		
+		if (aircompNotSelected) {
+			boolean isEnabled = PreferenceUtils.isZstdAvailableAndActive();
 			
-			zstdCompressionLevelFieldEditor.getScaleControl().setEnabled(isVisible);
-			zstdCompressionLevelFieldEditor.getLabelControl(getFieldEditorParent()).setEnabled(isVisible);
-			fLScaleValue.setEnabled(isVisible);
+			zstdCompressionLevelFieldEditor.getScaleControl().setEnabled(isEnabled);
+			zstdCompressionLevelFieldEditor.getLabelControl(getFieldEditorParent()).setEnabled(isEnabled);
+			fLScaleValue.setEnabled(isEnabled);
 		}
 	}
 
