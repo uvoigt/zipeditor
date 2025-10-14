@@ -536,6 +536,9 @@ public class ZipModel {
 		else if (out instanceof TarOutputStream)
 			((TarOutputStream) out).putNextEntry(tarEntry);
 		Utils.readAndWrite(node.getContent(), out, false);
+		if (zipEntry != null) {
+			((ZipArchiveOutputStream)out).closeArchiveEntry();
+		}			
 		if (tarEntry != null)
 			((TarOutputStream) out).closeEntry();
 		monitor.worked(1);

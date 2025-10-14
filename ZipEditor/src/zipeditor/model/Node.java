@@ -14,9 +14,13 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.output.NullOutputStream;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.PlatformObject;
 import org.eclipse.ui.model.IWorkbenchAdapter;
+
+import zipeditor.ZipEditorPlugin;
 
 public abstract class Node extends PlatformObject {
 	protected Node parent;
@@ -158,6 +162,13 @@ public abstract class Node extends PlatformObject {
 	}
 
 	public long getSize() {
+		if (size == -1) {
+			try {
+				size = IOUtils.copyLarge(getContent(), NullOutputStream.INSTANCE);
+			} catch (IOException e) {
+				ZipEditorPlugin.log(e);
+			}
+		}
 		return size;
 	}
 
