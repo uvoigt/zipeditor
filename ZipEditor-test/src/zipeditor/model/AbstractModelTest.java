@@ -13,7 +13,7 @@ import zipeditor.model.ZipContentDescriber.ContentTypeId;
 
 public abstract class AbstractModelTest {
 
-	private ZipModel model;
+	protected ZipModel model;
 
 	public abstract String getArchiveName();
 
