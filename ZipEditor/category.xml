@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <bundle id="io.airlift.aircompressor" version="2.0.2"/>
+   <bundle id="io.airlift.aircompressor.source" version="2.0.2"/>
+   <bundle id="org.apache.commons.commons-compress"/>
+   <bundle id="org.apache.commons.commons-compress.source"/>
+   <bundle id="com.github.luben.zstd-jni"/>
+   <bundle id="com.github.luben.zstd-jni.source"/>
+   <bundle id="org.apache.commons.lang3"/>
+   <bundle id="org.apache.commons.lang3.source"/>
+   <bundle id="ZipEditor"/>
+   <bundle id="ZipEditor.source"/>
+</site>

@@ -18,12 +18,12 @@ import java.util.List;
 import java.util.zip.CRC32;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
+import org.apache.commons.compress.archivers.zip.ZipMethod;
 import org.apache.tools.bzip2.CBZip2InputStream;
 import org.apache.tools.bzip2.CBZip2OutputStream;
 import org.apache.tools.tar.TarConstants;
@@ -37,12 +37,14 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.ListenerList;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.ui.statushandlers.StatusManager;
 
 import zipeditor.Messages;
 import zipeditor.Utils;
 import zipeditor.ZipEditorPlugin;
 import zipeditor.model.IModelListener.ModelChangeEvent;
 import zipeditor.model.ZipContentDescriber.ContentTypeId;
+import zipeditor.model.zstd.ZstdUtilities;
 import zipeditor.rpm.RpmEntry;
 import zipeditor.rpm.RpmInputStream;
 
@@ -105,13 +107,18 @@ public class ZipModel {
 			if (count == -1)
 				return null;
 			try {
-				ZipArchiveInputStream zip = new ZipArchiveInputStream(contents);
+				ZipArchiveInputStream zip = new ZstdAwareZipArchiveInputStream(contents);
 				if (zip.getNextEntry() != null) {
 					contents.reset();
 					return ContentTypeId.ZIP_FILE;
 				}
 			} catch (IOException ioe) {
-				// thrown in getNextEntry() method if, if file is not a zip file.
+				if (ioe instanceof ZipEditorZstdException) {
+					// thrown if zstd support is not active or library is missing
+					// we can close further actions with this zip file.
+					return ContentTypeId.INVALID;
+				}
+				// thrown in getNextEntry() method, if file is not a zip file.
 			}
 			contents.reset();
 			try {
@@ -257,9 +264,15 @@ public class ZipModel {
 		InputStream zipStream = inputStream;
 		try {
 			zipStream = detectStream(inputStream);
+			if (ContentTypeId.INVALID == type) {
+				return;
+			}
 			root = getRoot(zipStream);
 			readStream(zipStream, participant, stopNode);
 		} catch (IOException e) {
+			if (e instanceof ZipEditorZstdException) {
+				type = ContentTypeId.INVALID;
+			}
 			// ignore
 		} finally {
 			if (zipStream != null && participant == null) {
@@ -308,6 +321,11 @@ public class ZipModel {
 				else if (zipStream instanceof RpmInputStream)
 					rpmEntry = ((RpmInputStream) zipStream).getNextEntry();
 			} catch (Exception e) {
+				if (e instanceof ZipEditorZstdException) {
+					type = ContentTypeId.INVALID;
+					// No log no error dialog necessary.. Editor will deactivate itself with a hint.
+					return;
+				}
 				String message = "Error reading archive"; //$NON-NLS-1$
 				if (zipPath != null)
 					message += " " + zipPath.getAbsolutePath(); //$NON-NLS-1$
@@ -434,7 +452,7 @@ public class ZipModel {
 		default:
 			return in;
 		case ContentTypeId.ZIP:
-			return new ZipArchiveInputStream(in);
+			return new ZstdAwareZipArchiveInputStream(in);
 		case ContentTypeId.TAR:
 			return new TarInputStream(in);
 		case ContentTypeId.GZ:
@@ -512,7 +530,7 @@ public class ZipModel {
 				monitor.subTask(entryName);
 				zipEntry.setComment(((ZipNode) node).getComment());
 				zipEntry.setMethod(((ZipNode) node).getMethod());
-				if (zipEntry.getMethod() == ZipEntry.STORED) {
+				if (zipEntry.getMethod() == ZipMethod.STORED.getCode() || zipEntry.getMethod() == ZipMethod.ZSTD.getCode() || zipEntry.getMethod() == ZipMethod.ZSTD_DEPRECATED.getCode()) {
 					handleCrc(node, entryName, zipEntry);
 				}
 			}
@@ -535,7 +553,17 @@ public class ZipModel {
 			((ZipArchiveOutputStream) out).putArchiveEntry(zipEntry);
 		else if (out instanceof TarOutputStream)
 			((TarOutputStream) out).putNextEntry(tarEntry);
-		Utils.readAndWrite(node.getContent(), out, false);
+		if (node instanceof ZipNode && ((ZipNode)node).getMethod() == ZipMethod.ZSTD.getCode()) {
+			try (OutputStream zstdOutput = ZstdUtilities.getOutputStream(out)) {
+				Utils.readAndWrite(node.getContent(), zstdOutput, false);
+				zstdOutput.flush();
+			}
+	    } else {
+			Utils.readAndWrite(node.getContent(), out, false);
+		}
+		if (zipEntry != null) {
+			((ZipArchiveOutputStream)out).closeArchiveEntry();
+		}
 		if (zipEntry != null) {
 			((ZipArchiveOutputStream)out).closeArchiveEntry();
 		}			

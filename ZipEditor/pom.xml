@@ -1,0 +1,89 @@
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+
+  
+  <artifactId>ZipEditor</artifactId>
+  <packaging>eclipse-plugin</packaging>
+  <version>1.2.1-SNAPSHOT</version>
+  <parent>
+    <groupId>com.github</groupId>
+    <relativePath>../</relativePath>
+    <version>1.0.0-SNAPSHOT</version>
+    <artifactId>ZipEditor.parent</artifactId>
+  </parent>
+  
+  
+  <build>
+    <plugins>
+      <plugin>
+          <groupId>org.eclipse.tycho</groupId>
+          <artifactId>tycho-source-plugin</artifactId>
+          <version>${tycho-version}</version>
+          <executions>
+              <execution>
+                  <id>attach-sources</id>
+                  <goals>
+                      <goal>plugin-source</goal>
+                  </goals>
+              </execution>
+          </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.eclipse.tycho</groupId>
+        <artifactId>tycho-maven-plugin</artifactId>
+        <extensions>true</extensions>
+        <configuration>
+          <target-platform-configuration>
+            <target>
+              <includeSources>true</includeSources>
+              <targetFile>${project.basedir}/../maven-bnd/tp/MavenBND.target</targetFile>
+              <referencedRepositoryMode>include</referencedRepositoryMode>
+            </target>
+          </target-platform-configuration>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+  
+  <repositories>
+    <repository>
+      <id>eclipse 2025-06</id>
+      <url>http://download.eclipse.org/releases/2025-06</url>
+      <layout>p2</layout>
+    </repository>
+    <repository>
+      <id>localtarget</id>
+      <url>file:/${project.basedir}/../maven-bnd/site/target/repository/</url>
+      <layout>p2</layout>
+    </repository>
+    <repository>
+      <id>apache-repository</id>
+      <url>https://repository.apache.org/content/repositories/snapshots</url>
+      <snapshots><enabled>true</enabled></snapshots>
+    </repository>
+  </repositories>
+  
+  <pluginRepositories>
+    <pluginRepository>
+      <id>tycho-snapshots</id>
+      <url>https://repo.eclipse.org/content/repositories/tycho-snapshots</url>
+    </pluginRepository>
+    <pluginRepository>
+      <id>eclipse-maven-releases</id>
+      <url>https://repo.eclipse.org/content/repositories/releases</url>
+    </pluginRepository>
+    <pluginRepository>
+      <id>eclipse-cbi-releases</id>
+      <url>https://repo.eclipse.org/content/repositories/cbi-releases</url>
+    </pluginRepository>
+    <pluginRepository>
+      <id>maven-repository</id>
+      <url>https://repo1.maven.org/maven2</url>
+    </pluginRepository>
+    <pluginRepository>
+      <id>apache-repository</id>
+      <url>https://repository.apache.org/content/repositories/snapshots</url>
+      <snapshots><enabled>true</enabled></snapshots>
+    </pluginRepository>
+  </pluginRepositories>
+</project>

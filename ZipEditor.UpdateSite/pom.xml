@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+	xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.github</groupId>
+		<artifactId>ZipEditor.parent</artifactId>
+		<version>1.0.0-SNAPSHOT</version>
+		<relativePath>..</relativePath>
+	</parent>
+
+	<artifactId>ZipEditor.site</artifactId>
+	<packaging>eclipse-repository</packaging>
+
+	<pluginRepositories>
+		<pluginRepository>
+			<id>tycho-snapshots</id>
+			<url>https://repo.eclipse.org/content/repositories/tycho-snapshots</url>
+		</pluginRepository>
+		<pluginRepository>
+			<id>eclipse-maven-releases</id>
+			<url>https://repo.eclipse.org/content/repositories/releases</url>
+		</pluginRepository>
+		<pluginRepository>
+			<id>eclipse-cbi-releases</id>
+			<url>https://repo.eclipse.org/content/repositories/cbi-releases</url>
+		</pluginRepository>
+		<pluginRepository>
+			<id>maven-repository</id>
+			<url>https://repo1.maven.org/maven2</url>
+		</pluginRepository>
+		<pluginRepository>
+			<id>apache-repository</id>
+			<url>https://repository.apache.org/content/repositories/snapshots</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</pluginRepository>
+	</pluginRepositories>
+	<repositories>
+		<repository>
+			<id>localtarget</id>
+			<url>file:/${project.basedir}/../maven-bnd/site/target/repository/</url>
+			<layout>p2</layout>
+		</repository>
+		<repository>
+			<id>eclipse 2025-06</id>
+			<url>http://download.eclipse.org/releases/2025-06</url>
+			<layout>p2</layout>
+		</repository>
+		<repository>
+			<id>apache-repository</id>
+			<url>https://repository.apache.org/content/repositories/snapshots</url>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-p2-repository-plugin</artifactId>
+				<version>${tycho-version}</version>
+				<configuration>
+					<repositoryName>Zip Editor Repository</repositoryName>
+					<includeAllDependencies>false</includeAllDependencies>
+					<includeAllSources>true</includeAllSources>
+					<skipArchive>false</skipArchive>
+					<xzCompress>false</xzCompress>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-maven-plugin</artifactId>
+				<extensions>true</extensions>
+			</plugin>
+
+		</plugins>
+	</build>
+
+</project>

@@ -26,6 +26,10 @@ public class PreferenceConstants {
 
 	public final static String SORT_ENABLED = "SORT_ENABLED"; //$NON-NLS-1$
 
+	public final static String ACTIVATE_ZSTD_LIB = "ACTIVE_ZSTD"; //$NON-NLS-1$
+	
+	public static final String SELECTED_ZSTD_LIB = "selectedZstdLib"; //$NON-NLS-1$
+
 	public final static String EXTERNAL_EDITORS = "EXTERNAL_EDITORS"; //$NON-NLS-1$
 	
 	public final static String PREFIX_EDITOR = "editor"; //$NON-NLS-1$
@@ -45,6 +49,10 @@ public class PreferenceConstants {
 	public final static String RECENTLY_USED_SEPARATOR = ","; //$NON-NLS-1$
 
 	public final static String STORE_FOLDERS_IN_ARCHIVES = "storeFoldersInArchives"; //$NON-NLS-1$
+
+	public static final String USE_ZSTD_AS_DEFAULT = "useZstdDefault"; //$NON-NLS-1$
+
+	public static final String COMPRESSION_LEVEL = "compressionLevel"; //$NON-NLS-1$
 
 	public static String getPreferenceSuffix(ContentTypeId type) {
 		switch (type.getOrdinal()) {

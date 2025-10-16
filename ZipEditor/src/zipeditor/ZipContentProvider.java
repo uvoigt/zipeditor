@@ -34,6 +34,9 @@ public class ZipContentProvider implements ITreeContentProvider {
 	}
 
 	protected Object[] getNodeChildren(Node node) {
+		if (node == null) {
+			return new Object[0];
+		}
 		if (fDisposeModel && fModel != node.getModel())
 			fModel = node.getModel();
 		if ((fMode & PreferenceConstants.VIEW_MODE_TREE) > 0)

@@ -45,7 +45,7 @@ public class ExtractAction extends DialogAction {
 		Node[] nodes = getSelectedNodes();
 		if (nodes.length == 0)
 			nodes = new Node[] { getViewerInputAsNode() };
-		File[] folder = openDialog(ActionMessages.getString("ExtractAction.2"), fSelectedFolder, false, false); //$NON-NLS-1$
+		File[] folder = openDialog(ActionMessages.getString("ExtractAction.2"), fSelectedFolder, false, false, false); //$NON-NLS-1$
 		if (folder != null && folder.length > 0) {
 			ExtractOperation operation = new ExtractOperation();
 			operation.setRefreshJob(new RefreshJob());

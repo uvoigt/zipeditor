@@ -320,5 +320,13 @@
                menubarPath="group.open"/>
       </objectContribution>
    </extension>
+   <extension
+         point="org.eclipse.ui.preferencePages">
+      <page
+            class="zipeditor.preferences.ZipEditorPreferencePage"
+            id="zipeditor.preferences.ZipEditorPreferencePage"
+            name="Zip Editor">
+      </page>
+   </extension>
 
 </plugin>
