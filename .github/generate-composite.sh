@@ -1,5 +1,5 @@
 #!/bin/bash
-# Generates p2 composite repository files from git tags.
+# Generates p2 composite repository files from version directories in the output dir.
 # Usage: generate-composite.sh <output-dir>
 
 set -e
@@ -7,20 +7,18 @@ set -e
 OUTPUT_DIR="${1:?Usage: $0 <output-dir>}"
 mkdir -p "$OUTPUT_DIR"
 
-# Collect all release versions from git tags
-VERSIONS=$(git tag -l 'ZipEditor_[0-9]*' \
-  | sed 's/ZipEditor_//; s/_/./g' \
-  | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' \
-  | sort -V)
-
-# Start with legacy site (pre-Tycho versions)
+# legacy/ contains all pre-Tycho versions
 CHILDREN="    <child location=\"legacy/\"/>\n"
 COUNT=1
-while IFS= read -r v; do
-  [ -z "$v" ] && continue
+
+# Add only version directories that actually exist (CI-deployed versions)
+for dir in "$OUTPUT_DIR"/*/; do
+  [ -d "$dir" ] || continue
+  v=$(basename "$dir")
+  [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]] || continue
   CHILDREN="${CHILDREN}    <child location=\"${v}/\"/>\n"
   COUNT=$((COUNT + 1))
-done <<< "$VERSIONS"
+done
 
 TIMESTAMP=$(date +%s000)
 
