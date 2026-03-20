@@ -335,7 +335,7 @@ public class ZipModel {
 			try {
 				if (en != null)
 					zipEntry = en.hasMoreElements() ? (ZipEntry) en.nextElement() : null;
-				if (zipStream instanceof ZipInputStream)
+				else if (zipStream instanceof ZipInputStream)
 					zipEntry = ((ZipInputStream) zipStream).getNextEntry();
 				else if (zipStream instanceof TarInputStream)
 					tarEntry = ((TarInputStream) zipStream).getNextEntry();
