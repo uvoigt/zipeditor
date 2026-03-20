@@ -119,6 +119,8 @@ public class Utils {
 		OpenFileOperation openFileOperation = new OpenFileOperation();
 		for (int i = 0; i < nodes.length; i++) {
 			Node node = nodes[i];
+			if (monitor.isCanceled())
+				break;
 			monitor.subTask(node.getName());
 			File file = extractOperation.extract(node, tmpDir, true, monitor);
 			openFileOperation.execute(file, node);
