@@ -18,11 +18,11 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveInputStream;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.apache.commons.compress.archivers.zip.ZipMethod;
-import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream;
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStream;
 import org.junit.Test;
 
 import com.github.luben.zstd.ZstdInputStream;
+import com.github.luben.zstd.ZstdInputStreamNoFinalizer;
 
 public class ZipZstdTest {
 
@@ -56,32 +56,57 @@ public class ZipZstdTest {
 
 	@Test
 	public void shouldReadZstdWithFile() throws Exception {
-    	ZipException e = assertThrows(ZipException.class, () -> new ZipFile("resources/zstd.zip"));
-    	assertEquals("invalid CEN header (bad compression method: 93)", e.getMessage());
+		ZipException e = assertThrows(ZipException.class, () -> new ZipFile("resources/zstd.zip"));
+		assertEquals("invalid CEN header (bad compression method: 93)", e.getMessage());
 	}
 
 	@Test
 	public void shouldReadZstd() throws Exception {
-        try (ZipInputStream in = new ZipInputStream(new FileInputStream("resources/zstd.zip"))) {
-        	assertEquals(".project", in.getNextEntry().getName());
-        	ZipException e = assertThrows(ZipException.class, () -> in.read(new byte[100]));
-        	assertEquals("invalid compression method", e.getMessage());
-        }
+		try (ZipInputStream in = new ZipInputStream(new FileInputStream("resources/zstd.zip"))) {
+			assertEquals(".project", in.getNextEntry().getName());
+			ZipException e = assertThrows(ZipException.class, () -> in.read(new byte[100]));
+			assertEquals("invalid compression method", e.getMessage());
+		}
 	}
 
 	@Test
 	public void shouldReadZ() throws Exception {
-        ZstdInputStream zin = new ZstdInputStream(new FileInputStream("resources/archive.zst"));
-        byte[] bs = new byte[1];
-        int c = zin.read();
-        assertEquals('<', c);
-        //assertEquals("<", new String(bs));
-        zin.close();
+		ZstdInputStream zin = new ZstdInputStream(new FileInputStream("resources/archive.zst"));
+		byte[] bs = new byte[1];
+		int c = zin.read();
+		assertEquals('<', c);
+		// assertEquals("<", new String(bs));
+		zin.close();
 
-        ZstdInputStream zin2 = new ZstdInputStream(new FileInputStream("resources/archive.zip"));
-        IOException e = assertThrows(IOException.class, () -> zin2.read(bs));
-        assertEquals("Unknown frame descriptor", e.getMessage());
-        zin2.close();
+		ZstdInputStream zin2 = new ZstdInputStream(new FileInputStream("resources/archive.zip"));
+		IOException e = assertThrows(IOException.class, () -> zin2.read(bs));
+		assertEquals("Unknown frame descriptor", e.getMessage());
+		zin2.close();
+	}
+
+	public static OutputStream noClose(OutputStream out) {
+		return new OutputStream() {
+			@Override
+			public void write(int b) throws IOException {
+				out.write(b);
+			}
+
+			@Override
+			public void write(byte[] b, int off, int len) throws IOException {
+				out.write(b, off, len);
+			}
+
+			@Override
+			public void flush() throws IOException {
+				out.flush();
+			}
+
+			@Override
+			public void close() throws IOException {
+				// do nothing
+			}
+		};
+
 	}
 
 	@Test
@@ -89,29 +114,36 @@ public class ZipZstdTest {
 		try (ZipArchiveOutputStream out = new ZipArchiveOutputStream(new File("test-zstd.zip"))) {
 			ZipArchiveEntry e1 = new ZipArchiveEntry("one.txt");
 			e1.setMethod(ZipMethod.ZSTD.getCode());
-			out.putArchiveEntry(e1);
-			OutputStream o1 = ZstdCompressorOutputStream.builder().setOutputStream(out).get();
-			o1.write("""
+			byte[] bytes = """
 					text file
 					with multiple line
-					""".getBytes());
-			o1.flush();
+					""".getBytes();
+			e1.setSize(bytes.length);
+			out.putArchiveEntry(e1);
+			try (OutputStream zstdOutput = ZstdCompressorOutputStream.builder().setOutputStream(noClose(out)).get()) {
+				zstdOutput.write(bytes);
+				zstdOutput.flush();
+			}
 			out.closeArchiveEntry();
 			ZipArchiveEntry e2 = new ZipArchiveEntry("two.txt");
 			e2.setMethod(ZipMethod.ZSTD.getCode());
-			out.putArchiveEntry(e2);
-			OutputStream o2 = ZstdCompressorOutputStream.builder()
-					.setOutputStream(out)
-					.get();
-			o2.write("""
+			String second = """
 					another text file
 					some more line
-					""".getBytes());
-			o2.flush();
+					""";
+			e2.setSize(second.getBytes().length);
+			out.putArchiveEntry(e2);
+			try (OutputStream o2 = ZstdCompressorOutputStream.builder().setOutputStream(noClose(out)).get()) {
+				o2.write(second.getBytes());
+				o2.flush();
+			}
 			out.closeArchiveEntry();
 		}
 
-		org.apache.commons.compress.archivers.zip.ZipFile zipFile = org.apache.commons.compress.archivers.zip.ZipFile.builder().setFile("test-zstd.zip").get();
+		boolean jni = true;
+		org.apache.commons.compress.archivers.zip.ZipFile zipFile = org.apache.commons.compress.archivers.zip.ZipFile
+				.builder().setZstdInputStreamFactory((inpStream) -> jni ? new ZstdInputStreamNoFinalizer(inpStream) : new io.airlift.compress.zstd.ZstdInputStream(inpStream))
+				.setFile("test-zstd.zip").get();
 		Enumeration<ZipArchiveEntry> entries = zipFile.getEntries();
 		ZipArchiveEntry lastEntry = null;
 		while (entries.hasMoreElements()) {
@@ -120,8 +152,9 @@ public class ZipZstdTest {
 			if (!entries.hasMoreElements())
 				lastEntry = entry;
 		}
-		try (InputStream in = new ZstdCompressorInputStream(zipFile.getInputStream(lastEntry))) {
-			System.out.println(new String(in.readAllBytes()));
-		}
+		InputStream in = zipFile.getInputStream(lastEntry);
+		System.out.println(new String(in.readAllBytes()));
+
+		zipFile.close();
 	}
 }
